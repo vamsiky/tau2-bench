@@ -287,7 +287,7 @@ def _retrieval_env_kwargs(domain, retrieval_config, retrieval_kwargs) -> dict:
 async def run_episode(task, domain, *, agent_model, user_model, user_effort="high",
                       agent_effort=None, trial=0, max_steps=50, seed=42,
                       eval_type=EvaluationType.ALL, sdk_nl_judge=False,
-                      verified_scorer=False,
+                      verified_scorer=True,
                       retrieval_config=None, retrieval_kwargs=None,
                       agent_extra_instruction=None) -> SimulationRun:
     if task.initial_state is not None and task.initial_state.message_history:
@@ -686,10 +686,12 @@ def main() -> None:
     p.add_argument("--user-effort", default="high",
                    help="SDK user-sim reasoning effort: low|medium|high|max (default: high).")
     p.add_argument("--eval-type", default="all", choices=[e.value for e in EvaluationType])
-    p.add_argument("--verified-scorer", action="store_true",
-                   help="Use the tau2-Verified DB scorer: extra discoverable reads are "
-                        "allowed (gold calls must be a subset) and free-text annotation "
-                        "fields (e.g. closure_reason) are excluded from comparison.")
+    p.add_argument("--no-verified-scorer", dest="verified_scorer", action="store_false",
+                   help="Disable the tau2-Verified DB scorer and use the strict exact-hash "
+                        "comparison instead. By default the verified scorer is on: extra "
+                        "discoverable reads are allowed and free-text annotation fields "
+                        "(e.g. closure_reason) are excluded.")
+    p.set_defaults(verified_scorer=True)
     p.add_argument("--sdk-nl-judge", action="store_true",
                    help="Run the NL-assertions judge via the Claude SDK (subscription, "
                         "claude-opus-4-8/high) so NL-assertion tasks score with no API key.")
