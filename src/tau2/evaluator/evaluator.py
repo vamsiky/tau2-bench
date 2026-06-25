@@ -95,6 +95,7 @@ def evaluate_simulation(
     env_kwargs: dict = None,
     strict_replay: bool = True,
     use_sdk_nl_judge: bool = False,
+    use_verified_scorer: bool = False,
 ) -> RewardInfo:
     """
     Evaluate the simulation based on the evaluation type.
@@ -117,6 +118,12 @@ def evaluate_simulation(
               Agent SDK (subscription auth, claude-opus-4-8 / high effort by
               default) instead of litellm. Same prompts, tools, and parsing; only
               the generation backend changes.
+        use_verified_scorer: If True, replace the exact DB-hash comparison with the
+              principled "tau2 Verified" relaxation (SABER τ-Bench-Verified style):
+              extra discoverable reads are allowed (gold's calls must be a subset of
+              the agent's), and free-text annotation fields (e.g. closure_reason) are
+              excluded. All other tables are still compared exactly. Has no effect on
+              NL-assertion, action, or communicate scoring.
 
     Returns:
         RewardInfo with the evaluation results.
@@ -195,6 +202,7 @@ def evaluate_simulation(
             solo_mode=solo_mode,
             env_kwargs=env_kwargs,
             strict_replay=strict_replay,
+            use_verified_scorer=use_verified_scorer,
         )
     elif evaluation_type == EvaluationType.NL_ASSERTIONS:
         reward_info = NLEvaluator.calculate_reward(
@@ -220,6 +228,7 @@ def evaluate_simulation(
             solo_mode=solo_mode,
             env_kwargs=env_kwargs,
             strict_replay=strict_replay,
+            use_verified_scorer=use_verified_scorer,
         )
         action_reward_info = ActEvaluator.calculate_reward(
             task=task,
@@ -302,6 +311,7 @@ def evaluate_simulation(
             full_trajectory=trajectory,
             solo_mode=solo_mode,
             env_kwargs=env_kwargs,
+            use_verified_scorer=use_verified_scorer,
         )
         action_reward_info = ActEvaluator.calculate_reward(
             task=task,

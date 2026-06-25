@@ -287,6 +287,7 @@ def _retrieval_env_kwargs(domain, retrieval_config, retrieval_kwargs) -> dict:
 async def run_episode(task, domain, *, agent_model, user_model, user_effort="high",
                       agent_effort=None, trial=0, max_steps=50, seed=42,
                       eval_type=EvaluationType.ALL, sdk_nl_judge=False,
+                      verified_scorer=False,
                       retrieval_config=None, retrieval_kwargs=None,
                       agent_extra_instruction=None) -> SimulationRun:
     if task.initial_state is not None and task.initial_state.message_history:
@@ -418,6 +419,7 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
         simulation=simulation, task=task, evaluation_type=eval_type, solo_mode=False,
         domain=domain, mode=CommunicationMode.HALF_DUPLEX,
         use_sdk_nl_judge=sdk_nl_judge, env_kwargs=eval_env_kwargs,
+        use_verified_scorer=verified_scorer,
     )
     simulation.reward_info = reward_info
 
@@ -634,6 +636,7 @@ async def run_batch_async(args) -> None:
                     user_model=args.user_model, user_effort=args.user_effort,
                     trial=trial, max_steps=args.max_steps, seed=seed,
                     eval_type=eval_type, sdk_nl_judge=args.sdk_nl_judge,
+                    verified_scorer=args.verified_scorer,
                     retrieval_config=retrieval_config, retrieval_kwargs=retrieval_kwargs,
                     agent_extra_instruction=_AGENT_EXTRA_INSTRUCTION,
                 )
@@ -683,6 +686,10 @@ def main() -> None:
     p.add_argument("--user-effort", default="high",
                    help="SDK user-sim reasoning effort: low|medium|high|max (default: high).")
     p.add_argument("--eval-type", default="all", choices=[e.value for e in EvaluationType])
+    p.add_argument("--verified-scorer", action="store_true",
+                   help="Use the tau2-Verified DB scorer: extra discoverable reads are "
+                        "allowed (gold calls must be a subset) and free-text annotation "
+                        "fields (e.g. closure_reason) are excluded from comparison.")
     p.add_argument("--sdk-nl-judge", action="store_true",
                    help="Run the NL-assertions judge via the Claude SDK (subscription, "
                         "claude-opus-4-8/high) so NL-assertion tasks score with no API key.")
