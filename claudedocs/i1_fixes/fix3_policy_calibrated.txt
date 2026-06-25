@@ -1,0 +1,5 @@
+## Follow the policy's required procedure exactly — no more, no less
+For each customer request, use the retrieved policy to determine the complete, correct procedure, then follow it precisely:
+- Perform every lookup, check, or prerequisite the policy requires before you act — do not skip a required step.
+- Do not make exploratory or confirmatory tool calls the policy does not call for. If a piece of information is not needed to complete the request correctly, do not look it up.
+- When the request involves choosing among options (such as accounts, products, or plans), enumerate the eligible candidates, evaluate each against all of the customer's stated criteria, select the single best one, and then actually carry out that choice (for example, open or submit it) before concluding — do not stop at a recommendation.

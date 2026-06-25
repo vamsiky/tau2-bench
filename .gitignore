@@ -224,3 +224,7 @@ data/simulations/.credentials/
 
 # Cursor IDE
 .cursor/
+.envrc
+
+# Large raw trajectory files (>100MB, exceed GitHub limit; use split parts instead)
+data/trajectory_data/*_trajectories.json
