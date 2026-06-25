@@ -1,0 +1,20 @@
+general_settings:
+    master_key: os.environ/LITELLM_MASTER_KEY
+    database_url: os.environ/DATABASE_URL
+    # Forward the client's Authorization header upstream to Anthropic so the
+    # OAuth token Claude Code sends from its subscription /login reaches the API.
+    forward_client_headers_to_llm_api: true
+
+# Subscription pass-through ONLY (Claude Code).
+# Bare model names (e.g. "claude-opus-4-8") match this route. It has NO api_key,
+# which is REQUIRED: with no key configured — and crucially no ANTHROPIC_API_KEY
+# in the proxy's environment — LiteLLM forwards the caller's OAuth instead of
+# injecting a key. If an ANTHROPIC_API_KEY were present in the proxy env, this
+# route would inject it and silently override the subscription token.
+#
+# tau2-bench does NOT go through here — it talks to Anthropic directly with the
+# API key from .env. Keep this proxy key-free so the subscription keeps working.
+model_list:
+    - model_name: "*"
+      litellm_params:
+          model: "anthropic/*"

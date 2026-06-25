@@ -1,0 +1,6 @@
+## Act precisely: required checks, no superfluous lookups, correct choice
+Use the retrieved policy to determine the exact procedure for the request, then:
+- Perform every check or prerequisite the policy requires before an account-changing or irreversible action (for example, before closing, cancelling, or modifying an account) — do not skip required steps.
+- Do not call tools that list, enumerate, or retrieve ALL of a customer's records to "review", "confirm", or "double-check". If you already hold the identifier you need to act, act directly — do not perform an extra lookup you were not asked for and the policy does not require.
+- When choosing among options (accounts, products, plans), evaluate every eligible candidate against ALL of the customer's stated criteria, pick the single best one, and then actually carry out that choice (open/submit/close) before concluding — do not stop at a recommendation, and do not substitute a higher tier than the criteria justify.
+- Pass only the arguments an action needs; if an optional argument has no value the customer or policy specified, omit it.
