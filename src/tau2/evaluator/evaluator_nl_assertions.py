@@ -10,7 +10,7 @@ from tau2.data_model.message import Message, SystemMessage, Tick, UserMessage
 from tau2.data_model.simulation import NLAssertionCheck, RewardInfo
 from tau2.data_model.tasks import RewardType, Task
 from tau2.evaluator.evaluator_base import EvaluatorBase
-from tau2.utils.llm_utils import generate
+from tau2.utils.llm_utils import extract_json_from_llm_response, generate
 
 
 class NLAssertionsEvaluator(EvaluatorBase[Message]):
@@ -58,6 +58,80 @@ class NLAssertionsEvaluator(EvaluatorBase[Message]):
         )
 
     @classmethod
+    def build_eval_messages(
+        cls,
+        trajectory: list[Message],
+        nl_assertions: list[str],
+    ) -> list[Message]:
+        """
+        Build the (system, user) message pair sent to the judge LLM.
+
+        Kept separate from the LLM call so alternative backends (e.g. the Claude
+        Agent SDK) can reuse the EXACT same prompts.
+        """
+        trajectory_str = "\n".join(
+            [f"{message.role}: {message.content}" for message in trajectory]
+        )
+        # System prompt similar to the TypeScript implementation
+        system_prompt = """
+        TASK
+        - You will be given a list of expected outcomes and a conversation that was collected during a test case run.
+        - The conversation is between an agent and a customer.
+        - Your job is to evaluate whether the agent satisfies each of the expected outcomes.
+        - Grade each expected outcome individually.
+
+        FORMAT
+        - Your response should be a JSON object with the following fields:
+        - `reasoning`: a short explanation for your classification
+        - `metExpectation`: `true` if the agent satisfies the expected outcomes, `false` otherwise
+        - `expectedOutcome`: repeat the expectation from the input that you are grading
+
+        Example response structure:
+        {
+            "results": [
+                {
+                    "expectedOutcome": "<one of the expected outcomes from the input>",
+                    "reasoning": "<reasoning trace>",
+                    "metExpectation": <false or true>,
+                }
+            ]
+        }
+        """
+
+        user_prompt = f"""
+        conversation:
+        {trajectory_str}
+
+        expectedOutcomes:
+        {nl_assertions}
+        """
+
+        return [
+            SystemMessage(role="system", content=system_prompt),
+            UserMessage(role="user", content=user_prompt),
+        ]
+
+    @classmethod
+    def parse_nl_response(cls, content: str) -> list[NLAssertionCheck]:
+        """
+        Parse the judge LLM's JSON response into NLAssertionCheck objects.
+
+        Kept separate from the LLM call so alternative backends reuse the exact
+        same parsing. extract_json_from_llm_response is a no-op for the bare JSON
+        the litellm path returns, and recovers JSON wrapped in markdown fences
+        (which reasoning models sometimes emit).
+        """
+        result_data = json.loads(extract_json_from_llm_response(content))
+        return [
+            NLAssertionCheck(
+                nl_assertion=result["expectedOutcome"],
+                met=result["metExpectation"],
+                justification=result["reasoning"],
+            )
+            for result in result_data.get("results", [])
+        ]
+
+    @classmethod
     def evaluate_nl_assertions(
         cls,
         trajectory: list[Message],
@@ -76,47 +150,7 @@ class NLAssertionsEvaluator(EvaluatorBase[Message]):
             - metExpectation: Boolean indicating if the assertion was met
             - reasoning: Explanation for the evaluation
         """
-        trajectory_str = "\n".join(
-            [f"{message.role}: {message.content}" for message in trajectory]
-        )
-        # System prompt similar to the TypeScript implementation
-        system_prompt = """
-        TASK
-        - You will be given a list of expected outcomes and a conversation that was collected during a test case run.
-        - The conversation is between an agent and a customer.
-        - Your job is to evaluate whether the agent satisfies each of the expected outcomes.
-        - Grade each expected outcome individually.
-
-        FORMAT
-        - Your response should be a JSON object with the following fields:
-        - `reasoning`: a short explanation for your classification
-        - `metExpectation`: `true` if the agent satisfies the expected outcomes, `false` otherwise
-        - `expectedOutcome`: repeat the expectation from the input that you are grading
-        
-        Example response structure:
-        {
-            "results": [
-                {
-                    "expectedOutcome": "<one of the expected outcomes from the input>",
-                    "reasoning": "<reasoning trace>",
-                    "metExpectation": <false or true>,
-                }
-            ]
-        }
-        """
-
-        user_prompt = f"""
-        conversation:
-        {trajectory_str}
-        
-        expectedOutcomes:
-        {nl_assertions}
-        """
-
-        messages = [
-            SystemMessage(role="system", content=system_prompt),
-            UserMessage(role="user", content=user_prompt),
-        ]
+        messages = cls.build_eval_messages(trajectory, nl_assertions)
 
         assistant_message = generate(
             model=DEFAULT_LLM_NL_ASSERTIONS,
@@ -124,15 +158,7 @@ class NLAssertionsEvaluator(EvaluatorBase[Message]):
             call_name="nl_assertions_eval",
             **DEFAULT_LLM_NL_ASSERTIONS_ARGS,
         )
-        result_data = json.loads(assistant_message.content)
-        return [
-            NLAssertionCheck(
-                nl_assertion=result["expectedOutcome"],
-                met=result["metExpectation"],
-                justification=result["reasoning"],
-            )
-            for result in result_data.get("results", [])
-        ]
+        return cls.parse_nl_response(assistant_message.content)
 
 
 class FullDuplexNLAssertionsEvaluator(EvaluatorBase[Tick]):
