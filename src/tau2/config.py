@@ -25,6 +25,17 @@ DEFAULT_LLM_NL_ASSERTIONS = "gpt-4.1-2025-04-14"
 DEFAULT_LLM_NL_ASSERTIONS_TEMPERATURE = 0.0
 DEFAULT_LLM_NL_ASSERTIONS_ARGS = {"temperature": DEFAULT_LLM_NL_ASSERTIONS_TEMPERATURE}
 
+# Claude-Agent-SDK NL-assertions judge (runs on the Claude subscription, no API key).
+# Same prompts/parsing as the litellm judge; only the generation backend differs.
+DEFAULT_SDK_NL_ASSERTIONS_MODEL = "claude-opus-4-8"
+DEFAULT_SDK_NL_ASSERTIONS_EFFORT = "high"
+
+# Claude-Agent-SDK user simulator (runs on the Claude subscription, no API key).
+# Same system prompt/guidelines as the litellm user simulator; only the generation
+# backend differs (persistent multi-turn SDK session instead of litellm).
+DEFAULT_SDK_USER_MODEL = "claude-opus-4-8"
+DEFAULT_SDK_USER_EFFORT = "high"
+
 DEFAULT_LLM_ENV_INTERFACE = "gpt-4.1-2025-04-14"
 DEFAULT_LLM_ENV_INTERFACE_TEMPERATURE = 0.0
 DEFAULT_LLM_ENV_INTERFACE_ARGS = {"temperature": DEFAULT_LLM_ENV_INTERFACE_TEMPERATURE}

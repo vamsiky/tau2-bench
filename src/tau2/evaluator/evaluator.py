@@ -94,6 +94,7 @@ def evaluate_simulation(
     mode: CommunicationMode = CommunicationMode.HALF_DUPLEX,
     env_kwargs: dict = None,
     strict_replay: bool = True,
+    use_sdk_nl_judge: bool = False,
 ) -> RewardInfo:
     """
     Evaluate the simulation based on the evaluation type.
@@ -112,6 +113,10 @@ def evaluate_simulation(
               Live evaluation keeps the default (True); trajectory re-grading
               passes False so recorded outputs that cosmetically predate
               current tool code do not abort the replay.
+        use_sdk_nl_judge: If True, run the NL-assertions judge through the Claude
+              Agent SDK (subscription auth, claude-opus-4-8 / high effort by
+              default) instead of litellm. Same prompts, tools, and parsing; only
+              the generation backend changes.
 
     Returns:
         RewardInfo with the evaluation results.
@@ -144,9 +149,23 @@ def evaluate_simulation(
     EnvEvaluator = (
         FullDuplexEnvironmentEvaluator if is_full_duplex else EnvironmentEvaluator
     )
-    NLEvaluator = (
-        FullDuplexNLAssertionsEvaluator if is_full_duplex else NLAssertionsEvaluator
-    )
+    if use_sdk_nl_judge:
+        # Lazy import: only pull in the Claude Agent SDK when the SDK judge is
+        # actually requested, so the default litellm path has no SDK dependency.
+        from tau2.evaluator.evaluator_nl_assertions_sdk import (
+            FullDuplexSDKNLAssertionsEvaluator,
+            SDKNLAssertionsEvaluator,
+        )
+
+        NLEvaluator = (
+            FullDuplexSDKNLAssertionsEvaluator
+            if is_full_duplex
+            else SDKNLAssertionsEvaluator
+        )
+    else:
+        NLEvaluator = (
+            FullDuplexNLAssertionsEvaluator if is_full_duplex else NLAssertionsEvaluator
+        )
     CommEvaluator = (
         FullDuplexCommunicateEvaluator if is_full_duplex else CommunicateEvaluator
     )
