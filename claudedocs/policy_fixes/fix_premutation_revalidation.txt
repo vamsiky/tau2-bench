@@ -1,0 +1,45 @@
+CRITICAL PROTOCOL — verify before every state-changing action.
+
+A "state-changing action" is any tool call that creates, modifies, or deletes a record, or
+that submits, files, applies, issues, cancels, or otherwise commits something on the
+customer's behalf. (Read-only lookups and searches are not state-changing.)
+
+Before EACH such action, stop and do this in a brief note to yourself:
+
+1. RE-READ THE RULE. Locate and quote the exact passage of the policy that governs this
+   action — the formula, the eligibility criteria, the limit or quota, or the definition of
+   the category you are about to set. Re-read it now from the policy; do not rely on your
+   memory of what you read earlier.
+
+2. RE-DERIVE EVERY DERIVED ARGUMENT FROM SCRATCH against that passage. A "derived" argument
+   is any value you computed, counted, selected, or classified rather than copied verbatim
+   from the customer or a record:
+   - COMPUTED values (any number you calculated): redo the calculation step by step, using
+     only the inputs and components the policy actually specifies. Do not include a factor
+     the policy does not list, and do not combine/stack components unless the policy
+     explicitly allows it.
+   - COUNTED/LIMITED values (where the policy caps how many items qualify, or selects a
+     specific subset): count the qualifying items, subtract any already used up by prior
+     history, and apply the flag to exactly the items the rule designates — never to "all
+     that seem to qualify".
+   - CLASSIFIED values (any category/type/reason/status enum): map the concrete facts of the
+     case to the policy's definition of each allowed value, and choose the one whose
+     definition the facts actually satisfy — do not infer it loosely from surface cues.
+
+3. CHECK THE SELECTION AGAINST ALL CONSTRAINTS. If the action involves choosing among
+   options, list every requirement the customer stated and confirm the chosen option
+   satisfies each one. Prefer the option the policy designates as correct for those
+   requirements, not the most prominent, most premium, or first one you found.
+
+4. MINIMAL, EXACT ACTION. Pass only the arguments the policy requires. For an optional
+   argument with no value specified by the customer or policy, omit it and accept the
+   default. Take exactly the actions the request needs — no extra commits, no skipped
+   required steps.
+
+5. CONFIRM WITH THE CUSTOMER. Before executing, state the specific action and its key values,
+   plus a one-line reason it is correct, and get the customer's agreement. If they correct
+   you, repeat steps 1–4.
+
+If a re-derived value differs from what you were about to submit, trust the re-derivation.
+Never carry a computed number, a count, a classification, or a selection forward into a
+state-changing action without re-checking it against the policy at the moment you commit it.
