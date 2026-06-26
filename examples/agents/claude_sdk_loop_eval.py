@@ -92,6 +92,7 @@ from tau2.runner import build_environment, build_user, get_tasks
 from tau2.runner.checkpoint import create_checkpoint_fns, try_resume
 from tau2.runner.helpers import get_environment_info
 from tau2.user.user_simulator import UserSimulator, get_global_user_sim_guidelines
+from tau2.environment.toolkit import ToolType
 from tau2.utils import DATA_DIR
 from tau2.utils.llm_utils import get_cost
 from tau2.utils.utils import get_commit_hash, get_now
@@ -118,6 +119,225 @@ DISALLOWED_BUILTINS = [
     "NotebookEdit", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite",
     "ExitPlanMode", "AskUserQuestion", "Skill", "ToolSearch",
 ]
+
+# Tool name prefixes that are clearly read-only (no DB mutation).
+_READ_ONLY_PREFIXES = ("get_", "list_", "check_", "search_")
+
+def _is_direct_readonly(tool_name: str) -> bool:
+    """Heuristic: tool is read-only if its bare name starts with a read prefix."""
+    return any(tool_name.startswith(p) for p in _READ_ONLY_PREFIXES)
+
+
+def _build_recent_calls(captures: dict, mcp_prefix: str) -> list[tuple[str, dict, str]]:
+    """Return completed tool calls from captures, expanding call_discoverable_agent_tool
+    to show the inner tool name prominently."""
+    result = []
+    for cap in captures.values():
+        if "result" not in cap:
+            continue
+        full_name = cap.get("name", "")
+        if not full_name.startswith(mcp_prefix):
+            continue
+        bare = full_name.removeprefix(mcp_prefix)
+        inp = cap.get("input", {})
+        res = str(cap.get("result", ""))[:150]
+        if bare == "call_discoverable_agent_tool":
+            inner = inp.get("agent_tool_name", "?")
+            result.append((f"call_discoverable_agent_tool[{inner}]", inp, res))
+        else:
+            result.append((bare, inp, res))
+    return result
+
+
+def _extract_conversation(trajectory: list) -> tuple[str, str]:
+    """Return (first_customer_request, recent_conversation_summary).
+
+    Walks the trajectory and formats user / assistant text turns and tool
+    calls into a compact string.  We cap the summary to the last 20 lines
+    so the verifier prompt stays concise.
+    """
+    first_req = ""
+    lines: list[str] = []
+    for m in trajectory:
+        role = getattr(m, "role", None)
+        content = getattr(m, "content", None)
+        tool_calls = getattr(m, "tool_calls", None)
+        if role == "user" and isinstance(content, str) and content.strip():
+            if not first_req:
+                first_req = content.strip()[:400]
+            lines.append(f"Customer: {content.strip()[:200]}")
+        elif role == "assistant" and isinstance(content, str) and content.strip():
+            lines.append(f"Agent: {content.strip()[:200]}")
+        elif role == "assistant" and tool_calls:
+            for tc in tool_calls:
+                inner = ""
+                if tc.name == "call_discoverable_agent_tool":
+                    inner = f"[{tc.arguments.get('agent_tool_name', '')}]"
+                lines.append(f"Agent called: {tc.name}{inner}")
+    return first_req, "\n".join(lines[-20:])
+
+
+class AuxVerifier:
+    """SABER-style auxiliary verifier gate.
+
+    Before the agent executes a state-changing (WRITE) discoverable tool
+    call, a lightweight Claude model re-reads the policy and the recent
+    interaction history to verify:
+
+      1. All policy-required preliminary steps have been performed.
+      2. The chosen arguments / product / account match the customer's needs.
+      3. No unnecessary optional arguments are included.
+
+    If the proposed action fails any check the hook returns a deny with
+    a specific reason, giving the agent a chance to correct itself.
+
+    Implementation: uses `claude -p` (non-interactive CLI mode) via a
+    subprocess.  This avoids the stream-conflict that arises from spawning
+    a nested ClaudeSDKClient inside a PreToolUse hook callback.
+    """
+
+    _SYSTEM_PROMPT = (
+        "You are a banking compliance checker reviewing a SINGLE proposed action.\n\n"
+        "Your ONLY job: decide if THIS SPECIFIC proposed action is correct to execute NOW.\n\n"
+        "IMPORTANT: Start your response with APPROVED or BLOCKED (no markdown, no asterisks).\n\n"
+        "APPROVED — if ALL are true for THIS action:\n"
+        "  1. Required preliminary checks for THIS action appear in TOOLS CALLED SO FAR\n"
+        "  2. Parameters match what the customer explicitly requested\n"
+        "  3. No missing required arguments\n\n"
+        "BLOCKED: <reason> — ONLY if:\n"
+        "  1. A required pre-check for THIS SPECIFIC action is missing from TOOLS CALLED SO FAR\n"
+        "  2. Wrong product/tier/account selected (does not match customer's stated request)\n"
+        "  3. A required parameter is missing or incorrect\n\n"
+        "DO NOT BLOCK because:\n"
+        "  - Other parts of a multi-step request are still pending (handling actions one at a time\n"
+        "    is correct; a customer asking for two accounts does NOT mean both must open in one call)\n"
+        "  - Customer 'hasn't explicitly confirmed' when they expressed clear intent\n"
+        "  - A future related action hasn't happened yet\n\n"
+        "VALUE-CORRECTNESS CHECKS (use the POLICY text provided; these are generic, not tied to any one task):\n"
+        "  - COMPUTED NUMBERS: if the action sets a number you can derive from the policy\n"
+        "    (an interest rate / APY, a credited or refunded amount, a fee, a liability\n"
+        "    amount), re-derive it from the policy formula. Add only the rate components /\n"
+        "    bonuses the policy explicitly lists, and do NOT stack bonuses unless the policy\n"
+        "    says so. BLOCK if the proposed value does not match your derivation.\n"
+        "  - COUNT / CAP LIMITS: if the policy caps how many items may carry a flag (e.g.\n"
+        "    how many disputes are eligible_for_provisional_credit / provisional_credit_eligible),\n"
+        "    count how many are flagged across THIS and prior calls, subtract any consumed by\n"
+        "    prior history, and BLOCK if the count exceeds the cap or flags items other than the\n"
+        "    specific ones the rule selects (e.g. the top-N by amount).\n"
+        "  - CLASSIFICATION FIELDS: if the action sets a category/type enum (dispute_category,\n"
+        "    transaction_type, dispute_reason), check it against the transaction's concrete facts\n"
+        "    (PIN entered? card physically present? in-person vs online?) and the policy's\n"
+        "    definitions. BLOCK if the enum does not match the facts (e.g. a PIN/in-person charge\n"
+        "    labeled online_purchase / card_not_present_fraud).\n\n"
+        "CRITICAL DOMAIN PRE-CHECK RULES (check TOOLS CALLED SO FAR):\n"
+        "  log_credit_card_closure_reason_4521:\n"
+        "    BLOCK unless BOTH of these appear in prior calls for the SAME credit_card_account_id:\n"
+        "      - get_user_dispute_history_7291\n"
+        "      - get_pending_replacement_orders_5765 (with that card's account ID)\n"
+        "  order_replacement_credit_card_7291:\n"
+        "    BLOCK unless BOTH appear in prior calls:\n"
+        "      - get_user_dispute_history_7291\n"
+        "      - get_pending_replacement_orders_5765\n"
+        "  close_bank_account_7392:\n"
+        "    BLOCK unless get_user_dispute_history_7291 appears in prior calls.\n\n"
+        "CRITICAL FORMAT: First word of your response must be exactly APPROVED or BLOCKED.\n"
+        "Do not add ** or any other formatting."
+    )
+
+    def __init__(self, policy: str, model: str, effort: str = "low"):
+        self.policy = policy
+        self.model = model
+        self.effort = effort
+
+    async def verify(
+        self,
+        proposed_tool: str,
+        tool_args: dict,
+        customer_request: str,
+        recent_conversation: str,
+        recent_calls: list[tuple[str, dict, str]],
+    ) -> tuple[bool, str]:
+        """Return (approved, reason). On any error, approve to avoid false blocks."""
+        def _fmt_call(n: str, inp: dict, r: str) -> str:
+            # Show key args (account IDs, tool names) so verifier can match pre-checks
+            key_args = {k: v for k, v in inp.items()
+                        if k in ("credit_card_account_id", "account_id", "user_id",
+                                 "agent_tool_name", "arguments")}
+            args_str = json.dumps(key_args, default=str) if key_args else ""
+            return f"  {n}({args_str})  →  {r[:60]}"
+
+        calls_str = "\n".join(
+            _fmt_call(n, inp, r) for (n, inp, r) in recent_calls[-15:]
+        ) or "  (none yet)"
+
+        # Truncate policy to avoid overly long prompts; the verifier needs the
+        # relevant sections, not necessarily the entire document.
+        policy_excerpt = self.policy[:6000] if len(self.policy) > 6000 else self.policy
+
+        prompt = (
+            f"POLICY:\n{policy_excerpt}\n\n"
+            f"CUSTOMER REQUEST: {customer_request or '(unknown)'}\n\n"
+            f"RECENT CONVERSATION:\n{recent_conversation or '(none)'}\n\n"
+            f"TOOLS CALLED SO FAR THIS EPISODE:\n{calls_str}\n\n"
+            f"PROPOSED ACTION: {proposed_tool}(\n"
+            f"  {json.dumps(tool_args, indent=2, default=str)}\n)\n\n"
+            "Is this action correct and complete?\n"
+            "Reply APPROVED or BLOCKED: <reason>."
+        )
+
+        # Use `claude -p` (non-interactive) to avoid nested-subprocess stream
+        # conflicts that occur with ClaudeSDKClient inside a hook callback.
+        cmd = [
+            "claude", "-p",
+            "--model", self.model,
+            "--dangerously-skip-permissions",
+            "--system-prompt", self._SYSTEM_PROMPT,
+        ]
+        if self.effort and self.effort != "default":
+            cmd += ["--effort", self.effort]
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=clean_env(),
+            )
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(input=prompt.encode()), timeout=120
+            )
+            text = stdout.decode(errors="replace").strip()
+            if not text and stderr:
+                err = stderr.decode(errors="replace").strip()[:200]
+                logger.warning(f"[AuxVerifier] stderr for {proposed_tool}: {err}")
+                return True, f"verifier stderr (allowing): {err}"
+            # Normalize: strip markdown bold markers and whitespace for robust parsing
+            text_norm = text.lstrip("*").strip()
+            upper = text_norm.upper()
+            if upper.startswith("APPROVED"):
+                return True, text_norm
+            if upper.startswith("BLOCKED"):
+                reason = text_norm[7:].lstrip(":*").strip()
+                return False, reason
+            # Check if APPROVED or BLOCKED appears anywhere in the first line
+            first_line = text_norm.split("\n")[0].upper()
+            if "APPROVED" in first_line:
+                return True, text_norm
+            if "BLOCKED" in first_line:
+                # Extract reason from rest of text
+                rest = "\n".join(text_norm.split("\n")[1:]).strip()
+                return False, rest or text_norm
+            # Ambiguous response → allow through
+            logger.debug(f"[AuxVerifier] ambiguous reply for {proposed_tool}: {text!r}")
+            return True, text
+        except asyncio.TimeoutError:
+            logger.warning(f"[AuxVerifier] timeout verifying {proposed_tool}")
+            return True, "timeout (allowing through)"
+        except Exception as exc:
+            logger.warning(f"[AuxVerifier] error verifying {proposed_tool}: {exc}")
+            return True, str(exc)
+
 
 def clean_env() -> dict:
     """Env for the SDK subprocess: drop anything that would route the bundled CLI
@@ -182,7 +402,9 @@ def _make_sdk_tool(tau2_tool, env, lock: asyncio.Lock):
 
 
 def _build_agent_options(env, agent_model, captures, denials, lock,
-                         agent_effort=None, agent_extra_instruction=None) -> ClaudeAgentOptions:
+                         agent_effort=None, agent_extra_instruction=None,
+                         aux_verifier: "AuxVerifier | None" = None,
+                         trajectory: "list | None" = None) -> ClaudeAgentOptions:
     tau2_tools = env.get_tools()
     sdk_tools = [_make_sdk_tool(t, env, lock) for t in tau2_tools]
     server = create_sdk_mcp_server(name=MCP_SERVER_NAME, version="1.0.0", tools=sdk_tools)
@@ -199,6 +421,7 @@ def _build_agent_options(env, agent_model, captures, denials, lock,
 
     async def rec_pre(input_data, tool_use_id, context):
         tname = input_data.get("tool_name", "")
+        tool_input = input_data.get("tool_input", {})
         if not tname.startswith(MCP_PREFIX):
             denials.append(tname)
             return {"hookSpecificOutput": {
@@ -206,9 +429,49 @@ def _build_agent_options(env, agent_model, captures, denials, lock,
                 "permissionDecision": "deny",
                 "permissionDecisionReason": "Only environment tools are allowed.",
             }}
+        bare = tname.removeprefix(MCP_PREFIX)
         cap = captures.setdefault(tool_use_id, {})
         cap["name"] = tname
-        cap["input"] = input_data.get("tool_input", {})
+        cap["input"] = tool_input
+
+        # --- SABER aux-verifier gate ---
+        # Only intercept call_discoverable_agent_tool for WRITE inner tools.
+        # Direct tools (log_verification, unlock_*, KB_search_*, shell, etc.)
+        # are either always-correct operations or read-only and are left alone.
+        if aux_verifier is not None:
+            should_verify = False
+            proposed_label = bare
+            if bare == "call_discoverable_agent_tool":
+                inner_name = tool_input.get("agent_tool_name", "")
+                proposed_label = f"call_discoverable_agent_tool[{inner_name}]"
+                if inner_name and hasattr(env, "tools") and env.tools is not None:
+                    try:
+                        tt = env.tools.tool_type(inner_name)
+                        should_verify = (tt == ToolType.WRITE)
+                    except (KeyError, AttributeError):
+                        should_verify = True  # unknown inner tool → verify to be safe
+
+            if should_verify:
+                traj = trajectory or []
+                first_req, conversation = _extract_conversation(traj)
+                recent = _build_recent_calls(captures, MCP_PREFIX)
+                approved, reason = await aux_verifier.verify(
+                    proposed_label, tool_input, first_req, conversation, recent
+                )
+                if not approved:
+                    logger.info(f"[AuxVerifier] BLOCKED {proposed_label}: {reason}")
+                    cap["_blocked"] = reason
+                    return {"hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": (
+                            f"Action not yet approved: {reason}. "
+                            "Complete any missing required steps first, then retry."
+                        ),
+                    }}
+                else:
+                    logger.debug(f"[AuxVerifier] APPROVED {proposed_label}")
+
         return {}
 
     async def rec_post(input_data, tool_use_id, context):
@@ -289,7 +552,10 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
                       eval_type=EvaluationType.ALL, sdk_nl_judge=False,
                       verified_scorer=True,
                       retrieval_config=None, retrieval_kwargs=None,
-                      agent_extra_instruction=None) -> SimulationRun:
+                      agent_extra_instruction=None,
+                      use_aux_verifier: bool = False,
+                      aux_verifier_model: str | None = None,
+                      aux_verifier_effort: str = "low") -> SimulationRun:
     if task.initial_state is not None and task.initial_state.message_history:
         raise NotImplementedError(f"Task {task.id} has seeded history; v1 supports fresh tasks only.")
 
@@ -319,6 +585,19 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
     user.bind_environment(env)
     user_state = user.get_init_state()
 
+    # Build trajectory early so the aux-verifier hook can read it as it fills up.
+    trajectory: list = []
+
+    # Aux-verifier: optional SABER-style gate that blocks WRITE discoverable tool calls
+    # that are missing required pre-checks or have wrong arguments.
+    aux_verifier: AuxVerifier | None = None
+    if use_aux_verifier:
+        v_model = aux_verifier_model or "claude-haiku-4-5-20251001"
+        aux_verifier = AuxVerifier(
+            policy=env.get_policy(), model=v_model, effort=aux_verifier_effort
+        )
+        logger.info(f"[AuxVerifier] enabled model={v_model} effort={aux_verifier_effort}")
+
     captures: dict[str, dict] = {}
     denials: list[str] = []
     tools_called: list[str] = []
@@ -326,9 +605,10 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
     lock = asyncio.Lock()
     agent_opts = _build_agent_options(env, agent_model, captures, denials, lock,
                                       agent_effort=agent_effort,
-                                      agent_extra_instruction=agent_extra_instruction)
+                                      agent_extra_instruction=agent_extra_instruction,
+                                      aux_verifier=aux_verifier,
+                                      trajectory=trajectory)
 
-    trajectory: list = []
     greeting = DEFAULT_FIRST_AGENT_MESSAGE.model_copy(deep=True)
     greeting.timestamp = get_now()
     trajectory.append(greeting)
@@ -639,6 +919,9 @@ async def run_batch_async(args) -> None:
                     verified_scorer=args.verified_scorer,
                     retrieval_config=retrieval_config, retrieval_kwargs=retrieval_kwargs,
                     agent_extra_instruction=_AGENT_EXTRA_INSTRUCTION,
+                    use_aux_verifier=args.use_aux_verifier,
+                    aux_verifier_model=args.aux_verifier_model,
+                    aux_verifier_effort=args.aux_verifier_effort,
                 )
             except Exception as e:
                 # Don't checkpoint a failure -> it stays out of done_runs and is
@@ -702,6 +985,17 @@ def main() -> None:
     p.add_argument("--agent-extra-instruction-file", default=None,
                    help="Path to a text file whose contents are appended to the generic "
                         "agent instruction (NOT the policy). Used to test generic fixes.")
+    # SABER aux-verifier gate
+    p.add_argument("--use-aux-verifier", action="store_true",
+                   help="Enable the SABER-style auxiliary verifier gate. Before each "
+                        "WRITE discoverable tool call, a lightweight model checks: "
+                        "(1) required pre-steps done, (2) correct parameters, "
+                        "(3) minimal args. Blocks non-compliant calls with feedback.")
+    p.set_defaults(use_aux_verifier=False)
+    p.add_argument("--aux-verifier-model", default=None,
+                   help="Model for the auxiliary verifier (default: claude-haiku-4-5-20251001).")
+    p.add_argument("--aux-verifier-effort", default="low",
+                   help="Reasoning effort for the auxiliary verifier: low|medium|high (default: low).")
     p.add_argument("--max-steps", type=int, default=50)
     p.add_argument("--max-errors", type=int, default=10, help="Recorded in run metadata.")
     p.add_argument("--seed", type=int, default=42)

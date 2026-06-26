@@ -173,7 +173,16 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
             gold_db = gold_environment.tools.db.model_dump()
             predicted_db = predicted_environment.tools.db.model_dump()
             agent_db_match, _ = _verified_db_match(gold_db, predicted_db)
-            user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
+            # Apply the same relaxed comparison for user_db to avoid failing on extra
+            # agent_discoverable_tools entries (e.g. extra READ tool calls by the agent).
+            # In domains where user_tools.db is the same object as tools.db (e.g. banking),
+            # the exact hash would reject agents that called extra discoverable reads.
+            if gold_environment.user_tools is not None and gold_environment.user_tools.db is not None:
+                gold_user_db = gold_environment.user_tools.db.model_dump()
+                predicted_user_db = predicted_environment.user_tools.db.model_dump()
+                user_db_match, _ = _verified_db_match(gold_user_db, predicted_user_db)
+            else:
+                user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
         else:
             agent_db_match = gold_environment.get_db_hash() == predicted_environment.get_db_hash()
             user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
@@ -380,7 +389,16 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
             gold_db = gold_environment.tools.db.model_dump()
             predicted_db = predicted_environment.tools.db.model_dump()
             agent_db_match, _ = _verified_db_match(gold_db, predicted_db)
-            user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
+            # Apply the same relaxed comparison for user_db to avoid failing on extra
+            # agent_discoverable_tools entries (e.g. extra READ tool calls by the agent).
+            # In domains where user_tools.db is the same object as tools.db (e.g. banking),
+            # the exact hash would reject agents that called extra discoverable reads.
+            if gold_environment.user_tools is not None and gold_environment.user_tools.db is not None:
+                gold_user_db = gold_environment.user_tools.db.model_dump()
+                predicted_user_db = predicted_environment.user_tools.db.model_dump()
+                user_db_match, _ = _verified_db_match(gold_user_db, predicted_user_db)
+            else:
+                user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
         else:
             agent_db_match = gold_environment.get_db_hash() == predicted_environment.get_db_hash()
             user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()

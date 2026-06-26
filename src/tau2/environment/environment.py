@@ -370,6 +370,15 @@ class Environment:
                     "(no-op, matching live env behavior on hallucinated tools)."
                 )
                 continue
+            if expected_response.error:
+                # The live run returned an error for this call (e.g., tool
+                # blocked by an aux-verifier hook, or a legitimate runtime
+                # failure) and made no state change, so replay it as a no-op.
+                logger.debug(
+                    f"Skipping errored tool call '{tool_call.name}' during replay "
+                    "(no-op, matching live env behavior on failed/blocked tools)."
+                )
+                continue
             # Non-mutating tools (reads, thinks, etc.) don't change state --
             # skip them to avoid re-execution and non-deterministic output
             # comparison issues.
