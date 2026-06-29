@@ -342,6 +342,9 @@ class KnowledgeTools(ToolKitBase):
         super().__init__(db)
         self._user_discoverable_tools_state: Dict[str, Dict[str, Any]] = {}
         self._agent_discoverable_tools_state: Dict[str, Dict[str, Any]] = {}
+        # A3: tracks which discoverable tools have been called this session, so
+        # closure/retention writes can enforce that eligibility checks ran first.
+        self._discoverable_calls_made: set = set()
 
     def get_user_discoverable_tools_state(self) -> Dict[str, Dict[str, Any]]:
         """Get the current state of user discoverable tools (for sharing with user tools)."""
@@ -350,6 +353,29 @@ class KnowledgeTools(ToolKitBase):
     def get_agent_discoverable_tools_state(self) -> Dict[str, Dict[str, Any]]:
         """Get the current state of agent discoverable tools."""
         return self._agent_discoverable_tools_state
+
+    def _closure_eligibility_block(self) -> Optional[str]:
+        """A3: closure/retention writes require the eligibility checks first.
+
+        The closure-eligibility protocol requires checking the customer's dispute
+        history and pending replacement orders before a card can be retained
+        (fee waiver / statement credit) or closed. Returns an error string naming
+        the missing required discoverable reads, or None if both have been called.
+        """
+        required = [
+            "get_user_dispute_history_7291",
+            "get_pending_replacement_orders_5765",
+        ]
+        missing = [t for t in required if t not in self._discoverable_calls_made]
+        if missing:
+            return (
+                "Error: Closure-eligibility checks incomplete. Before applying a "
+                "retention offer / fee waiver or closing a card, you must first run "
+                f"these checks for this customer: {', '.join(missing)}. Unlock and "
+                "call them (unlock_discoverable_agent_tool / "
+                "call_discoverable_agent_tool), then retry this action."
+            )
+        return None
 
     @is_tool(ToolType.GENERIC)
     def transfer_to_human_agents(
@@ -672,6 +698,8 @@ class KnowledgeTools(ToolKitBase):
         agent_tool_record = {"tool_name": agent_tool_name, "status": "CALLED"}
         record_id = generate_agent_discoverable_tool_id(agent_tool_name)
         add_to_db("agent_discoverable_tools", record_id, agent_tool_record, db=self.db)
+        # A3: mirror the call into an in-memory set for pre-write eligibility guards.
+        self._discoverable_calls_made.add(agent_tool_name)
 
         return result
 
@@ -1679,6 +1707,12 @@ For deposits without available images, the dispute will proceed based on custome
         if reason not in valid_reasons:
             return f"Error: Invalid reason. Must be one of: {valid_reasons}"
 
+        # A3: a retention statement credit requires closure-eligibility checks first.
+        if reason == "retention_offer":
+            block = self._closure_eligibility_block()
+            if block:
+                return block
+
         result = query_database_tool(
             "credit_card_accounts",
             f'{{"account_id": "{credit_card_account_id}"}}',
@@ -1774,6 +1808,12 @@ For deposits without available images, the dispute will proceed based on custome
         ]
         if reason not in valid_reasons:
             return f"Error: Invalid reason. Must be one of: {valid_reasons}"
+
+        # A3: an annual-fee-waiver retention flag requires closure-eligibility checks first.
+        if flag_type == "annual_fee_waived":
+            block = self._closure_eligibility_block()
+            if block:
+                return block
 
         # Verify the credit card account exists
         result = query_database_tool(
@@ -3777,6 +3817,21 @@ For deposits without available images, the dispute will proceed based on custome
         # Verify last 4 digits match
         if card.get("last_4_digits") != last_4_digits:
             return "Error: Card verification failed. The last 4 digits do not match our records."
+
+        # A4: high-risk cards must not be unlocked via PIN reset — route to the
+        # correct procedure based on the card's stored security signals.
+        if card.get("fraud_alert_active") is True:
+            return (
+                "Error: This card has an active fraud alert and cannot be unlocked "
+                "via PIN reset. Per security policy, close the card and order a "
+                "replacement (close_debit_card_4721 then order_debit_card_5739)."
+            )
+        if card.get("pin_lock_reason") == "security_hold":
+            return (
+                "Error: This card is under a security hold and cannot be handled by "
+                "PIN reset. Transfer to a human agent (transfer_to_human_agents, "
+                "reason 'fraud_or_security_concern')."
+            )
 
         # Check card status - can only reset PIN on ACTIVE cards
         if card.get("status") != "ACTIVE":

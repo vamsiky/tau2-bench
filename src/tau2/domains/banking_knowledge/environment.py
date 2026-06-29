@@ -28,9 +28,15 @@ def get_db() -> TransactionalDB:
     return TransactionalDB.load(str(KNOWLEDGE_DB_PATH))
 
 
-def get_knowledge_base() -> KnowledgeBase:
-    """Load the knowledge base (documents) for semantic search."""
-    return KnowledgeBase.load(str(KNOWLEDGE_DOCUMENTS_DIR))
+def get_knowledge_base(corpus_dir: Optional[str] = None) -> KnowledgeBase:
+    """Load the knowledge base (documents) for semantic search.
+
+    Args:
+        corpus_dir: Optional override directory. When provided (e.g. by the
+            ``register_search`` variant), loads that corpus instead of the
+            default raw-document corpus.
+    """
+    return KnowledgeBase.load(str(corpus_dir or KNOWLEDGE_DOCUMENTS_DIR))
 
 
 def get_environment(
@@ -65,11 +71,11 @@ def get_environment(
     if db is None:
         db = get_db()
 
-    knowledge_base = get_knowledge_base()
-
     variant_name = retrieval_variant or DEFAULT_RETRIEVAL_VARIANT
     kwargs = retrieval_kwargs or {}
     variant = resolve_variant(variant_name, **kwargs)
+
+    knowledge_base = get_knowledge_base(getattr(variant, "corpus_dir", None))
 
     tools = build_tools(variant, db, knowledge_base)
     user_tools = KnowledgeUserTools(db)
