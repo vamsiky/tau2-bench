@@ -85,6 +85,18 @@ wheels = [
 ]
 
 [[package]]
+name = "aiohttp-retry"
+version = "2.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9d/61/ebda4d8e3d8cfa1fd3db0fb428db2dd7461d5742cea35178277ad180b033/aiohttp_retry-2.9.1.tar.gz", hash = "sha256:8eb75e904ed4ee5c2ec242fefe85bf04240f685391c4879d8f541d6028ff01f1", size = 13608, upload-time = "2024-11-06T10:44:54.574Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/99/84ba7273339d0f3dfa57901b846489d2e5c2cd731470167757f1935fffbd/aiohttp_retry-2.9.1-py3-none-any.whl", hash = "sha256:66d2759d1921838256a05a3f80ad7e724936f083e35be5abb5e16eed6be6dc54", size = 9981, upload-time = "2024-11-06T10:44:52.917Z" },
+]
+
+[[package]]
 name = "aioice"
 version = "0.10.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1185,6 +1197,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/dd/7ac658d54b9fb7999a0ccb07ad863b413cbaf5cf172f48ebcd9497ec7263/hf_xet-1.2.0-cp37-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:4c1428c9ae73ec0939410ec73023c4f842927f39db09b063b9482dac5a3bb737", size = 3413812, upload-time = "2025-10-24T19:04:24.585Z" },
     { url = "https://files.pythonhosted.org/packages/92/68/89ac4e5b12a9ff6286a12174c8538a5930e2ed662091dd2572bbe0a18c8a/hf_xet-1.2.0-cp37-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:a55558084c16b09b5ed32ab9ed38421e2d87cf3f1f89815764d1177081b99865", size = 3508920, upload-time = "2025-10-24T19:04:26.927Z" },
     { url = "https://files.pythonhosted.org/packages/cb/44/870d44b30e1dcfb6a65932e3e1506c103a8a5aea9103c337e7a53180322c/hf_xet-1.2.0-cp37-abi3-win_amd64.whl", hash = "sha256:e6584a52253f72c9f52f9e549d5895ca7a471608495c4ecaa6cc73dba2b24d69", size = 2905735, upload-time = "2025-10-24T19:04:35.928Z" },
+]
+
+[[package]]
+name = "hindsight-client"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "aiohttp-retry" },
+    { name = "pydantic" },
+    { name = "python-dateutil" },
+    { name = "typing-extensions" },
+    { name = "urllib3" },
+    { name = "yarl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/ed/56e0a46bd5550b402317d30110afd4b9663d7116011739e08515b7b4e6fe/hindsight_client-1.0.0.tar.gz", hash = "sha256:8a4cbf6d4a5a8dd6de70a181b2527778a6cd66d88d49cde608fb07e6587e22c1", size = 207743, upload-time = "2026-10-13T13:46:59.571Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/a4/24c7f5a2063015ebd38f2f96a780197d22788a87fdaa8af6509336d7c41f/hindsight_client-1.0.0-py3-none-any.whl", hash = "sha256:db67c86e88e3c4531e3b2db7ff0c777edb694da1663d974678a447cdcac60658", size = 450038, upload-time = "2026-10-13T13:46:57.905Z" },
 ]
 
 [[package]]
@@ -3411,6 +3441,7 @@ dependencies = [
     { name = "deepdiff" },
     { name = "docstring-parser" },
     { name = "fastapi" },
+    { name = "hindsight-client" },
     { name = "httpx" },
     { name = "litellm", extra = ["proxy"] },
     { name = "loguru" },
@@ -3419,6 +3450,7 @@ dependencies = [
     { name = "psutil" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "rank-bm25" },
     { name = "requests" },
     { name = "rich" },
     { name = "tabulate" },
@@ -3538,6 +3570,7 @@ requires-dist = [
     { name = "google-cloud-aiplatform", marker = "extra == 'voice'", specifier = ">=1.38.0" },
     { name = "google-genai", marker = "extra == 'voice'", specifier = ">=2.15.0" },
     { name = "gymnasium", marker = "extra == 'gym'", specifier = ">=1.2.2" },
+    { name = "hindsight-client", specifier = ">=0.8.3" },
     { name = "httpx", specifier = ">=0.24.0" },
     { name = "httpx", extras = ["socks"], marker = "extra == 'live'", specifier = ">=0.24.0" },
     { name = "jiwer", marker = "extra == 'voice'", specifier = ">=3.0.0" },
@@ -3559,6 +3592,7 @@ requires-dist = [
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "rank-bm25", marker = "extra == 'knowledge'", specifier = ">=0.2.2" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "rich" },

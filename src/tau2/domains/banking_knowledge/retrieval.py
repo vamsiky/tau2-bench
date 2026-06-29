@@ -143,15 +143,24 @@ def format_full_knowledge_base(knowledge_base: KnowledgeBase) -> str:
 
 
 def get_or_create_docs(knowledge_base: KnowledgeBase) -> List[Dict[str, Any]]:
-    """Get documents from the knowledge base for indexing (cached)."""
-    cached_docs = get_cached_docs()
-    if cached_docs is not None:
-        return cached_docs
+    """Get documents from the knowledge base for indexing (cached).
 
+    The cache is keyed by the KB's document-id set so that distinct corpora
+    (e.g. the default 698-doc KB vs the consolidated ``register_search`` corpus)
+    never collide within a process. ``warm_kb_cache`` pre-populates the cache
+    from the default corpus, so without this guard a register-backed variant
+    would index the wrong documents.
+    """
     docs = [
         {"id": doc.id, "text": doc.content, "title": doc.title}
         for doc in knowledge_base.documents.values()
     ]
+    cached_docs = get_cached_docs()
+    if cached_docs is not None and {d["id"] for d in cached_docs} == {
+        d["id"] for d in docs
+    }:
+        return cached_docs
+
     set_cached_docs(docs)
     return docs
 
@@ -298,12 +307,16 @@ PromptBuilder = Callable[[Path, KnowledgeBase, Optional["Task"]], str]
 class PipelineSpec:
     """Specification for a KB_search pipeline."""
 
-    type: Literal["embedding", "bm25"]
+    type: Literal["embedding", "bm25", "hindsight"]
     embedder_type: Optional[str] = None  # e.g. "openrouter"
     embedder_model: Optional[str] = None  # e.g. "qwen3-embedding-8b"
     top_k: int = 10
     reranker: bool = False
     reranker_min_score: int = 5
+    # Hindsight-only fields (type == "hindsight").
+    bank_id: Optional[str] = None  # Hindsight bank to retain/recall against
+    budget: str = "mid"  # recall budget: low | mid | high
+    include_chunks: bool = True  # surface verbatim source chunks in results
 
 
 @dataclass
@@ -351,6 +364,20 @@ def full_kb_prompt(
     document in the knowledge base.
     """
     return load_prompt_template(template_path, knowledge_base=knowledge_base)
+
+
+def policy_register_prompt(
+    template_path: Path,
+    knowledge_base: KnowledgeBase,
+    task: Optional["Task"] = None,
+) -> str:
+    """Use the pre-synthesized RhoBank Policy Register as the static policy.
+
+    Reads ``claudedocs/RhoBank_Policy_Register.md`` from the repo root.
+    No retrieval tools are added — the register is the complete knowledge source.
+    """
+    register = DATA_DIR.parent / "claudedocs" / "RhoBank_Policy_Register.md"
+    return register.read_text()
 
 
 def golden_prompt(
@@ -403,6 +430,7 @@ class RetrievalVariant:
     grep: Optional[GrepSpec] = None  # None -> no grep tool
     shell: Optional[ShellSpec] = None  # None -> no shell tool
     supports_top_k: bool = False
+    corpus_dir: Optional[str] = None  # override KB corpus dir (e.g. register_search)
 
 
 def all_tools_variant(
@@ -442,10 +470,73 @@ RETRIEVAL_VARIANTS: Dict[str, RetrievalVariant] = {
         prompt_template=PROMPTS_DIR / "full_kb.md",
         build_prompt=full_kb_prompt,
     ),
+    "policy_register": RetrievalVariant(
+        name="policy_register",
+        prompt_template=PROMPTS_DIR / "no_knowledge.md",
+        build_prompt=policy_register_prompt,
+        # No kb_search, grep, or shell — the register is the complete source.
+    ),
+    "register_search": RetrievalVariant(
+        name="register_search",
+        prompt_template=PROMPTS_DIR / "classic_rag_bm25.md",
+        build_prompt=standard_prompt,
+        kb_search=PipelineSpec(type="bm25"),
+        grep=GrepSpec(),
+        supports_top_k=True,
+        # bm25 + grep over the lossless consolidated per-tier corpus (71 docs),
+        # not the 698 raw fragments. Lexical -> no embedding API key needed.
+        corpus_dir=str(
+            DATA_DIR
+            / "tau2"
+            / "domains"
+            / "banking_knowledge"
+            / "register_corpus"
+        ),
+    ),
     "golden_retrieval": RetrievalVariant(
         name="golden_retrieval",
         prompt_template=PROMPTS_DIR / "required_docs.md",
         build_prompt=golden_prompt,
+    ),
+    "hindsight": RetrievalVariant(
+        name="hindsight",
+        prompt_template=PROMPTS_DIR / "hindsight.md",
+        build_prompt=standard_prompt,
+        kb_search=PipelineSpec(
+            type="hindsight",
+            bank_id="tau2-banking-register",
+            top_k=10,
+        ),
+        supports_top_k=True,
+        # Ingest/recall over the lossless consolidated per-tier corpus (71 docs),
+        # not the 698 raw fragments — far cheaper to ingest through Hindsight's
+        # LLM-backed fact extraction, and the same corpus register_search uses.
+        corpus_dir=str(
+            DATA_DIR
+            / "tau2"
+            / "domains"
+            / "banking_knowledge"
+            / "register_corpus"
+        ),
+    ),
+    "hindsight_grep": RetrievalVariant(
+        name="hindsight_grep",
+        prompt_template=PROMPTS_DIR / "hindsight.md",
+        build_prompt=standard_prompt,
+        kb_search=PipelineSpec(
+            type="hindsight",
+            bank_id="tau2-banking-register",
+            top_k=10,
+        ),
+        grep=GrepSpec(),
+        supports_top_k=True,
+        corpus_dir=str(
+            DATA_DIR
+            / "tau2"
+            / "domains"
+            / "banking_knowledge"
+            / "register_corpus"
+        ),
     ),
     "qwen_embeddings_grep": RetrievalVariant(
         name="qwen_embeddings_grep",
@@ -693,6 +784,17 @@ def _create_kb_pipeline(
     knowledge_base: KnowledgeBase,
 ) -> "RetrievalPipeline":
     """Build a KB_search pipeline from a ``PipelineSpec``."""
+    if spec.type == "hindsight":
+        from tau2.domains.banking_knowledge.hindsight_pipeline import HindsightPipeline
+
+        return HindsightPipeline(
+            knowledge_base=knowledge_base,
+            bank_id=spec.bank_id or "tau2-banking-knowledge",
+            top_k=spec.top_k,
+            budget=spec.budget,
+            include_chunks=spec.include_chunks,
+        )
+
     postprocessors: Optional[List[Dict[str, Any]]] = None
     if spec.reranker:
         postprocessors = [
