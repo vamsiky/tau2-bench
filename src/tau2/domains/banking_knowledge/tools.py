@@ -377,6 +377,42 @@ class KnowledgeTools(ToolKitBase):
             )
         return None
 
+    def _scripted_attack_velocity(
+        self,
+        account_id: str,
+        window_seconds: int = 90,
+        min_count: int = 3,
+    ) -> bool:
+        """True if the account shows a scripted-attack decline burst.
+
+        A scripted (machine) card-testing attack fires several declined
+        transactions within seconds; a human retrying a legitimately declined
+        card spaces attempts out by minutes. Returns True when >= ``min_count``
+        declined transactions fall within any ``window_seconds`` window — a
+        stored-field-invisible fraud signal that distinguishes an attacked card
+        from a routine lockout (e.g. task_092 green vs evergreen).
+        """
+        from datetime import datetime
+
+        times = []
+        for r in self.db.bank_account_transaction_history.data.values():
+            if r.get("account_id") != account_id:
+                continue
+            status = (r.get("status") or "").lower()
+            ttype = (r.get("type") or "").lower()
+            if status == "declined" or "declined" in ttype:
+                try:
+                    times.append(
+                        datetime.strptime(r.get("date", ""), "%m/%d/%Y %H:%M:%S")
+                    )
+                except ValueError:
+                    continue
+        times.sort()
+        for i in range(len(times) - min_count + 1):
+            if (times[i + min_count - 1] - times[i]).total_seconds() <= window_seconds:
+                return True
+        return False
+
     @is_tool(ToolType.GENERIC)
     def transfer_to_human_agents(
         self,
@@ -3574,6 +3610,23 @@ For deposits without available images, the dispute will proceed based on custome
         if card.get("status") not in ["ACTIVE", "PENDING"]:
             return f"Error: Debit card '{card_id}' cannot be closed. Current status: {card.get('status')}. Only ACTIVE or PENDING cards can be closed."
 
+        # Fraud-velocity guard: if this card's account shows a scripted-attack
+        # decline burst (a fraud signal not visible in any stored card field),
+        # a non-fraud closure reason is wrong — the card must be closed as
+        # fraud_suspected so the replacement is reissued as a fraud reissue.
+        fraud_reasons = {"fraud_suspected", "lost", "stolen"}
+        if reason not in fraud_reasons:
+            acct = card.get("account_id")
+            if acct and self._scripted_attack_velocity(acct):
+                return (
+                    f"Error: Debit card '{card_id}' (account {acct}) shows a "
+                    "scripted-attack velocity pattern — multiple declined "
+                    "transactions within seconds, indicating card-testing fraud "
+                    "rather than a routine lockout. Close it with "
+                    f"reason='fraud_suspected' (not '{reason}') so the "
+                    "replacement is issued as a fraud reissue."
+                )
+
         previous_status = card.get("status")
 
         # Close the card
@@ -3935,12 +3988,26 @@ For deposits without available images, the dispute will proceed based on custome
         if account_class not in ["checking", "business_checking"]:
             return f"Error: Account '{account_id}' is not a checking account. Debit cards are only available for checking accounts."
 
+        # Surface the computed fraud-velocity signal that the stored
+        # velocity_blocked / alert_source fields can miss: a scripted-attack
+        # decline burst on this account means its cards are fraud-compromised
+        # even when no stored flag is set (e.g. task_092 green).
+        velocity_fraud = self._scripted_attack_velocity(account_id)
+
         # Find all debit cards for this account
         account_cards = []
         for card_id, card in self.db.debit_cards.data.items():
             if card.get("account_id") == account_id:
                 card_info = {"card_id": card_id}
                 card_info.update(card)
+                if velocity_fraud:
+                    card_info["fraud_velocity_alert"] = (
+                        "SCRIPTED-ATTACK VELOCITY DETECTED: multiple declined "
+                        "transactions within seconds on this account indicate "
+                        "card-testing fraud. Treat this card as fraud — close it "
+                        "with reason 'fraud_suspected' (which reissues a "
+                        "replacement), do not PIN-reset it."
+                    )
 
                 # Normalize field names for consistency
                 if (
