@@ -307,12 +307,17 @@ PromptBuilder = Callable[[Path, KnowledgeBase, Optional["Task"]], str]
 class PipelineSpec:
     """Specification for a KB_search pipeline."""
 
-    type: Literal["embedding", "bm25", "hindsight"]
+    type: Literal["embedding", "bm25", "hindsight", "zero_hallucination"]
     embedder_type: Optional[str] = None  # e.g. "openrouter"
     embedder_model: Optional[str] = None  # e.g. "qwen3-embedding-8b"
     top_k: int = 10
     reranker: bool = False
     reranker_min_score: int = 5
+    # zero_hallucination-only fields (type == "zero_hallucination").
+    zh_candidates: int = 50  # per-retriever candidate pool before fusion
+    zh_rerank_top_n: int = 20  # fused candidates sent to the verification gate
+    zh_abstain: bool = True  # emit INSUFFICIENT_EVIDENCE when support is missing
+    zh_abstain_min_top_score: int = 2  # min verified top score (0-10) to not abstain
     # Hindsight-only fields (type == "hindsight").
     bank_id: Optional[str] = None  # Hindsight bank to retain/recall against
     budget: str = "mid"  # recall budget: low | mid | high
@@ -537,6 +542,33 @@ RETRIEVAL_VARIANTS: Dict[str, RetrievalVariant] = {
             / "banking_knowledge"
             / "register_corpus"
         ),
+    ),
+    "zero_hallucination": RetrievalVariant(
+        name="zero_hallucination",
+        prompt_template=PROMPTS_DIR / "zero_hallucination.md",
+        build_prompt=standard_prompt,
+        # Hybrid dense+BM25 -> RRF fusion -> LLM verification-gate rerank ->
+        # abstention. Dense backend is OpenAI text-embedding-3-large.
+        kb_search=PipelineSpec(
+            type="zero_hallucination",
+            embedder_type="openai",
+            embedder_model=DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
+            reranker_min_score=2,
+        ),
+        supports_top_k=True,
+    ),
+    "zero_hallucination_grep": RetrievalVariant(
+        name="zero_hallucination_grep",
+        prompt_template=PROMPTS_DIR / "zero_hallucination_grep.md",
+        build_prompt=standard_prompt,
+        kb_search=PipelineSpec(
+            type="zero_hallucination",
+            embedder_type="openai",
+            embedder_model=DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
+            reranker_min_score=2,
+        ),
+        grep=GrepSpec(),
+        supports_top_k=True,
     ),
     "qwen_embeddings_grep": RetrievalVariant(
         name="qwen_embeddings_grep",
@@ -793,6 +825,33 @@ def _create_kb_pipeline(
             top_k=spec.top_k,
             budget=spec.budget,
             include_chunks=spec.include_chunks,
+        )
+
+    if spec.type == "zero_hallucination":
+        from tau2.domains.banking_knowledge.zero_hallucination_pipeline import (
+            ZeroHallucinationPipeline,
+        )
+
+        # Build the two backing retrievers (sparse BM25 + dense embeddings) over
+        # a candidate pool larger than the final top_k, then fuse + verify.
+        bm25_pipeline = create_bm25_retrieval_pipeline(
+            knowledge_base=knowledge_base, top_k=spec.zh_candidates
+        )
+        dense_pipeline = create_embedding_retrieval_pipeline(
+            knowledge_base=knowledge_base,
+            embedder_type=spec.embedder_type or "openai",
+            embedder_params={"model": spec.embedder_model},
+            top_k=spec.zh_candidates,
+        )
+        return ZeroHallucinationPipeline(
+            bm25_pipeline,
+            dense_pipeline,
+            candidates=spec.zh_candidates,
+            rerank_top_n=spec.zh_rerank_top_n,
+            top_k=spec.top_k,
+            rerank_min_score=spec.reranker_min_score,
+            abstain=spec.zh_abstain,
+            abstain_min_top_score=spec.zh_abstain_min_top_score,
         )
 
     postprocessors: Optional[List[Dict[str, Any]]] = None
