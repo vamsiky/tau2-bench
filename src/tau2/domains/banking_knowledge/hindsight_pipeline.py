@@ -106,7 +106,10 @@ class HindsightPipeline:
         if self._client is None:
             from hindsight_client import Hindsight
 
-            kwargs: dict[str, Any] = {"base_url": self.base_url, "timeout": self.timeout}
+            kwargs: dict[str, Any] = {
+                "base_url": self.base_url,
+                "timeout": self.timeout,
+            }
             if self.api_key:
                 kwargs["api_key"] = self.api_key
             self._client = Hindsight(**kwargs)
@@ -303,7 +306,9 @@ class HindsightPipeline:
             fact_text = getattr(r, "text", "") or ""
             fact_type = getattr(r, "type", "memory")
             chunks = getattr(r, "chunks", None) or []
-            chunk_texts = [getattr(c, "text", "") for c in chunks if getattr(c, "text", "")]
+            chunk_texts = [
+                getattr(c, "text", "") for c in chunks if getattr(c, "text", "")
+            ]
 
             content = fact_text
             if chunk_texts:

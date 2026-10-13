@@ -13,9 +13,9 @@ from pathlib import Path
 
 from tau2.domains.banking_knowledge.environment import get_knowledge_base
 from tau2.domains.banking_knowledge.retrieval import (
+    DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
     create_bm25_retrieval_pipeline,
     create_embedding_retrieval_pipeline,
-    DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
 )
 from tau2.domains.banking_knowledge.zero_hallucination_pipeline import (
     ZeroHallucinationPipeline,
@@ -68,16 +68,34 @@ def main():
     # ZH configs to compare: gate-prune (min_score=4) vs gate-reorder-only
     # (min_score=1: reranker reorders but drops nothing), at two top_k widths.
     zh_prune = ZeroHallucinationPipeline(
-        bm25, dense, candidates=50, rerank_top_n=20, top_k=TOP_K,
-        rerank_min_score=4, abstain=True, abstain_min_top_score=2,
+        bm25,
+        dense,
+        candidates=50,
+        rerank_top_n=20,
+        top_k=TOP_K,
+        rerank_min_score=4,
+        abstain=True,
+        abstain_min_top_score=2,
     )
     zh_reorder8 = ZeroHallucinationPipeline(
-        bm25, dense, candidates=50, rerank_top_n=20, top_k=TOP_K,
-        rerank_min_score=1, abstain=True, abstain_min_top_score=1,
+        bm25,
+        dense,
+        candidates=50,
+        rerank_top_n=20,
+        top_k=TOP_K,
+        rerank_min_score=1,
+        abstain=True,
+        abstain_min_top_score=1,
     )
     zh_reorder10 = ZeroHallucinationPipeline(
-        bm25, dense, candidates=50, rerank_top_n=20, top_k=10,
-        rerank_min_score=1, abstain=True, abstain_min_top_score=1,
+        bm25,
+        dense,
+        candidates=50,
+        rerank_top_n=20,
+        top_k=10,
+        rerank_min_score=1,
+        abstain=True,
+        abstain_min_top_score=1,
     )
 
     print(f"Multi-query UNION recall of required_documents\n")
@@ -91,11 +109,19 @@ def main():
         zp, _, _ = union_recall(zh_prune, queries, req, TOP_K)
         zr8, _, _ = union_recall(zh_reorder8, queries, req, TOP_K)
         zr10, _, _ = union_recall(zh_reorder10, queries, req, 10)
-        print(f"{tid:<10} {len(queries):>3} {bh:>7} {dh:>8} {zp:>10} {zr8:>10} {zr10:>11} {n:>5}")
-        tot["bm"] += bh; tot["de"] += dh; tot["zp"] += zp
-        tot["zr8"] += zr8; tot["zr10"] += zr10; tot["r"] += n
-    print(f"{'TOTAL':<10} {'':>3} {tot['bm']:>7} {tot['de']:>8} {tot['zp']:>10} "
-          f"{tot['zr8']:>10} {tot['zr10']:>11} {tot['r']:>5}")
+        print(
+            f"{tid:<10} {len(queries):>3} {bh:>7} {dh:>8} {zp:>10} {zr8:>10} {zr10:>11} {n:>5}"
+        )
+        tot["bm"] += bh
+        tot["de"] += dh
+        tot["zp"] += zp
+        tot["zr8"] += zr8
+        tot["zr10"] += zr10
+        tot["r"] += n
+    print(
+        f"{'TOTAL':<10} {'':>3} {tot['bm']:>7} {tot['de']:>8} {tot['zp']:>10} "
+        f"{tot['zr8']:>10} {tot['zr10']:>11} {tot['r']:>5}"
+    )
 
 
 if __name__ == "__main__":

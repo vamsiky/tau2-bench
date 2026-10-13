@@ -491,11 +491,7 @@ RETRIEVAL_VARIANTS: Dict[str, RetrievalVariant] = {
         # bm25 + grep over the lossless consolidated per-tier corpus (71 docs),
         # not the 698 raw fragments. Lexical -> no embedding API key needed.
         corpus_dir=str(
-            DATA_DIR
-            / "tau2"
-            / "domains"
-            / "banking_knowledge"
-            / "register_corpus"
+            DATA_DIR / "tau2" / "domains" / "banking_knowledge" / "register_corpus"
         ),
     ),
     "golden_retrieval": RetrievalVariant(
@@ -517,11 +513,7 @@ RETRIEVAL_VARIANTS: Dict[str, RetrievalVariant] = {
         # not the 698 raw fragments — far cheaper to ingest through Hindsight's
         # LLM-backed fact extraction, and the same corpus register_search uses.
         corpus_dir=str(
-            DATA_DIR
-            / "tau2"
-            / "domains"
-            / "banking_knowledge"
-            / "register_corpus"
+            DATA_DIR / "tau2" / "domains" / "banking_knowledge" / "register_corpus"
         ),
     ),
     "hindsight_grep": RetrievalVariant(
@@ -536,11 +528,7 @@ RETRIEVAL_VARIANTS: Dict[str, RetrievalVariant] = {
         grep=GrepSpec(),
         supports_top_k=True,
         corpus_dir=str(
-            DATA_DIR
-            / "tau2"
-            / "domains"
-            / "banking_knowledge"
-            / "register_corpus"
+            DATA_DIR / "tau2" / "domains" / "banking_knowledge" / "register_corpus"
         ),
     ),
     "zero_hallucination": RetrievalVariant(

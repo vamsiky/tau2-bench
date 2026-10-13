@@ -175,7 +175,13 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
                 )
 
         # Comparing the environments
-        if use_verified_scorer and hasattr(gold_environment, "tools") and gold_environment.tools is not None and hasattr(gold_environment.tools, "db") and gold_environment.tools.db is not None:
+        if (
+            use_verified_scorer
+            and hasattr(gold_environment, "tools")
+            and gold_environment.tools is not None
+            and hasattr(gold_environment.tools, "db")
+            and gold_environment.tools.db is not None
+        ):
             gold_db = gold_environment.tools.db.model_dump()
             predicted_db = predicted_environment.tools.db.model_dump()
             agent_db_match, _ = _verified_db_match(gold_db, predicted_db)
@@ -183,15 +189,26 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
             # agent_discoverable_tools entries (e.g. extra READ tool calls by the agent).
             # In domains where user_tools.db is the same object as tools.db (e.g. banking),
             # the exact hash would reject agents that called extra discoverable reads.
-            if gold_environment.user_tools is not None and gold_environment.user_tools.db is not None:
+            if (
+                gold_environment.user_tools is not None
+                and gold_environment.user_tools.db is not None
+            ):
                 gold_user_db = gold_environment.user_tools.db.model_dump()
                 predicted_user_db = predicted_environment.user_tools.db.model_dump()
                 user_db_match, _ = _verified_db_match(gold_user_db, predicted_user_db)
             else:
-                user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
+                user_db_match = (
+                    gold_environment.get_user_db_hash()
+                    == predicted_environment.get_user_db_hash()
+                )
         else:
-            agent_db_match = gold_environment.get_db_hash() == predicted_environment.get_db_hash()
-            user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
+            agent_db_match = (
+                gold_environment.get_db_hash() == predicted_environment.get_db_hash()
+            )
+            user_db_match = (
+                gold_environment.get_user_db_hash()
+                == predicted_environment.get_user_db_hash()
+            )
 
         if agent_db_match and user_db_match:
             db_reward = 1.0
@@ -397,7 +414,13 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
                 )
 
         # Comparing the environments
-        if use_verified_scorer and hasattr(gold_environment, "tools") and gold_environment.tools is not None and hasattr(gold_environment.tools, "db") and gold_environment.tools.db is not None:
+        if (
+            use_verified_scorer
+            and hasattr(gold_environment, "tools")
+            and gold_environment.tools is not None
+            and hasattr(gold_environment.tools, "db")
+            and gold_environment.tools.db is not None
+        ):
             gold_db = gold_environment.tools.db.model_dump()
             predicted_db = predicted_environment.tools.db.model_dump()
             agent_db_match, _ = _verified_db_match(gold_db, predicted_db)
@@ -405,15 +428,26 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
             # agent_discoverable_tools entries (e.g. extra READ tool calls by the agent).
             # In domains where user_tools.db is the same object as tools.db (e.g. banking),
             # the exact hash would reject agents that called extra discoverable reads.
-            if gold_environment.user_tools is not None and gold_environment.user_tools.db is not None:
+            if (
+                gold_environment.user_tools is not None
+                and gold_environment.user_tools.db is not None
+            ):
                 gold_user_db = gold_environment.user_tools.db.model_dump()
                 predicted_user_db = predicted_environment.user_tools.db.model_dump()
                 user_db_match, _ = _verified_db_match(gold_user_db, predicted_user_db)
             else:
-                user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
+                user_db_match = (
+                    gold_environment.get_user_db_hash()
+                    == predicted_environment.get_user_db_hash()
+                )
         else:
-            agent_db_match = gold_environment.get_db_hash() == predicted_environment.get_db_hash()
-            user_db_match = gold_environment.get_user_db_hash() == predicted_environment.get_user_db_hash()
+            agent_db_match = (
+                gold_environment.get_db_hash() == predicted_environment.get_db_hash()
+            )
+            user_db_match = (
+                gold_environment.get_user_db_hash()
+                == predicted_environment.get_user_db_hash()
+            )
 
         if agent_db_match and user_db_match:
             db_reward = 1.0

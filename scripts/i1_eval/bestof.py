@@ -12,6 +12,7 @@ defaults to the iteration-3 (fix4, best-of-2) parallel layout.
 
 Reconstructed from the 2026-06-24 I1 investigation session.
 """
+
 import os
 import sys
 
@@ -21,10 +22,11 @@ sys.argv = ["x"]
 # Same-dir import: this script's directory is sys.path[0] under `python <path>`.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from tau2.runner import get_tasks, build_environment  # noqa: E402
-from tau2.data_model.simulation import Results  # noqa: E402
-from examples.agents.claude_sdk_loop_eval import _retrieval_env_kwargs  # noqa: E402
 from verified_score import verified_match  # noqa: E402
+
+from examples.agents.claude_sdk_loop_eval import _retrieval_env_kwargs  # noqa: E402
+from tau2.data_model.simulation import Results  # noqa: E402
+from tau2.runner import build_environment, get_tasks  # noqa: E402
 
 DOMAIN = "banking_knowledge"
 ek = _retrieval_env_kwargs(DOMAIN, "alltools", None)

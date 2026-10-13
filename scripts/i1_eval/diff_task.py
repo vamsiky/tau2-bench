@@ -12,14 +12,21 @@ gold DB, `~` = differing value.
 
 Reconstructed from the 2026-06-24 I1 investigation session.
 """
+
+import os
 import sys
 
 _A = list(sys.argv)
 sys.argv = ["x"]
 
-from tau2.runner import get_tasks, build_environment  # noqa: E402
-from tau2.data_model.simulation import Results  # noqa: E402
+# Repo root, so `examples.*` is importable when run as `python scripts/i1_eval/<x>.py`.
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+
 from examples.agents.claude_sdk_loop_eval import _retrieval_env_kwargs  # noqa: E402
+from tau2.data_model.simulation import Results  # noqa: E402
+from tau2.runner import build_environment, get_tasks  # noqa: E402
 
 DOMAIN = "banking_knowledge"
 ek = _retrieval_env_kwargs(DOMAIN, "alltools", None)

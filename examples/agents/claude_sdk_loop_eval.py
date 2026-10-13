@@ -40,6 +40,7 @@ Usage:
 
     # resume after an interruption: same command again
 """
+
 from __future__ import annotations
 
 import argparse
@@ -54,15 +55,10 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from loguru import logger
-
-# Drop loguru's default DEBUG-to-stderr handler BEFORE importing tau2 (which logs the
-# registry contents at DEBUG on import) so an unconfigured run doesn't flood the
-# terminal. _setup_logging() installs the real file/terminal handlers at run time.
-logger.remove()
-
 from claude_agent_sdk import (
     AssistantMessage as SDKAssistantMessage,
+)
+from claude_agent_sdk import (
     ClaudeAgentOptions,
     ClaudeSDKClient,
     HookMatcher,
@@ -70,14 +66,26 @@ from claude_agent_sdk import (
     TextBlock,
     ToolResultBlock,
     ToolUseBlock,
-    UserMessage as SDKUserMessage,
     create_sdk_mcp_server,
     tool,
 )
+from claude_agent_sdk import (
+    UserMessage as SDKUserMessage,
+)
+from loguru import logger
 
-from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT
-from tau2.data_model.message import AssistantMessage, ToolCall, ToolMessage
-from tau2.data_model.simulation import (
+# Drop loguru's default DEBUG-to-stderr handler BEFORE importing tau2 (which logs the
+# registry contents at DEBUG on import) so an unconfigured run doesn't flood the
+# terminal. _setup_logging() installs the real file/terminal handlers at run time.
+logger.remove()
+
+from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT  # noqa: E402
+from tau2.data_model.message import (  # noqa: E402
+    AssistantMessage,
+    ToolCall,
+    ToolMessage,
+)
+from tau2.data_model.simulation import (  # noqa: E402
     AgentInfo,
     Info,
     Results,
@@ -85,24 +93,32 @@ from tau2.data_model.simulation import (
     TerminationReason,
     UserInfo,
 )
-from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
-from tau2.orchestrator.modes import CommunicationMode
-from tau2.orchestrator.orchestrator import DEFAULT_FIRST_AGENT_MESSAGE
-from tau2.runner import build_environment, build_user, get_tasks
-from tau2.runner.checkpoint import create_checkpoint_fns, try_resume
-from tau2.runner.helpers import get_environment_info
-from tau2.user.user_simulator import UserSimulator, get_global_user_sim_guidelines
-from tau2.environment.toolkit import ToolType
-from tau2.utils import DATA_DIR
-from tau2.utils.llm_utils import get_cost
-from tau2.utils.utils import get_commit_hash, get_now
+from tau2.environment.toolkit import ToolType  # noqa: E402
+from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation  # noqa: E402
+from tau2.orchestrator.modes import CommunicationMode  # noqa: E402
+from tau2.orchestrator.orchestrator import DEFAULT_FIRST_AGENT_MESSAGE  # noqa: E402
+from tau2.runner import build_environment, build_user, get_tasks  # noqa: E402
+from tau2.runner.checkpoint import create_checkpoint_fns, try_resume  # noqa: E402
+from tau2.runner.helpers import get_environment_info  # noqa: E402
+from tau2.user.user_simulator import (  # noqa: E402
+    UserSimulator,
+    get_global_user_sim_guidelines,
+)
+from tau2.utils import DATA_DIR  # noqa: E402
+from tau2.utils.llm_utils import get_cost  # noqa: E402
+from tau2.utils.utils import get_commit_hash, get_now  # noqa: E402
 
 # Importing tau2 loads .env, which here holds only a PLACEHOLDER ANTHROPIC_API_KEY.
 # The SDK subprocess inherits the parent env (ClaudeAgentOptions.env is additive,
 # not a replacement), and ANY ANTHROPIC_API_KEY -- even an invalid one -- overrides
 # the subscription OAuth (apiKeySource becomes ANTHROPIC_API_KEY). Remove these from
 # the parent process so the bundled CLI authenticates via the Claude subscription.
-for _k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS"):
+for _k in (
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_CUSTOM_HEADERS",
+):
     os.environ.pop(_k, None)
 
 MCP_SERVER_NAME = "env"
@@ -115,13 +131,28 @@ _AGENT_EXTRA_INSTRUCTION = None
 # Built-in Claude Code tools to remove from the model's context so it can only use
 # the bridged environment tools. The PreToolUse deny-guard is the hard guarantee.
 DISALLOWED_BUILTINS = [
-    "Task", "Bash", "BashOutput", "KillShell", "Edit", "Write", "Read",
-    "NotebookEdit", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite",
-    "ExitPlanMode", "AskUserQuestion", "Skill", "ToolSearch",
+    "Task",
+    "Bash",
+    "BashOutput",
+    "KillShell",
+    "Edit",
+    "Write",
+    "Read",
+    "NotebookEdit",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "WebSearch",
+    "TodoWrite",
+    "ExitPlanMode",
+    "AskUserQuestion",
+    "Skill",
+    "ToolSearch",
 ]
 
 # Tool name prefixes that are clearly read-only (no DB mutation).
 _READ_ONLY_PREFIXES = ("get_", "list_", "check_", "search_")
+
 
 def _is_direct_readonly(tool_name: str) -> bool:
     """Heuristic: tool is read-only if its bare name starts with a read prefix."""
@@ -258,17 +289,28 @@ class AuxVerifier:
         recent_calls: list[tuple[str, dict, str]],
     ) -> tuple[bool, str]:
         """Return (approved, reason). On any error, approve to avoid false blocks."""
+
         def _fmt_call(n: str, inp: dict, r: str) -> str:
             # Show key args (account IDs, tool names) so verifier can match pre-checks
-            key_args = {k: v for k, v in inp.items()
-                        if k in ("credit_card_account_id", "account_id", "user_id",
-                                 "agent_tool_name", "arguments")}
+            key_args = {
+                k: v
+                for k, v in inp.items()
+                if k
+                in (
+                    "credit_card_account_id",
+                    "account_id",
+                    "user_id",
+                    "agent_tool_name",
+                    "arguments",
+                )
+            }
             args_str = json.dumps(key_args, default=str) if key_args else ""
             return f"  {n}({args_str})  →  {r[:60]}"
 
-        calls_str = "\n".join(
-            _fmt_call(n, inp, r) for (n, inp, r) in recent_calls[-15:]
-        ) or "  (none yet)"
+        calls_str = (
+            "\n".join(_fmt_call(n, inp, r) for (n, inp, r) in recent_calls[-15:])
+            or "  (none yet)"
+        )
 
         # Truncate policy to avoid overly long prompts; the verifier needs the
         # relevant sections, not necessarily the entire document.
@@ -288,10 +330,13 @@ class AuxVerifier:
         # Use `claude -p` (non-interactive) to avoid nested-subprocess stream
         # conflicts that occur with ClaudeSDKClient inside a hook callback.
         cmd = [
-            "claude", "-p",
-            "--model", self.model,
+            "claude",
+            "-p",
+            "--model",
+            self.model,
             "--dangerously-skip-permissions",
-            "--system-prompt", self._SYSTEM_PROMPT,
+            "--system-prompt",
+            self._SYSTEM_PROMPT,
         ]
         if self.effort and self.effort != "default":
             cmd += ["--effort", self.effort]
@@ -344,12 +389,17 @@ def clean_env() -> dict:
     away from its subscription OAuth (api key / base url / proxy headers), and drop
     this harness's own session vars so the subprocess starts from a clean slate."""
     drop = {
-        "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN",
-        "ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_CUSTOM_HEADERS",
     }
     return {
-        k: v for k, v in os.environ.items()
-        if k not in drop and not k.startswith("CLAUDE_CODE") and k not in ("CLAUDECODE", "CLAUDE_EFFORT")
+        k: v
+        for k, v in os.environ.items()
+        if k not in drop
+        and not k.startswith("CLAUDE_CODE")
+        and k not in ("CLAUDECODE", "CLAUDE_EFFORT")
     }
 
 
@@ -362,8 +412,11 @@ def _extract_text(resp: Any) -> str:
     if isinstance(resp, dict):
         content = resp.get("content")
         if isinstance(content, list):
-            parts = [b.get("text", "") for b in content
-                     if isinstance(b, dict) and b.get("type") == "text"]
+            parts = [
+                b.get("text", "")
+                for b in content
+                if isinstance(b, dict) and b.get("type") == "text"
+            ]
             return "".join(parts) if parts else json.dumps(resp)
         if isinstance(content, str):
             return content
@@ -396,18 +449,30 @@ def _make_sdk_tool(tau2_tool, env, lock: asyncio.Lock):
         async with lock:  # serialize env access against concurrent tool dispatch
             tool_msg = await asyncio.to_thread(env.get_response, tc)
         text = tool_msg.content if tool_msg.content is not None else ""
-        return {"content": [{"type": "text", "text": text}], "is_error": bool(tool_msg.error)}
+        return {
+            "content": [{"type": "text", "text": text}],
+            "is_error": bool(tool_msg.error),
+        }
 
     return _handler
 
 
-def _build_agent_options(env, agent_model, captures, denials, lock,
-                         agent_effort=None, agent_extra_instruction=None,
-                         aux_verifier: "AuxVerifier | None" = None,
-                         trajectory: "list | None" = None) -> ClaudeAgentOptions:
+def _build_agent_options(
+    env,
+    agent_model,
+    captures,
+    denials,
+    lock,
+    agent_effort=None,
+    agent_extra_instruction=None,
+    aux_verifier: "AuxVerifier | None" = None,
+    trajectory: "list | None" = None,
+) -> ClaudeAgentOptions:
     tau2_tools = env.get_tools()
     sdk_tools = [_make_sdk_tool(t, env, lock) for t in tau2_tools]
-    server = create_sdk_mcp_server(name=MCP_SERVER_NAME, version="1.0.0", tools=sdk_tools)
+    server = create_sdk_mcp_server(
+        name=MCP_SERVER_NAME, version="1.0.0", tools=sdk_tools
+    )
     allowed = [f"{MCP_PREFIX}{t.name}" for t in tau2_tools]
     # Generic, domain-agnostic instruction augmentation (the "fix" under test). Appended
     # to the base agent instruction -- never to the retrieved <policy> -- so it carries no
@@ -424,11 +489,13 @@ def _build_agent_options(env, agent_model, captures, denials, lock,
         tool_input = input_data.get("tool_input", {})
         if not tname.startswith(MCP_PREFIX):
             denials.append(tname)
-            return {"hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": "Only environment tools are allowed.",
-            }}
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "Only environment tools are allowed.",
+                }
+            }
         bare = tname.removeprefix(MCP_PREFIX)
         cap = captures.setdefault(tool_use_id, {})
         cap["name"] = tname
@@ -447,7 +514,7 @@ def _build_agent_options(env, agent_model, captures, denials, lock,
                 if inner_name and hasattr(env, "tools") and env.tools is not None:
                     try:
                         tt = env.tools.tool_type(inner_name)
-                        should_verify = (tt == ToolType.WRITE)
+                        should_verify = tt == ToolType.WRITE
                     except (KeyError, AttributeError):
                         should_verify = True  # unknown inner tool → verify to be safe
 
@@ -461,14 +528,16 @@ def _build_agent_options(env, agent_model, captures, denials, lock,
                 if not approved:
                     logger.info(f"[AuxVerifier] BLOCKED {proposed_label}: {reason}")
                     cap["_blocked"] = reason
-                    return {"hookSpecificOutput": {
-                        "hookEventName": "PreToolUse",
-                        "permissionDecision": "deny",
-                        "permissionDecisionReason": (
-                            f"Action not yet approved: {reason}. "
-                            "Complete any missing required steps first, then retry."
-                        ),
-                    }}
+                    return {
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": (
+                                f"Action not yet approved: {reason}. "
+                                "Complete any missing required steps first, then retry."
+                            ),
+                        }
+                    }
                 else:
                     logger.debug(f"[AuxVerifier] APPROVED {proposed_label}")
 
@@ -528,12 +597,19 @@ async def _consume(client) -> dict:
                 for b in content:
                     if isinstance(b, ToolResultBlock):
                         stream_results[b.tool_use_id] = (
-                            _extract_text(b.content), bool(getattr(b, "is_error", False)))
+                            _extract_text(b.content),
+                            bool(getattr(b, "is_error", False)),
+                        )
         elif isinstance(m, ResultMessage):
             cost, usage, result_text = m.total_cost_usd, m.usage, m.result
     final_text = "".join(last_text).strip() or (result_text or "").strip()
-    return dict(final_text=final_text, tool_ids=tool_ids, stream_results=stream_results,
-                cost=cost, usage=usage)
+    return dict(
+        final_text=final_text,
+        tool_ids=tool_ids,
+        stream_results=stream_results,
+        cost=cost,
+        usage=usage,
+    )
 
 
 def _retrieval_env_kwargs(domain, retrieval_config, retrieval_kwargs) -> dict:
@@ -547,17 +623,31 @@ def _retrieval_env_kwargs(domain, retrieval_config, retrieval_kwargs) -> dict:
     return kw
 
 
-async def run_episode(task, domain, *, agent_model, user_model, user_effort="high",
-                      agent_effort=None, trial=0, max_steps=50, seed=42,
-                      eval_type=EvaluationType.ALL, sdk_nl_judge=False,
-                      verified_scorer=True,
-                      retrieval_config=None, retrieval_kwargs=None,
-                      agent_extra_instruction=None,
-                      use_aux_verifier: bool = False,
-                      aux_verifier_model: str | None = None,
-                      aux_verifier_effort: str = "low") -> SimulationRun:
+async def run_episode(
+    task,
+    domain,
+    *,
+    agent_model,
+    user_model,
+    user_effort="high",
+    agent_effort=None,
+    trial=0,
+    max_steps=50,
+    seed=42,
+    eval_type=EvaluationType.ALL,
+    sdk_nl_judge=False,
+    verified_scorer=True,
+    retrieval_config=None,
+    retrieval_kwargs=None,
+    agent_extra_instruction=None,
+    use_aux_verifier: bool = False,
+    aux_verifier_model: str | None = None,
+    aux_verifier_effort: str = "low",
+) -> SimulationRun:
     if task.initial_state is not None and task.initial_state.message_history:
-        raise NotImplementedError(f"Task {task.id} has seeded history; v1 supports fresh tasks only.")
+        raise NotImplementedError(
+            f"Task {task.id} has seeded history; v1 supports fresh tasks only."
+        )
 
     # Retrieval variant (banking_knowledge): the agent gets exactly the tau2
     # retrieval tools for this variant -- bridged like any env tool -- and the
@@ -578,8 +668,13 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
     # User simulator runs on the registered SDK backend (subscription, opus/high by
     # default): a persistent multi-turn SDK session, configurable via user_model /
     # user_effort. It owns its own system prompt (guidelines + scenario + persona).
-    user = build_user("sdk_user_simulator", env, task, llm=user_model,
-                      llm_args={"effort": user_effort})
+    user = build_user(
+        "sdk_user_simulator",
+        env,
+        task,
+        llm=user_model,
+        llm_args={"effort": user_effort},
+    )
     # Bind the env so the user simulator can execute any user-side tools (e.g.
     # banking_knowledge: apply_for_credit_card) against the same environment.
     user.bind_environment(env)
@@ -596,18 +691,26 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
         aux_verifier = AuxVerifier(
             policy=env.get_policy(), model=v_model, effort=aux_verifier_effort
         )
-        logger.info(f"[AuxVerifier] enabled model={v_model} effort={aux_verifier_effort}")
+        logger.info(
+            f"[AuxVerifier] enabled model={v_model} effort={aux_verifier_effort}"
+        )
 
     captures: dict[str, dict] = {}
     denials: list[str] = []
     tools_called: list[str] = []
     multi_tool_turns = 0
     lock = asyncio.Lock()
-    agent_opts = _build_agent_options(env, agent_model, captures, denials, lock,
-                                      agent_effort=agent_effort,
-                                      agent_extra_instruction=agent_extra_instruction,
-                                      aux_verifier=aux_verifier,
-                                      trajectory=trajectory)
+    agent_opts = _build_agent_options(
+        env,
+        agent_model,
+        captures,
+        denials,
+        lock,
+        agent_effort=agent_effort,
+        agent_extra_instruction=agent_extra_instruction,
+        aux_verifier=aux_verifier,
+        trajectory=trajectory,
+    )
 
     greeting = DEFAULT_FIRST_AGENT_MESSAGE.model_copy(deep=True)
     greeting.timestamp = get_now()
@@ -620,64 +723,87 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
     steps_done = 0
 
     try:
-      async with ClaudeSDKClient(options=agent_opts) as agent_client:
-        for step in range(max_steps):
-            steps_done = step + 1
-            # ---- user turn (registered SDK user simulator; persistent session) ----
-            agent_in = AssistantMessage(role="assistant", content=agent_last_text)
-            user_msg, user_state = await asyncio.to_thread(
-                user.generate_next_message, agent_in, user_state)
-            # Any user-side tool calls made this turn (e.g. apply_for_credit_card)
-            # are recorded into the trajectory before the spoken message, so the
-            # evaluator's DB/ACTION replay sees them (ids already matched).
-            for m in getattr(user, "last_turn_tool_messages", []):
-                m.timestamp = get_now()
-                trajectory.append(m)
-            if not user_msg.content:
-                user_msg.content = "(no response)"
-            user_msg.timestamp = get_now()
-            user_msg.validate()
-            trajectory.append(user_msg)
-            if UserSimulator.is_stop(user_msg):
-                termination = TerminationReason.USER_STOP
-                break
+        async with ClaudeSDKClient(options=agent_opts) as agent_client:
+            for step in range(max_steps):
+                steps_done = step + 1
+                # ---- user turn (registered SDK user simulator; persistent session) ----
+                agent_in = AssistantMessage(role="assistant", content=agent_last_text)
+                user_msg, user_state = await asyncio.to_thread(
+                    user.generate_next_message, agent_in, user_state
+                )
+                # Any user-side tool calls made this turn (e.g. apply_for_credit_card)
+                # are recorded into the trajectory before the spoken message, so the
+                # evaluator's DB/ACTION replay sees them (ids already matched).
+                for m in getattr(user, "last_turn_tool_messages", []):
+                    m.timestamp = get_now()
+                    trajectory.append(m)
+                if not user_msg.content:
+                    user_msg.content = "(no response)"
+                user_msg.timestamp = get_now()
+                user_msg.validate()
+                trajectory.append(user_msg)
+                if UserSimulator.is_stop(user_msg):
+                    termination = TerminationReason.USER_STOP
+                    break
 
-            # ---- agent turn (SDK owns inner loop; tools captured via hooks) ----
-            await agent_client.query(user_msg.content)
-            a = await _consume(agent_client)
+                # ---- agent turn (SDK owns inner loop; tools captured via hooks) ----
+                await agent_client.query(user_msg.content)
+                a = await _consume(agent_client)
 
-            if len(a["tool_ids"]) > 1:
-                multi_tool_turns += 1
-            for tid in a["tool_ids"]:
-                cap = captures.get(tid, {})
-                full = cap.get("name") or ""
-                if not full.startswith(MCP_PREFIX):
-                    continue  # denied built-in / non-env tool: not part of the env trajectory
-                name = full.removeprefix(MCP_PREFIX)
-                tools_called.append(name)
-                args = cap.get("input") or {}
-                if "result" in cap:
-                    res_text, is_err = cap["result"], cap.get("is_error", False)
-                elif tid in a["stream_results"]:
-                    res_text, is_err = a["stream_results"][tid]
-                else:
-                    res_text, is_err = "", False
-                tc = ToolCall(id=tid, name=name, arguments=dict(args), requestor="assistant")
-                trajectory.append(AssistantMessage(role="assistant", tool_calls=[tc],
-                                                   cost=0.0, timestamp=get_now()))
-                trajectory.append(ToolMessage(id=tid, role="tool", content=res_text,
-                                              requestor="assistant", error=is_err,
-                                              timestamp=get_now()))
+                if len(a["tool_ids"]) > 1:
+                    multi_tool_turns += 1
+                for tid in a["tool_ids"]:
+                    cap = captures.get(tid, {})
+                    full = cap.get("name") or ""
+                    if not full.startswith(MCP_PREFIX):
+                        continue  # denied built-in / non-env tool: not part of the env trajectory
+                    name = full.removeprefix(MCP_PREFIX)
+                    tools_called.append(name)
+                    args = cap.get("input") or {}
+                    if "result" in cap:
+                        res_text, is_err = cap["result"], cap.get("is_error", False)
+                    elif tid in a["stream_results"]:
+                        res_text, is_err = a["stream_results"][tid]
+                    else:
+                        res_text, is_err = "", False
+                    tc = ToolCall(
+                        id=tid, name=name, arguments=dict(args), requestor="assistant"
+                    )
+                    trajectory.append(
+                        AssistantMessage(
+                            role="assistant",
+                            tool_calls=[tc],
+                            cost=0.0,
+                            timestamp=get_now(),
+                        )
+                    )
+                    trajectory.append(
+                        ToolMessage(
+                            id=tid,
+                            role="tool",
+                            content=res_text,
+                            requestor="assistant",
+                            error=is_err,
+                            timestamp=get_now(),
+                        )
+                    )
 
-            agent_text = a["final_text"]
-            if not agent_text:
-                logger.warning(f"[{task.id}] agent produced no final text on turn {step}")
-                agent_text = "(no response)"
-            agent_msg = AssistantMessage(role="assistant", content=agent_text,
-                                         cost=a["cost"], usage=a["usage"], timestamp=get_now())
-            agent_msg.validate()
-            trajectory.append(agent_msg)
-            agent_last_text = agent_text
+                agent_text = a["final_text"]
+                if not agent_text:
+                    logger.warning(
+                        f"[{task.id}] agent produced no final text on turn {step}"
+                    )
+                    agent_text = "(no response)"
+                agent_msg = AssistantMessage(
+                    role="assistant",
+                    content=agent_text,
+                    cost=a["cost"],
+                    usage=a["usage"],
+                    timestamp=get_now(),
+                )
+                agent_msg.validate()
+                trajectory.append(agent_msg)
+                agent_last_text = agent_text
     finally:
         user.close()  # tear down the persistent user-sim SDK session/subprocess
 
@@ -690,15 +816,28 @@ async def run_episode(task, domain, *, agent_model, user_model, user_effort="hig
         agent_cost, user_cost = None, None
 
     simulation = SimulationRun(
-        id=uuid.uuid4().hex, task_id=task.id, start_time=start_time, end_time=get_now(),
-        duration=duration, termination_reason=termination, agent_cost=agent_cost,
-        user_cost=user_cost, messages=trajectory, seed=seed, trial=trial,
+        id=uuid.uuid4().hex,
+        task_id=task.id,
+        start_time=start_time,
+        end_time=get_now(),
+        duration=duration,
+        termination_reason=termination,
+        agent_cost=agent_cost,
+        user_cost=user_cost,
+        messages=trajectory,
+        seed=seed,
+        trial=trial,
         mode=CommunicationMode.HALF_DUPLEX.value,
     )
     reward_info = evaluate_simulation(
-        simulation=simulation, task=task, evaluation_type=eval_type, solo_mode=False,
-        domain=domain, mode=CommunicationMode.HALF_DUPLEX,
-        use_sdk_nl_judge=sdk_nl_judge, env_kwargs=eval_env_kwargs,
+        simulation=simulation,
+        task=task,
+        evaluation_type=eval_type,
+        solo_mode=False,
+        domain=domain,
+        mode=CommunicationMode.HALF_DUPLEX,
+        use_sdk_nl_judge=sdk_nl_judge,
+        env_kwargs=eval_env_kwargs,
         use_verified_scorer=verified_scorer,
     )
     simulation.reward_info = reward_info
@@ -738,7 +877,9 @@ def _setup_logging(log_file: Path, level: str, to_terminal: bool) -> None:
     unconfigured run floods the terminal."""
     logger.remove()
     log_file.parent.mkdir(parents=True, exist_ok=True)
-    logger.add(str(log_file), level=level, enqueue=True, backtrace=False, diagnose=False)
+    logger.add(
+        str(log_file), level=level, enqueue=True, backtrace=False, diagnose=False
+    )
     if to_terminal:
         logger.add(sys.stderr, level=level)
 
@@ -757,7 +898,9 @@ def _build_info(args, tasks, retrieval_config, retrieval_kwargs) -> Info:
         llm_args={"effort": args.user_effort},
         global_simulation_guidelines=get_global_user_sim_guidelines(),
     )
-    env_info_kwargs = _retrieval_env_kwargs(args.domain, retrieval_config, retrieval_kwargs)
+    env_info_kwargs = _retrieval_env_kwargs(
+        args.domain, retrieval_config, retrieval_kwargs
+    )
     environment_info = get_environment_info(
         args.domain, include_tool_info=False, env_kwargs=env_info_kwargs
     )
@@ -807,6 +950,7 @@ def _configure_judge(args) -> str:
     if not args.sdk_nl_judge:
         return ""
     from tau2.evaluator.evaluator_nl_assertions_sdk import SDKNLAssertionsEvaluator
+
     if args.judge_model:
         SDKNLAssertionsEvaluator.MODEL = args.judge_model
     if args.judge_effort:
@@ -820,8 +964,10 @@ async def run_batch_async(args) -> None:
     if args.agent_extra_instruction_file:
         with open(args.agent_extra_instruction_file) as _f:
             _AGENT_EXTRA_INSTRUCTION = _f.read().strip()
-        print(f"  agent-extra-instruction: {len(_AGENT_EXTRA_INSTRUCTION)} chars from "
-              f"{args.agent_extra_instruction_file}")
+        print(
+            f"  agent-extra-instruction: {len(_AGENT_EXTRA_INSTRUCTION)} chars from "
+            f"{args.agent_extra_instruction_file}"
+        )
     # ---- task selection ----
     tasks_all = get_tasks(args.domain, task_ids=args.task_ids, num_tasks=args.num_tasks)
     runnable, skipped = [], []
@@ -843,7 +989,9 @@ async def run_batch_async(args) -> None:
     # ---- retrieval config (banking_knowledge only) ----
     is_banking = args.domain == "banking_knowledge"
     retrieval_kwargs = (
-        json.loads(args.retrieval_config_kwargs) if args.retrieval_config_kwargs else None
+        json.loads(args.retrieval_config_kwargs)
+        if args.retrieval_config_kwargs
+        else None
     )
     if args.retrieval_config and not is_banking:
         logger.warning(
@@ -911,13 +1059,20 @@ async def run_batch_async(args) -> None:
                 continue
             try:
                 sim = await run_episode(
-                    task, args.domain,
-                    agent_model=args.agent_model, agent_effort=args.agent_effort,
-                    user_model=args.user_model, user_effort=args.user_effort,
-                    trial=trial, max_steps=args.max_steps, seed=seed,
-                    eval_type=eval_type, sdk_nl_judge=args.sdk_nl_judge,
+                    task,
+                    args.domain,
+                    agent_model=args.agent_model,
+                    agent_effort=args.agent_effort,
+                    user_model=args.user_model,
+                    user_effort=args.user_effort,
+                    trial=trial,
+                    max_steps=args.max_steps,
+                    seed=seed,
+                    eval_type=eval_type,
+                    sdk_nl_judge=args.sdk_nl_judge,
                     verified_scorer=args.verified_scorer,
-                    retrieval_config=retrieval_config, retrieval_kwargs=retrieval_kwargs,
+                    retrieval_config=retrieval_config,
+                    retrieval_kwargs=retrieval_kwargs,
                     agent_extra_instruction=_AGENT_EXTRA_INSTRUCTION,
                     use_aux_verifier=args.use_aux_verifier,
                     aux_verifier_model=args.aux_verifier_model,
@@ -953,74 +1108,147 @@ async def run_batch_async(args) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--domain", default="retail",
-                   help="Domain / task set (retail, airline, telecom, mock, ...).")
-    p.add_argument("--num-tasks", type=int, default=None,
-                   help="Limit to the first N tasks. Default: all tasks in the domain.")
-    p.add_argument("--task-ids", nargs="*", default=None,
-                   help="Run only these task ids (overrides --num-tasks).")
-    p.add_argument("--num-trials", type=int, default=1,
-                   help="Number of trials per task.")
-    p.add_argument("--agent-model", default="sonnet", help="SDK agent model (subscription).")
-    p.add_argument("--agent-effort", default=None,
-                   help="SDK agent reasoning effort: low|medium|high|max (default: SDK default).")
-    p.add_argument("--user-model", default="claude-opus-4-8",
-                   help="SDK user-sim model (subscription); default claude-opus-4-8.")
-    p.add_argument("--user-effort", default="high",
-                   help="SDK user-sim reasoning effort: low|medium|high|max (default: high).")
-    p.add_argument("--eval-type", default="all", choices=[e.value for e in EvaluationType])
-    p.add_argument("--no-verified-scorer", dest="verified_scorer", action="store_false",
-                   help="Disable the tau2-Verified DB scorer and use the strict exact-hash "
-                        "comparison instead. By default the verified scorer is on: extra "
-                        "discoverable reads are allowed and free-text annotation fields "
-                        "(e.g. closure_reason) are excluded.")
+    p.add_argument(
+        "--domain",
+        default="retail",
+        help="Domain / task set (retail, airline, telecom, mock, ...).",
+    )
+    p.add_argument(
+        "--num-tasks",
+        type=int,
+        default=None,
+        help="Limit to the first N tasks. Default: all tasks in the domain.",
+    )
+    p.add_argument(
+        "--task-ids",
+        nargs="*",
+        default=None,
+        help="Run only these task ids (overrides --num-tasks).",
+    )
+    p.add_argument(
+        "--num-trials", type=int, default=1, help="Number of trials per task."
+    )
+    p.add_argument(
+        "--agent-model", default="sonnet", help="SDK agent model (subscription)."
+    )
+    p.add_argument(
+        "--agent-effort",
+        default=None,
+        help="SDK agent reasoning effort: low|medium|high|max (default: SDK default).",
+    )
+    p.add_argument(
+        "--user-model",
+        default="claude-opus-4-8",
+        help="SDK user-sim model (subscription); default claude-opus-4-8.",
+    )
+    p.add_argument(
+        "--user-effort",
+        default="high",
+        help="SDK user-sim reasoning effort: low|medium|high|max (default: high).",
+    )
+    p.add_argument(
+        "--eval-type", default="all", choices=[e.value for e in EvaluationType]
+    )
+    p.add_argument(
+        "--no-verified-scorer",
+        dest="verified_scorer",
+        action="store_false",
+        help="Disable the tau2-Verified DB scorer and use the strict exact-hash "
+        "comparison instead. By default the verified scorer is on: extra "
+        "discoverable reads are allowed and free-text annotation fields "
+        "(e.g. closure_reason) are excluded.",
+    )
     p.set_defaults(verified_scorer=True)
-    p.add_argument("--sdk-nl-judge", action="store_true",
-                   help="Run the NL-assertions judge via the Claude SDK (subscription, "
-                        "claude-opus-4-8/high) so NL-assertion tasks score with no API key.")
-    p.add_argument("--judge-model", default=None,
-                   help="Override the SDK NL-judge model (default: claude-opus-4-8).")
-    p.add_argument("--judge-effort", default=None,
-                   help="Override the SDK NL-judge effort: low|medium|high|max (default: high).")
-    p.add_argument("--agent-extra-instruction-file", default=None,
-                   help="Path to a text file whose contents are appended to the generic "
-                        "agent instruction (NOT the policy). Used to test generic fixes.")
+    p.add_argument(
+        "--sdk-nl-judge",
+        action="store_true",
+        help="Run the NL-assertions judge via the Claude SDK (subscription, "
+        "claude-opus-4-8/high) so NL-assertion tasks score with no API key.",
+    )
+    p.add_argument(
+        "--judge-model",
+        default=None,
+        help="Override the SDK NL-judge model (default: claude-opus-4-8).",
+    )
+    p.add_argument(
+        "--judge-effort",
+        default=None,
+        help="Override the SDK NL-judge effort: low|medium|high|max (default: high).",
+    )
+    p.add_argument(
+        "--agent-extra-instruction-file",
+        default=None,
+        help="Path to a text file whose contents are appended to the generic "
+        "agent instruction (NOT the policy). Used to test generic fixes.",
+    )
     # SABER aux-verifier gate
-    p.add_argument("--use-aux-verifier", action="store_true",
-                   help="Enable the SABER-style auxiliary verifier gate. Before each "
-                        "WRITE discoverable tool call, a lightweight model checks: "
-                        "(1) required pre-steps done, (2) correct parameters, "
-                        "(3) minimal args. Blocks non-compliant calls with feedback.")
+    p.add_argument(
+        "--use-aux-verifier",
+        action="store_true",
+        help="Enable the SABER-style auxiliary verifier gate. Before each "
+        "WRITE discoverable tool call, a lightweight model checks: "
+        "(1) required pre-steps done, (2) correct parameters, "
+        "(3) minimal args. Blocks non-compliant calls with feedback.",
+    )
     p.set_defaults(use_aux_verifier=False)
-    p.add_argument("--aux-verifier-model", default=None,
-                   help="Model for the auxiliary verifier (default: claude-haiku-4-5-20251001).")
-    p.add_argument("--aux-verifier-effort", default="low",
-                   help="Reasoning effort for the auxiliary verifier: low|medium|high (default: low).")
+    p.add_argument(
+        "--aux-verifier-model",
+        default=None,
+        help="Model for the auxiliary verifier (default: claude-haiku-4-5-20251001).",
+    )
+    p.add_argument(
+        "--aux-verifier-effort",
+        default="low",
+        help="Reasoning effort for the auxiliary verifier: low|medium|high (default: low).",
+    )
     p.add_argument("--max-steps", type=int, default=50)
-    p.add_argument("--max-errors", type=int, default=10, help="Recorded in run metadata.")
+    p.add_argument(
+        "--max-errors", type=int, default=10, help="Recorded in run metadata."
+    )
     p.add_argument("--seed", type=int, default=42)
     # banking_knowledge retrieval (ignored for other domains)
-    p.add_argument("--retrieval-config", default=None,
-                   help="banking_knowledge retrieval variant (e.g. grep_only, bm25_grep, "
-                        "full_kb, golden_retrieval, alltools). Default for banking: alltools "
-                        "(needs an OpenAI embeddings key). For a no-API-key run pick a lexical/"
-                        "in-prompt variant like grep_only or full_kb.")
-    p.add_argument("--retrieval-config-kwargs", default=None,
-                   help="JSON dict of overrides passed to the retrieval variant (e.g. '{\"top_k\": 5}').")
+    p.add_argument(
+        "--retrieval-config",
+        default=None,
+        help="banking_knowledge retrieval variant (e.g. grep_only, bm25_grep, "
+        "full_kb, golden_retrieval, alltools). Default for banking: alltools "
+        "(needs an OpenAI embeddings key). For a no-API-key run pick a lexical/"
+        "in-prompt variant like grep_only or full_kb.",
+    )
+    p.add_argument(
+        "--retrieval-config-kwargs",
+        default=None,
+        help="JSON dict of overrides passed to the retrieval variant (e.g. '{\"top_k\": 5}').",
+    )
     # Output / resume
-    p.add_argument("--save-to", default=None,
-                   help="Run name under data/simulations/<name>/results.json. "
-                        "Default: <timestamp>_<domain>_claude_sdk_loop_<agent>_sdk_user_<user>. "
-                        "Reusing an existing name resumes that run.")
-    p.add_argument("--auto-resume", action="store_true",
-                   help="Resume an existing run without prompting.")
+    p.add_argument(
+        "--save-to",
+        default=None,
+        help="Run name under data/simulations/<name>/results.json. "
+        "Default: <timestamp>_<domain>_claude_sdk_loop_<agent>_sdk_user_<user>. "
+        "Reusing an existing name resumes that run.",
+    )
+    p.add_argument(
+        "--auto-resume",
+        action="store_true",
+        help="Resume an existing run without prompting.",
+    )
     # Logging
-    p.add_argument("--log-level", default="INFO",
-                   help="Log level for the file (and terminal if enabled). Default: INFO.")
-    p.add_argument("--log-to-terminal", action="store_true",
-                   help="Also stream logs to the terminal (off by default; file always on).")
-    p.add_argument("--log-file", default=None,
-                   help="Override the log file path (default: <run-dir>/run.log).")
+    p.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Log level for the file (and terminal if enabled). Default: INFO.",
+    )
+    p.add_argument(
+        "--log-to-terminal",
+        action="store_true",
+        help="Also stream logs to the terminal (off by default; file always on).",
+    )
+    p.add_argument(
+        "--log-file",
+        default=None,
+        help="Override the log file path (default: <run-dir>/run.log).",
+    )
     args = p.parse_args()
     asyncio.run(run_batch_async(args))
 

@@ -177,7 +177,9 @@ class SDKUserSimulator(UserSimulator):
                     )
                 self._tool_lock = asyncio.Lock()
                 mcp_servers = {_USER_MCP_SERVER: self._build_user_tool_server()}
-                allowed_tools = [f"mcp__{_USER_MCP_SERVER}__{t.name}" for t in self.tools]
+                allowed_tools = [
+                    f"mcp__{_USER_MCP_SERVER}__{t.name}" for t in self.tools
+                ]
                 suffix = _USER_OUTPUT_SUFFIX_TOOLS
 
             options = build_sdk_options(
@@ -229,9 +231,7 @@ class SDKUserSimulator(UserSimulator):
         # (tool_calls) immediately followed by its ToolMessage, in execution order.
         tool_msgs: list[Message] = []
         for tc, tm in self._captures:
-            tool_msgs.append(
-                UserMessage(role="user", tool_calls=[tc], cost=0.0)
-            )
+            tool_msgs.append(UserMessage(role="user", tool_calls=[tc], cost=0.0))
             tool_msgs.append(
                 ToolMessage(
                     id=tc.id,

@@ -156,7 +156,9 @@ class ZeroHallucinationPipeline:
         try:
             reranked = self._reranker.process(fused, {"query": query}, state)
         except Exception as e:  # never let the gate take down the episode
-            logger.warning("ZeroHallucination: rerank failed (%s); using fused order", e)
+            logger.warning(
+                "ZeroHallucination: rerank failed (%s); using fused order", e
+            )
             reranked = []
         timing.postprocessing_ms = (time.perf_counter() - pp_start) * 1000
         timing.postprocessor_details["ZeroHallucinationVerify"] = (
@@ -171,7 +173,9 @@ class ZeroHallucinationPipeline:
         # rather than abstain — better to return unverified-but-fused evidence
         # than to lose retrieval to a transient API stall.
         if not reranked and fused:
-            logger.info("ZeroHallucination: gate returned nothing; degrading to fused order")
+            logger.info(
+                "ZeroHallucination: gate returned nothing; degrading to fused order"
+            )
             if return_timing:
                 return RetrievalResult(results=fused[:limit], timing=timing)
             return fused[:limit]

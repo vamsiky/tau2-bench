@@ -17,16 +17,23 @@ Usage:
 
 Reconstructed from the 2026-06-24 I1 investigation session.
 """
-import sys
+
 import copy
+import os
+import sys
 
 # claude_sdk_loop_eval parses argv at import time; capture our args, then neutralize.
 _A = list(sys.argv)
 sys.argv = ["x"]
 
-from tau2.runner import get_tasks, build_environment  # noqa: E402
-from tau2.data_model.simulation import Results  # noqa: E402
+# Repo root, so `examples.*` is importable when run as `python scripts/i1_eval/<x>.py`.
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+
 from examples.agents.claude_sdk_loop_eval import _retrieval_env_kwargs  # noqa: E402
+from tau2.data_model.simulation import Results  # noqa: E402
+from tau2.runner import build_environment, get_tasks  # noqa: E402
 
 DOMAIN = "banking_knowledge"
 ek = _retrieval_env_kwargs(DOMAIN, "alltools", None)
@@ -35,7 +42,10 @@ FREE_TEXT_FIELDS = {"closure_reason"}  # annotation-only, no functional effect
 # Default per-task best-known result files (used when no CLI args are given).
 DEFAULT_ITEMS = [
     ("task_047", "data/simulations/i1_fix5/results.json"),
-    ("task_058", "data/simulations/i1_fix4/results.json"),  # fix4 = correct Silver selection
+    (
+        "task_058",
+        "data/simulations/i1_fix4/results.json",
+    ),  # fix4 = correct Silver selection
     ("task_063", "data/simulations/i1_fix5/results.json"),
     ("task_064", "data/simulations/i1_fix5/results.json"),
     ("task_067", "data/simulations/i1_fix1/results.json"),
@@ -92,7 +102,7 @@ def verified_match(gd, pd):
 
     # 1) discoverable audit: gold tool_names must be a subset of predicted tool_names
     def toolnames(db):
-        data = (db.get("agent_discoverable_tools", {}).get("data", {}) or {})
+        data = db.get("agent_discoverable_tools", {}).get("data", {}) or {}
         return {r.get("tool_name") for r in data.values()}
 
     missing = toolnames(gd) - toolnames(pd)

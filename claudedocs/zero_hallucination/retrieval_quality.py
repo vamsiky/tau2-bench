@@ -12,13 +12,13 @@ from pathlib import Path
 
 from tau2.domains.banking_knowledge.environment import get_knowledge_base
 from tau2.domains.banking_knowledge.retrieval import (
+    DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
     create_bm25_retrieval_pipeline,
     create_embedding_retrieval_pipeline,
-    DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
 )
 from tau2.domains.banking_knowledge.zero_hallucination_pipeline import (
-    ZeroHallucinationPipeline,
     INSUFFICIENT_EVIDENCE_ID,
+    ZeroHallucinationPipeline,
 )
 
 TASKS_DIR = Path("data/tau2/domains/banking_knowledge/tasks")
@@ -63,8 +63,14 @@ def main():
         kb, "openai", {"model": DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI}, top_k=50
     )
     zh = ZeroHallucinationPipeline(
-        bm25, dense, candidates=50, rerank_top_n=20, top_k=TOP_K,
-        rerank_min_score=4, abstain=True, abstain_min_top_score=2,
+        bm25,
+        dense,
+        candidates=50,
+        rerank_top_n=20,
+        top_k=TOP_K,
+        rerank_min_score=4,
+        abstain=True,
+        abstain_min_top_score=2,
     )
 
     summary = []
@@ -86,11 +92,15 @@ def main():
         print(f"\n=== {tid} (required={zn} docs) ===")
         print(f"  bm25   recall@{TOP_K}: {bh}/{bn}")
         print(f"  dense  recall@{TOP_K}: {dh}/{dn}")
-        print(f"  ZH     recall@{TOP_K}: {zh_hit}/{zn}"
-              f"{'  [ABSTAINED]' if abstained else ''}")
+        print(
+            f"  ZH     recall@{TOP_K}: {zh_hit}/{zn}"
+            f"{'  [ABSTAINED]' if abstained else ''}"
+        )
         if not abstained:
-            print(f"  ZH returned {len(zh_ids)} verified docs; missed: {zmiss[:4]}"
-                  f"{'...' if len(zmiss) > 4 else ''}")
+            print(
+                f"  ZH returned {len(zh_ids)} verified docs; missed: {zmiss[:4]}"
+                f"{'...' if len(zmiss) > 4 else ''}"
+            )
         summary.append((tid, bh, dh, zh_hit, zn, abstained))
 
     print("\n\n=== SUMMARY (recall@%d of required_documents) ===" % TOP_K)
@@ -98,7 +108,10 @@ def main():
     tb = td = tz = tr = 0
     for tid, bh, dh, zh_hit, zn, ab in summary:
         print(f"{tid:<10} {bh:>6} {dh:>6} {zh_hit:>6} {zn:>5} {str(ab):>8}")
-        tb += bh; td += dh; tz += zh_hit; tr += zn
+        tb += bh
+        td += dh
+        tz += zh_hit
+        tr += zn
     print(f"{'TOTAL':<10} {tb:>6} {td:>6} {tz:>6} {tr:>5}")
 
 

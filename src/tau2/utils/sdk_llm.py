@@ -50,9 +50,23 @@ for _k in _AUTH_OVERRIDE_VARS:
 # tools at all (parity with the litellm judge, which passes no tools); this is a
 # hard guarantee that the bundled CLI cannot reach for Bash/Read/etc.
 _DISALLOWED_BUILTINS = [
-    "Task", "Bash", "BashOutput", "KillShell", "Edit", "Write", "Read",
-    "NotebookEdit", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite",
-    "ExitPlanMode", "AskUserQuestion", "Skill", "ToolSearch",
+    "Task",
+    "Bash",
+    "BashOutput",
+    "KillShell",
+    "Edit",
+    "Write",
+    "Read",
+    "NotebookEdit",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "WebSearch",
+    "TodoWrite",
+    "ExitPlanMode",
+    "AskUserQuestion",
+    "Skill",
+    "ToolSearch",
 ]
 
 
@@ -88,9 +102,7 @@ def _split_messages(messages: list[Message]) -> tuple[str, str]:
     if len(other) == 1:
         query_text = other[0].content or ""
     else:
-        query_text = "\n\n".join(
-            f"{m.role}: {m.content or ''}" for m in other
-        )
+        query_text = "\n\n".join(f"{m.role}: {m.content or ''}" for m in other)
     return "\n\n".join(system_parts), query_text
 
 
@@ -186,6 +198,8 @@ async def _consume_turn(client) -> dict:
     """
     from claude_agent_sdk import (
         AssistantMessage as SDKAssistantMessage,
+    )
+    from claude_agent_sdk import (
         ResultMessage,
         TextBlock,
     )
