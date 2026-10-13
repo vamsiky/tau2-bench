@@ -14,9 +14,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# shellcheck disable=SC1091
-source .venv/bin/activate
-
 unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
 
 export LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-sk-litellm-master-key}"
@@ -27,4 +24,6 @@ if command -v podman >/dev/null 2>&1; then
   podman start litellm-db >/dev/null 2>&1 || true
 fi
 
-exec litellm --config litellm_config.yaml --port 4000
+# The proxy server runs in its own isolated tool env so litellm[proxy]'s pins
+# (e.g. uvicorn<0.32) don't constrain the project's dependency versions.
+exec uvx --from 'litellm[proxy]==1.82.6' litellm --config litellm_config.yaml --port 4000
