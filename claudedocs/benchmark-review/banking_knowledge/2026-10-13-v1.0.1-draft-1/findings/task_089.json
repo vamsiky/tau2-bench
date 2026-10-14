@@ -1,0 +1,17 @@
+{
+  "task_id": "task_089",
+  "severity": "None",
+  "headline": "Clean: the one card change the task grades (raising the Green card's ATM limit to $900) follows from the documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Independently: the Green Account daily ATM limit is $600 (doc green_account_(checking)_012), and today's ATM withdrawals total 100+80+60+60+50=$350, leaving $250 against a $550 need. Eligibility (doc 040) passes: open, opened 02/15/2021, no overdraft fee, card ACTIVE. The 150% cap is $900, which also equals 350+550. Counting the 11/13 $100 withdrawal as within 24 hours would push the need above the cap, which still gives $900. Blue has an 'OVERDRAFT FEE' on 11/01/2025, within 30 days, so it is ineligible. The teen Light Green limit of $150 is fixed by policy. Gold's single write, new_limit 900 on dbc_2f8a7c3d1e9b, matches and replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review rated this clean, and the task file is unchanged; still clean.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. The card records lack daily_atm_limit and daily_atm_used, so the agent must take the limit from the account docs and compute usage from transactions. Both are documented, and the tool's default limits match the docs (Green 600, Blue 500). The tool itself does not check overdraft history, so an agent that wrongly raises the Blue limit is caught by the DB hash."
+}

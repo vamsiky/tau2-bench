@@ -1,0 +1,49 @@
+{
+  "task_id": "task_017",
+  "severity": "Major",
+  "headline": "Under the bank's documented round-down rule, a third transaction (Hilton, over-credited by 1 point) is also wrong, but the gold disputes only two, so an agent that flags every error fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "The seed stores 1159 points on txn_31fd03682992 (Hilton Seattle, $289.50, Travel, Silver 4%). 289.50 x 4 = 1158.00 exactly, so the stored value is 1 point too high under any rounding rule. The gold dispute set leaves this transaction out.",
+      "evidence": [
+        "db.json credit_card_transaction_history[txn_31fd03682992] = {merchant 'Hilton Seattle', transaction_amount '$289.50', category 'Travel', rewards_earned '1159 points'}",
+        "doc_credit_cards_silver_rewards_card_002: \"Pay with your card for eligible travel and software transactions to earn 4.0% back\"",
+        "doc_credit_cards_credit_cards_(general)_003: \"Use this process when a customer believes there is a discrepancy between the cash back they received for a particular transaction and the cash back they should have received.\"",
+        "gold[2], gold[3] dispute only txn_cfabb609133d and txn_913d14a20dc5",
+        "task_017 instructions: \"you want the agent to investigate and help you fix any errors\""
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "An agent that compares every transaction against the documented rates finds three discrepancies (Amazon stored 15 vs 156, Sushi Kashiba stored 47 vs 87, Hilton stored 1159 vs 1158). If it has the customer dispute all three, cash_back_disputes and user_discoverable_tool_calls each gain a row, and replay shows the verified comparison fails on those two tables. Elsewhere the benchmark treats over-credits as dispute-worthy: task_018 has the customer insist on disputing an overpaid transaction, and task_020 disputes an over-credited one. The gold passes only for agents that choose not to dispute a 1-point over-credit, a choice nothing in the documents supports.",
+      "suggested_fix": "Set txn_31fd03682992.rewards_earned to '1158 points', or add it to the gold dispute set."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding policy doc that decides which transactions are discrepant (doc_credit_cards_credit_cards_(general)_007) is not listed in required_documents, so the golden_retrieval config, which inlines only required_documents and exposes no search tool, never shows it to the agent.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_017.required_documents = [general_003, general_006, silver_rewards_card_001, silver_rewards_card_002] (no general_007)",
+        "src/tau2/domains/banking_knowledge/retrieval_toolkits.py: KnowledgeToolsPlain 'Used by: no_knowledge, full_kb, golden_retrieval' (no retrieval tools)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Without doc_007, an agent naturally rounds half-up: txn_cedd88ce1f65 (Adobe, $54.99 x 4 = 219.96, stored 219) then looks under-credited and gets disputed. This applies only to the golden_retrieval config.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all five Silver Rewards transactions for 6680a37184 with 4% on Travel/Software and 1% otherwise, using the floor rule from doc_007. Delta 450.00 -> 1800 (ok); Amazon 156.78 -> 156 (stored 15, gold); Hilton 289.50 -> 1158 (stored 1159, NOT in gold); Sushi 87.25 -> 87 (stored 47, gold); Adobe 54.99 -> 219 (stored 219, ok under floor; 220 under half-up). The documented rule gives three discrepancies; the gold has two.",
+  "prior_status": "changed",
+  "prior_note": "The prior review said the rounding convention was undocumented. It is documented (doc_credit_cards_credit_cards_(general)_007, floor, present since v1.0.0), and floor removes the Adobe ambiguity. The Hilton over-credit, which the prior review also noted, remains, so the task stays Major.",
+  "notes": "txn_913d14a20dc5 (Amazon) also has an open transaction dispute (transaction_disputes[dsp_7a3e91b4c2d8], duplicate_charge, provisional credit given, UNDER_REVIEW). An agent that calls get_user_dispute_history_7291 might hesitate to file a cash-back dispute on it. I did not count this as a defect. Under the verified scorer, the closure_reason and discoverable-read relaxations do not affect this task: it has no discoverable agent tools, and cash_back_disputes and user_discoverable_tool_calls are compared exactly."
+}

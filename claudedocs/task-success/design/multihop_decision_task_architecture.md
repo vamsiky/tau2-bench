@@ -1,9 +1,9 @@
 # Handling hard multi-hop decision tasks (banking_knowledge) — design notes
 
 **Status:** design / discussion document for later review. Not implemented.
-**Companion evidence:** [`hindsight_i1_trajectory_analysis.md`](./hindsight_i1_trajectory_analysis.md)
+**Companion evidence:** [`hindsight_i1_trajectory_analysis.md`](../hindsight/hindsight_i1_trajectory_analysis.md)
 (per-task gold-vs-run deviations + proof that the decisive fact for task 058 is unrecallable
-from the Hindsight bank), [`i1_fix_validation.md`](./i1_fix_validation.md) (prompt-only fix
+from the Hindsight bank), [`i1_fix_validation.md`](../i1-fixes/i1_fix_validation.md) (prompt-only fix
 iterations and the verified-scorer rationale).
 
 This file captures *how to architect an agent* to handle the hardest banking_knowledge tasks

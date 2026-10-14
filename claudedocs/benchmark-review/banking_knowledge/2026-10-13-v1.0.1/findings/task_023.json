@@ -1,0 +1,34 @@
+{
+  "task_id": "task_023",
+  "severity": "Minor",
+  "headline": "The rebate check is fully determined by the database (every anniversary-month window clears $7,500), but the customer gives the wrong account-opening year, and believing it would point to a fee-waiver exception and the wrong card application.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The customer says the Platinum card was opened in November 2024, but the DB says 11/10/2022. A November 2024 opening would fall inside the first-year fee-waiver promo window, and the rebate doc says waived years earn no rebate.",
+      "evidence": [
+        "task_023 instructions: \"You've been using the card for a full year now (you opened it in November 2024)\"",
+        "db.json credit_card_accounts[cc_224959b99e_plat].date_of_account_open = '11/10/2022'",
+        "doc_credit_cards_platinum_rewards_card_009: \"Start date: 2024-06-01\" / \"End date: 2024-12-31\" (first-year fee waived)",
+        "doc_credit_cards_platinum_rewards_card_010: \"If your first cardmember year's annual fee is waived under a promotional offer, the rebate does not apply to that year.\""
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "An agent that takes the customer's date over the DB would conclude the year was fee-waived and therefore ineligible. The user would then apply for the Silver Rewards Card instead of the Diamond Elite Card, which changes the credit_card_applications row. The DB is authoritative and easy to read, so a careful agent resolves this.",
+      "suggested_fix": "Change the instruction to 'you've had the card a few years' (or align the DB date with the story and drop the promo overlap)."
+    }
+  ],
+  "solution_check": "Open date 11/10/2022 means anniversary windows run from the 10th to the 9th. The completed cardmember year 11/10/2024-11/09/2025 has 12 windows with Platinum spend of 7594.18, 7635.92, 7721.49, 7763.29, 7845.26, 7873.15, 7713.77, 7598.04, 7601.91, 7617.16, 7917.61, 7672.23, all at or above $7,500 (doc_..._platinum_rewards_card_007), so the customer qualifies. Following the user script, they apply for Diamond Elite (Yuki Nakamura, 95000, no Rho-Bank+). This matches gold[1]. Calendar months would fail (Nov 2024 = 7235.26, Jan 2025 = 6979.30, Feb 2025 = 4589.27, Jun 2025 = 7103.88, Sep 2025 = 3394.82), but doc_..._010 clearly requires anniversary windows.",
+  "prior_status": "persists",
+  "prior_note": "Same Minor finding as the prior review (customer mis-states the open date; the answer is unchanged when the DB is used). The v1.0.1 edits to platinum_002/007 are cosmetic for this task: the title now reads 10% and '$135 days' became '135 days'.",
+  "notes": "A replay with annual_income 95000.0 matches the gold hash, because apply_for_credit_card now normalizes to float. Diamond Elite is invitation-only; the user script supplies the invitation. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

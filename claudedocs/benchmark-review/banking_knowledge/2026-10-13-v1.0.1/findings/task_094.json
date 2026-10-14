@@ -1,0 +1,50 @@
+{
+  "task_id": "task_094",
+  "severity": "Major",
+  "headline": "The KB describes the Gold Rewards Card's 0.025% both as a credit-card bonus that does not stack and as a separate relationship bonus that does, so $140 and $142 are both defensible corrections.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_013 calls the Gold Rewards Card's 0.025% a 'relationship bonus APY on top of the base rate'. doc_045 says credit-card bonuses DO stack with relationship bonuses. But doc_014 and doc_045's own example list the same 0.025% as a non-stacking credit-card bonus. The gold treats it as a credit-card bonus that loses to EcoCard's 0.6%.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"As a Gold Rewards Card holder, you receive an additional 0.025% relationship bonus APY on top of the base rate.\"",
+        "doc_savings_accounts_gold_account_014 table: \"| Gold Rewards Card | +0.025% |\" under \"Credit card APY bonuses\"",
+        "doc_bank_accounts_bank_accounts_(general)_045: \"credit card APY bonuses DO stack with other types of bonuses, such as: ... Relationship bonuses for holding multiple Rho-Bank products\"",
+        "doc_045 example: Gold Rewards +0.025%, Platinum +0.15%, EcoCard +0.6% -> \"The customer receives only the EcoCard bonus of +0.6%\"",
+        "gold[6].arguments.amount = 140.00; gold[8].arguments.expected_apy = 6.85"
+      ],
+      "gold_action_refs": [
+        6,
+        8
+      ],
+      "why_it_matters": "The customer explicitly asks for 'any other boosts that I'm missing'. An agent that also adds doc_013's relationship bonus computes 5.5 + 0.75 + 0.6 + 0.025 = 6.875% and credits 96000 x 1.775% / 12 = $142.00, which fails the hash (replayed: differs).",
+      "suggested_fix": "Rewrite doc_013 to say its 0.025% is the Gold Rewards Card's credit-card APY bonus (subject to the highest-only rule), not a separate relationship bonus."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_013's worked example adds 5.5% + 0.025% and reports a total of 6.0%, which is a corrupted value. The customer's own mistaken belief is also 6.0%.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"Base APY: 5.5% / Relationship bonus APY: +0.025% / Total APY with the bonus: 6.0%\"",
+        "user instructions item 1: \"so I should be at 6.0% APY\""
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "A careful agent recomputes the sum, but the corrupted total seems to confirm the customer's wrong figure and could anchor a weaker agent.",
+      "suggested_fix": "Change the total to 5.525%."
+    }
+  ],
+  "solution_check": "Gold Account base 5.5% (gold_account_001). Green checking + Gold is pairing 1 with a +0.75% boost (green_account_(checking)_001). Credit cards held: Platinum 0.15, Gold Rewards 0.025, EcoCard 0.6; the highest is EcoCard 0.6 (doc_045). Expected 6.85%. Actual 408 x 12 / 96000 = 5.1%. Difference 96000 x 1.75% / 12 = $140.00, which matches the gold. The open question is whether doc_013's 0.025% relationship bonus is a separate component; if it is, the answer is 6.875% and $142.00.",
+  "prior_status": "persists",
+  "prior_note": "The prior review flagged the same double description of the 0.025% as Minor. Because this customer asks for every missing boost, and doc_045 explicitly lets relationship bonuses stack, I rate the divergence Major, consistent with task_095.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. Both apply_savings_account_credit_6831 and submit_interest_discrepancy_report_7294 cast amounts with float(), and record ids embed f'{amount}' / f'{expected_apy}', so 33 and 33.0 hash identically, but any difference in value (even one cent) changes the hash. Gold read get_bank_account_transactions_9173 and get_all_user_accounts_by_user_id_3847 are allowlisted, so skipping either changes the hash. Monthly interest convention: the posted credits equal balance x APY / 12 exactly (simple, not daily-compounded), so the agent can infer the convention from the data. Replay: amount 140 (int) with actual_apy 5.1 gives the same hash as the gold. 142.00/6.875 gives a different hash. No Gold Account doc describes a generic multi-product relationship bonus; the only candidate is doc_013's card-holder bonus."
+}

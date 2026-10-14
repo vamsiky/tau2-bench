@@ -4,7 +4,7 @@ Implements the multi-stage, safety-first retrieval architecture from
 [`FareedKhan-dev/rag-zero-hallucinations`](https://github.com/FareedKhan-dev/rag-zero-hallucinations)
 for the `banking_knowledge` domain and validates it against the policy-reasoning
 tasks documented in
-[`policy_reasoning_a1a4_validation.md`](policy_reasoning_a1a4_validation.md)
+[`policy_reasoning_a1a4_validation.md`](../policy-reasoning/policy_reasoning_a1a4_validation.md)
 (A1–A4: task_043, 047, 053, 063, 064, 092).
 
 ## What was built
@@ -300,8 +300,8 @@ the baseline A1–A4 doc's own conclusions.
 ```bash
 export OPENAI_API_KEY=...   # dense embeddings + gpt-5.2 reranker
 # Retrieval probes (fast, deterministic)
-uv run python claudedocs/zero_hallucination/retrieval_quality.py     # single-query recall
-uv run python claudedocs/zero_hallucination/retrieval_multiquery.py  # multi-query union + gate sweep
+uv run python claudedocs/task-success/zero-hallucination/scripts/retrieval_quality.py     # single-query recall
+uv run python claudedocs/task-success/zero-hallucination/scripts/retrieval_multiquery.py  # multi-query union + gate sweep
 # Episode (note: task_043 full episode deadlocks the SDK user-sim subprocess)
 uv run python examples/agents/claude_sdk_loop_eval.py \
   --domain banking_knowledge --task-ids task_047 --num-trials 1 \

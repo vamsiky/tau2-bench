@@ -1,0 +1,116 @@
+{
+  "task_id": "task_091",
+  "severity": "Blocker",
+  "headline": "Two of the four card outcomes contradict the documents: the Evergreen replacement ignores the customer's 'most premium free option' request, and the Light Blue replacement is ordered despite a 48-hour waiting rule.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "The customer asks for \"the most premium free option for both\" shipping and design. Evergreen is PREMIUM tier, where EXPEDITED shipping and the PREMIUM design are both $0, but the gold orders STANDARD + CLASSIC.",
+      "evidence": [
+        "instructions step 20: \"I want the most premium free option for both.\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"PREMIUM TIER (Evergreen Account)\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"Free expedited shipping on all replacements (delivery_fee: $0 for both STANDARD and EXPEDITED)\" and \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "gold[14].arguments: delivery_option \"STANDARD\", card_design \"CLASSIC\"",
+        "task_090 gold for the same Evergreen tier uses delivery_option \"EXPEDITED\""
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "A doc-faithful agent orders EXPEDITED/PREMIUM. order_id is derived from delivery_option and the record stores card_design, so the DB hash cannot match the gold.",
+      "suggested_fix": "Change gold[14] to delivery_option \"EXPEDITED\", card_design \"PREMIUM\" (fees 0), or change the user line to request the standard free options."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "Light Blue is ENTRY tier, which imposes a 48-hour wait after card closure before a replacement can be ordered, yet the gold orders the replacement immediately after closing.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_005: \"ENTRY TIER (Light Blue Account, ...)\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 ENTRY TIER: \"48-hour waiting period after card closure before a replacement can be ordered\"",
+        "gold[23] close_debit_card_4721 dbc_tw34a7d9e2_lightblue, then gold[24] order_debit_card_5739 chk_tw34a7d9e2_lightblue in the same conversation"
+      ],
+      "gold_action_refs": [
+        23,
+        24
+      ],
+      "why_it_matters": "An agent that follows doc_029 tells the customer to wait 48 hours and makes no order call, leaving no debit_card_orders/debit_cards record for Light Blue, so the DB hash fails.",
+      "suggested_fix": "Remove gold[24] (and have the agent explain the wait), or make the fourth card a non-ENTRY tier."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Light Blue scores VERY HIGH (cannot unlock). Step 6 then offers three options (closure+replacement, security transfer, PIN reset) and the user script accepts every one of them, so the final state depends on which option the agent leads with. The customer confirms the activity was his, so the 'recommended if fraud suspected' closure is not clearly preferred.",
+      "evidence": [
+        "Score: A1 1 (Bellevue WA vs Seattle WA), B1 1 (23:02-23:05), B2 2 (last PIN 10/08/2025), B3 2 (87s, 115s gaps), C2 1 (400/400/400), C3 1 (400 vs ATM avg 100), C4 2 (1200 > 700 limit), D1 1, E1 1 (opened 06/01/2025), E2 1 (OVERDRAFT FEE 10/25/2025) = 13; 12 after removing A1",
+        "doc_041 Step 3: \"11-14 | VERY HIGH | Cannot unlock on this call.\"",
+        "doc_041 Step 6: \"Card closure and replacement (recommended if fraud suspected) / Transfer to security team / PIN reset\"",
+        "instructions steps 44, 45, 47 accept closure, transfer, and reset to 4121 respectively",
+        "gold[23] close reason \"fraud_suspected\""
+      ],
+      "gold_action_refs": [
+        23,
+        24
+      ],
+      "why_it_matters": "A transfer or a PIN reset to 4121 is equally supported and yields a different DB state from the gold's closure.",
+      "suggested_fix": "Script the customer to decline the transfer and the reset, or make the gold accept the documented outcome the script steers toward."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "pin_compromised is persisted in each dispute record. The customer answers \"Maybe someone watched me at an ATM? I really don't know.\", which fits 'unknown' (customer unsure) at least as well as the gold's 'yes_observed'.",
+      "evidence": [
+        "instructions step 22: \"I never shared it with anyone. Maybe someone watched me at an ATM? I really don't know.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'yes_observed': Customer believes PIN was observed/skimmed ... 'unknown': Customer unsure\"",
+        "gold[16], gold[17].arguments.pin_compromised = \"yes_observed\""
+      ],
+      "gold_action_refs": [
+        16,
+        17
+      ],
+      "why_it_matters": "An agent choosing 'unknown' writes different debit_card_disputes records and fails the DB hash.",
+      "suggested_fix": "Change the customer line to clearly state belief (\"I think someone must have watched me enter it\") or accept 'unknown' in the gold."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_041 says any single 3-point flag forces supervisor escalation regardless of total score, but no supervisor-review tool exists and the gold resolves those cards in-chat with no escalation; the only escalation path (transfer_to_human_agents) ends the conversation.",
+      "why_it_matters": "An agent that honours the single-flag rule by transferring before the remaining cards are handled never makes the later gold writes and fails the DB hash; an agent that escalates only after all writes (or not at all) passes. The escalation itself leaves no DB trace.",
+      "suggested_fix": "Either drop the single-flag escalation clause from doc_041 or state that 'supervisor review' is a note with no tool action and does not block the Step 6 options.",
+      "evidence": [
+        "doc_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\"",
+        "Evergreen B1: attempts 02:02-02:12 -> 3 points; Blue D1: pin_locks_last_90_days = 4 -> \"3+ prior locks: 3 points\"",
+        "gold contains no escalation for either card"
+      ],
+      "gold_action_refs": [
+        12,
+        20
+      ]
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The customer's DOB in the instructions (09/22/1991) disagrees with the seeded DB (09/22/2001) and with the stated age of 24.",
+      "evidence": [
+        "instructions: \"DOB: 09/22/1991\"",
+        "initial_state users.tw34a7d9e2.date_of_birth = \"09/22/2001\"",
+        "gold[0].arguments.date_of_birth = \"09/22/2001\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Verification still succeeds on phone/email/address, and logging DB values gives the gold. An agent that logs the customer-spoken DOB diverges.",
+      "suggested_fix": "Set the instruction DOB to 09/22/2001."
+    }
+  ],
+  "solution_check": "Green: LOW (score about 2), reset to 2589 matches. Evergreen: successful $400/$300 Las Vegas ATM withdrawals at 2 AM while the customer was asleep, so close, replace, and dispute both; the dispute fields match the gold except the debatable pin_compromised. The replacement does not match, because doc_005/doc_029 make it EXPEDITED/PREMIUM at $0, not STANDARD/CLASSIC. Blue: 4 prior locks force a reset; 9876 is rejected as sequential and 5739 matches. Light Blue: VERY HIGH with three accepted outcomes, and if closed, the ENTRY-tier 48h rule forbids the immediate order in gold[24].",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean; re-derivation against doc_005 and doc_029 finds two Blocker gold errors and two Major ambiguities that the prior did not report.",
+  "notes": "doc_005 (the only tier-mapping doc) is not in this task's required_documents but is retrievable in the KB; task_090 lists it. Notes call the Blue lock-count flag 'D3'; it is D1. The Evergreen PIN-reset trap (5678) and Blue 9876 are both sequential and correctly invalid per doc_027. The dispute tool is order-independent with close_debit_card (it does not read card status)."
+}

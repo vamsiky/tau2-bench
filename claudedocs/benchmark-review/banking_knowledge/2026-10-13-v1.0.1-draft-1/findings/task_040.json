@@ -1,0 +1,85 @@
+{
+  "task_id": "task_040",
+  "severity": "Blocker",
+  "headline": "As in task 039, which disputes get provisional credit depends on an undocumented counting convention and on filing order. In addition, the gold's full refund for the Comcast 'promised partial refund' is not implied by the script.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "There is one prior dispute in the last 12 months (injected dsp_ed3ab3dce038, submitted 09/20/2025). Read as a gate on prior history, criterion 4 makes all four reason-eligible disputes eligible (1 is not more than 2). The gold counts in-session filings, so only the first two filed are eligible. The task notes cite a 'provisional_credit_max_disputes_in_period = 3' parameter that appears in no document.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015 criterion 4: \"Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "No document says whether disputes filed earlier in the same conversation count toward criterion 4, defines a per-period provisional-credit cap, or says in what order to file multiple disputes (I searched all 698 docs for 'past 12 months', 'more than 2 disputes', 'counts toward', 'provisional credit')",
+        "tools.py file_credit_card_transaction_dispute_4829 stores eligible_for_provisional_credit and provisional_credit_given verbatim from the agent's argument",
+        "initial_state.agent_data.transaction_disputes.dsp_ed3ab3dce038.submitted_at = \"09/20/2025\"",
+        "gold[9] txn_a1b2c3d4e503 (American Airlines $342.50 fraud) and gold[10] txn_a1b2c3d4e510 (Best Buy $189.99 duplicate, merchant contacted): eligible_for_provisional_credit=false; gold[7] Grainger and gold[8] Uline =true",
+        "task_040 description.notes: \"provisional_credit_max_disputes_in_period = 3 limit\""
+      ],
+      "gold_action_refs": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "An agent applying the history-gate reading sets eligible=true for txn_a1b2c3d4e503 and txn_a1b2c3d4e510, and the DB hash fails.",
+      "suggested_fix": "Document that in-session filings count toward criterion 4 and give an ordering rule, or set all four reason-eligible disputes to eligible=true."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Blocker",
+      "summary": "Under the running count, the eligible pair is whichever two are filed first. The gold reaches Grainger and Uline only if the agent files them first. The customer's 'prioritize Grainger and Uline' request fires only if the agent brings up provisional credit, and the opening lists the personal-card disputes first.",
+      "evidence": [
+        "task_040 instructions step 6: \"If the agent mentions provisional credit or asks about it, say: ... Please prioritize those if there's any limit.\"",
+        "task_040 instructions step 3 lists the Gold card disputes (American Airlines, Best Buy, PECO, Spotify) before the Business card ones",
+        "Worked example: filing in the order given in step 3 under the running count -> American Airlines true, Best Buy true, rest false; gold has the opposite for these four"
+      ],
+      "gold_action_refs": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "Filing order changes the persisted flags. No document tells the agent to reorder filings.",
+      "suggested_fix": "Same as the first fix; alternatively make the customer state the priority unconditionally."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "For Comcast (refund_never_processed), the customer was \"promised a partial refund\" of an unstated amount, and the script gives no resolution preference, yet the gold persists full_refund on the whole $189.99. The PECO partial_refund of $24.56 and the other full_refund choices are also unscripted, though they are natural.",
+      "evidence": [
+        "task_040 Business card dispute 4: \"You downgraded your business internet plan and were promised a partial refund weeks ago.\"",
+        "gold[14].arguments.resolution_requested = \"full_refund\" (txn_3ef1a3e9bf56, $189.99)",
+        "doc_014 item 13: \"Ask user what resolution they want\""
+      ],
+      "gold_action_refs": [
+        11,
+        14
+      ],
+      "why_it_matters": "A user simulator asked about the resolution can reasonably say 'the partial refund I was promised', which leads to partial_refund with an invented or missing amount and a different DB record.",
+      "suggested_fix": "Add the desired resolution for each dispute to the script (for example, 'full refund for everything except PECO, where you want the $24.56 back')."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The injected prior dispute is internally inconsistent: it was submitted (09/20/2025) and noticed (09/15/2025) before the disputed purchase (10/02/2025).",
+      "evidence": [
+        "initial_state dsp_ed3ab3dce038: purchase_date \"10/02/2025\", issue_noticed_date \"09/15/2025\", submitted_at \"09/20/2025\"",
+        "db.json txn_8d1aa1219382.transaction_date = \"10/02/2025\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under any reading it still counts as one dispute in the past 12 months, so the final state is unaffected, but a careful agent may stop to question the record.",
+      "suggested_fix": "Set submitted_at and issue_noticed_date after 10/02/2025, or point the record at a September transaction."
+    }
+  ],
+  "solution_check": "All eight transaction ids, amounts, and dates match the DB. The last-4 digits (Gold 1652, Business Gold 0581) come from the user tool via sha256, card_action=keep_active, and issue noticed 11/14/2025 via get_current_time. Spotify ($10.99) and the four non-fraud, non-duplicate reasons are ineligible either way. The four reason-eligible disputes pass criteria 1, 3, and 5, so the gold's two-true/two-false split holds only under a running count with Grainger and Uline filed first. get_user_dispute_history_7291 is a gold read (allowlisted) and must be called.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker stands with the same refinement as task_039: the literal text can support a running count, but neither that reading nor the filing order is determined by the materials. The unscripted Comcast resolution and the inconsistent seed record are newly reported.",
+  "notes": "The duplicate claims (Grainger $523.45, Best Buy $189.99) have only one matching charge each in the DB, which does not affect grading. The numeric normalization makes 24.56 hash the same however it is written."
+}

@@ -1,0 +1,37 @@
+{
+  "task_id": "task_024",
+  "severity": "Major",
+  "headline": "The gold says Business Bronze ($900) is the best card for a $40,000 truck, but the KB's Silver Zoom triple-cash-back promo pays about $1,200; the gold holds only if that card is ruled out as logistics-only.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The gold compares only Business Bronze and Business Silver. Silver Zoom Card, a business card the user can apply for, has a triple cash back promo whose claim window is open today and that applies for 9 months from opening: 3 x 1.0% on non-category purchases gives $1,200 on $40,000 ($1,125.50 after the $74.50 fee), beating Bronze's $400 + $500 = $900. The only bar is the card being 'designed for' transportation/logistics businesses, which the docs never state as an eligibility rule. The persona even says 'expand your fleet'.",
+      "evidence": [
+        "doc_business_credit_cards_silver_zoom_card_012: \"You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31\"; \"The triple cash back earning period lasts 9 months from account opening\"; \"All other eligible purchases earn 3 × 1.0% during the promo period\"",
+        "doc_business_credit_cards_silver_zoom_card_001: \"Annual membership is $74.50\"; \"Who this card is built for - Established transportation and logistics operators\"",
+        "doc_business_credit_cards_silver_zoom_card_008 lists only credit thresholds: \"must be at or above $680\" personal, \"57 on the PAYDEX scale for logistics business approval\"",
+        "doc_business_credit_cards_business_bronze_rewards_card_001: \"Spend $10,000 in the first 2 months to receive a $500 statement credit\"; Bronze rate 1.0%",
+        "tools.py KnowledgeUserTools.VALID_CREDIT_CARD_TYPES includes \"Silver Zoom Card\"",
+        "gold[0].arguments.card_type = \"Business Bronze Rewards Card\"; required_documents list only Bronze and Business Silver docs",
+        "Instructions: \"looking to expand your fleet\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that surveys all six business cards (Bronze, Silver, Gold, Platinum, Green Rewards, Silver Zoom) and computes returns recommends Silver Zoom; the user applies for it and the credit_card_applications row differs from the gold.",
+      "suggested_fix": "State an explicit industry eligibility rule in the Silver Zoom docs (or close its promo window before 11/14/2025), or change the purchase amount so Bronze still wins against a 3% promo."
+    }
+  ],
+  "solution_check": "Returns on $40,000 (a vehicle is non-category for every card): Business Bronze 1% = $400 + $500 promo (window 2025-10-01..2026-03-31, $10,000 in 2 months) = $900; Business Silver 1%, x2 only if opening on 2025-11-14 counts within its promo end date, so $400-$800; Business Platinum 1.5% = $600; Business Gold 1% = $400 (a truck is not listed as operations spend), $200 fee; Green Rewards 1% = $400; Silver Zoom 3 x 1% = $1,200 under the open triple promo. Gold Bronze is correct only if Silver Zoom is excluded.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this None and did not consider Silver Zoom; the docs it relies on are unchanged since v1.0.0, so this defect existed before.",
+  "notes": "Business Bronze's starting line is only \"at least $10,000\", so a $40,000 single purchase may not fit; no doc resolves this for any card. If an agent treated the truck as Transportation for Silver Zoom (3 x 3% = 9%), the gap would be larger still."
+}

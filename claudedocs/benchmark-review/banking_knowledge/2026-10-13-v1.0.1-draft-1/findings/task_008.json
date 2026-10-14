@@ -1,0 +1,17 @@
+{
+  "task_id": "task_008",
+  "severity": "None",
+  "headline": "Clean: none of the three flyer offers is available to a non-business customer, and the 'highest tier that applies' rule makes 'customer_demands_after_unavailable_offer_refusal' the unique transfer reason.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Offer 1 ($1,000 for $10k in 2 months) does not exist; the closest is Business Bronze's '$500 statement credit', a business card. Offer 2 (3 years of $0 FTF) does not exist. Offer 3 (first-year fee waived) exists only for business cards (Business Platinum 2025-11-01 to 2026-02-28; Business Silver starts 2025-11-15) and in Platinum's expired 2024 promo. Marcus is not a business owner, so the agent refuses all three. When he demands a human after repeated refusals, doc 042 Tier 1 'customer_demands_after_unavailable_offer_refusal' applies and outranks Tier 2 'unconfirmed_external_communication' ('always select from the highest tier that applies'). That matches gold[0] (ACTION, compare_args=['reason']).",
+  "prior_status": "resolved",
+  "prior_note": "The prior review rated this Minor for a Tier-1/Tier-2 reason-code overlap. No data changed. I re-graded it because the doc's explicit 'always select from the highest tier that applies' rule removes the ambiguity, so the overlap does not meet the bar for a defect.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). ACTION grading is lenient: it only checks that some transfer carries the gold reason. The agent may transfer before the 8th refusal (the customer says 'I want to speak to someone who can actually help me!' earlier). The reason code would be the same, so the grade is unaffected."
+}

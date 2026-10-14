@@ -1,0 +1,17 @@
+{
+  "task_id": "task_058",
+  "severity": "None",
+  "headline": "Clean: EcoCard plus Silver Account is the single best net-return combination for $20,000, and the agent only has to open the savings account.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I tabulated every savings account against every personal card's APY bonus (from each savings doc's credit-card bonus list) and annual fee, for $20,000 held one year. Gold Rewards was excluded because it requires Rho-Bank+ and the customer has none (rho_bank_subscription false). Diamond Elite was excluded as invitation-only. Accounts with a minimum above $20k were excluded (Gold Plus $25k, Platinum and above). Results: Silver Account (4.0% tier at >= $10k) + EcoCard (+2.2%, silver_account_006) = 6.2% -> $1,240 - $50 = $1,190. Next best: Gold + EcoCard 6.1% -> $1,170, then Gold + Silver Rewards 5.7% -> $1,140. The Silver 0.025% relationship bonus only widens the gap. So the agent opens a 'Silver Account' savings account. The user applies for the EcoCard with fixed arguments. This matches the gold, and the gold replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; that still holds.",
+  "notes": "initial_state.initialization_data puts 'users'/'accounts' at the top level instead of under agent_data, so Task.model_validate yields InitializationData(agent_data=None, user_data=None) and the block is silently ignored. Harmless: db.json already holds the identical tb58a3c9d2 user and chk_tb58a3c9d2 Light Blue account. The user script names the answer ('When the agent recommends the EcoCard and Silver Account combination...') and tells the simulator to apply for EcoCard. If an agent recommends a different card but still opens Silver Account, the simulator may apply for EcoCard anyway and the run could pass. This is a lenient-grading risk, not a false failure. Gold Plus with a Bronze Rewards card would be 6.15% ($1,230) if one ignored that $20k is under the $25k Gold Plus minimum; the $15/month fee (gold_plus_005) brings it to $1,050, so the answer is unchanged. Gold has no get_all_user_accounts read, so any read the agent makes is not logged."
+}

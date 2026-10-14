@@ -1,0 +1,17 @@
+{
+  "task_id": "task_078",
+  "severity": "None",
+  "headline": "Lost-wallet task with three debit cards is solvable from the documents; the gold freezes, unfreezes, closes and reorders exactly as the customer and policy require.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Reconstructed: verify, list accounts, read cards for each account, freeze all three on the customer's explicit request, read transactions (chk_mc78a5b9d2_3 has two 'pending' rows so the Light Green card stays frozen per doc_..._025 requirement 4), count Light Blue replacements (dbc_mc78a5b9d2_lb lost 07/25/2025 + _old1 lost 03/15/2025 = 2 in 12 months, ENTRY max 2, customer declines the $25 fee), unfreeze then close Light Blue and Green (close_debit_card_4721 only accepts ACTIVE/PENDING), and order the Green (MID) card EXPEDITED delivery_fee 15, CLASSIC design_fee 0 to the address on file. This matches gold[0..21]; the gold replay succeeds with no tool errors.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review rated this task clean; v1.0.1 only added the get_all_user_accounts_by_user_id_3847 read (078_1a), which any agent needs to find the account ids, and the task is still clean.",
+  "notes": "The final state carries the frozen_date/unfrozen_date fields that the freeze-then-unfreeze path leaves. Doc_..._026 says to freeze when the card is misplaced and to close once it is confirmed lost. Here the customer asks to freeze at the opening and confirms the loss only in step 4, so the freeze-first gold is the path the docs favour. An agent that skips the freeze would diverge (compare task_079, where the theft is confirmed at the opening). Two ordering points: ordering the Green replacement before closing the old card would set issue_reason='first_card' instead of 'lost' in order_debit_card_5739, and doc_..._029/_025 imply close-then-order. The tier mapping (Green Account = MID, Light Blue/Light Green = ENTRY) appears only in doc_..._005, which is in required_documents. get_credit_card_accounts_by_user returns no records for mc78a5b9d2, so the doc_..._030 cross-sell does not trigger. Gold-required discoverable reads: get_all_user_accounts_by_user_id_3847, get_bank_account_transactions_9173, get_debit_cards_by_account_id_7823; all are needed to do the task anyway."
+}

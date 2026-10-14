@@ -1,0 +1,37 @@
+{
+  "task_id": "task_048",
+  "severity": "Major",
+  "headline": "For the Gold card, several Rho-Bank cards beat the competitor's 3.25% travel/software rate, but the gold accepts only an application for the Silver Rewards Card.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The 'found a better card' step says to offer 'a card with similar or better benefits'. The Silver Rewards Card (4% travel/software, $0 fee) qualifies, but so does the Platinum Rewards Card (10% on all purchases, $200 fee, 0% FX), and Business Silver earns 10% on travel/software. The customer applies for whatever 'competitive or better' card the agent presents, and the gold stores only card_type 'Silver Rewards Card'.",
+      "evidence": [
+        "user instructions: \"I found a card at another bank that offers 3.25% back those\" [travel, software]; step 8: \"If the agent explains the card details and they're competitive or better than the competitor: Apply enthusiastically with the apply_for_credit_card tool.\"",
+        "doc_credit_cards_credit_card_account_logistics_003: \"Found a better card: Ask what features attracted them. If Rho-Bank offers a card with similar or better benefits, offer to help them apply\"",
+        "doc_credit_cards_silver_rewards_card_002: travel and software transactions \"earn 4.0% back\"",
+        "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"",
+        "doc_business_credit_cards_business_silver_rewards_card_002: \"Earn 10.0% cash back on eligible travel and software purchases\"",
+        "gold[18].arguments.card_type = \"Silver Rewards Card\"",
+        "Replay: gold with card_type 'Platinum Rewards Card' -> verified match False (credit_card_applications differs)"
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "An agent that recommends the strictly higher-earning Platinum Rewards Card, or presents both cards, can lead the simulator to apply for a different card. The credit_card_applications record then differs and the task fails, even though the documents support that recommendation.",
+      "suggested_fix": "Give the customer a constraint that leaves only Silver Rewards, e.g. 'I won't pay an annual fee' (which rules out Platinum and Business Silver), or have the customer name the Silver Rewards Card once the agent lists options."
+    }
+  ],
+  "solution_check": "Green: no blockers, but closure history clsr_e3f4a5b6c7_green_001 (09/15/2025) falls within a year, so retention is skipped and the card is closed (gold[1-8]). EcoCard: order ccord_e3f4a5b6c7_eco_001 has status SHIPPED, so closure is blocked. Gold card: $175.00 is paid from checking 07 ($3650.00), the reason is found_better_card, and the user applies for a better card. Crypto-Cash Back: no history, the customer is dissatisfied, and Step 5 entry-tier gives a $5 credit. Everything matches the gold except that the choice of replacement card is not unique.",
+  "prior_status": "new",
+  "prior_note": "The prior review found it clean. The non-unique card recommendation was not reported.",
+  "notes": "Scorer dependence: the Crypto-Cash Back reason ('crypto rewards ... isn't really worth it', 'I don't use cryptocurrency much') could be unhappy_with_rewards or not_using_card. Under exact upstream grading that would be a second ambiguity. The verified scorer strips closure_reason, so it does not count here. The Platinum first-year promo (platinum_rewards_card_009, 2024-06-01 to 2024-12-31) has expired, so Platinum would cost $200 a year. That makes it somewhat less attractive than the $0 Silver card, but the simulator's 'competitive or better' test does not rule it out."
+}

@@ -1,0 +1,69 @@
+{
+  "task_id": "task_097",
+  "severity": "Blocker",
+  "headline": "The Silver savings correction leaves out a 0.025% relationship bonus that the task's own documents grant, and that the near-identical task_093 includes, so a careful agent's credit and report fail.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "Silver expected APY omits the Silver relationship bonus. A required doc grants +0.025% for holding multiple Rho-Bank products, this customer holds 4 savings, 4 checking, and 5 cards, and task_093 applies the same bonus to a 2-product customer.",
+      "evidence": [
+        "doc_savings_accounts_silver_account_002 (required here): \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+        "doc_savings_accounts_silver_account_005: \"Eligible customers receive a relationship APY bonus of 0.025% added to the base Silver APY.\"",
+        "doc_bank_accounts_bank_accounts_(general)_044 step 4: \"determine all applicable APY components (base rate, tier rate, linked checking boost, credit card bonuses, relationship bonus)\"",
+        "gold[14].arguments.expected_apy = 6.65 (= 4.0 + 0.45 Bluest + 2.2 EcoCard); gold[9].arguments.amount = 220.84",
+        "task_093 gold expected_apy = 4.275 (= 4.0 + 0.25 + 0.025 relationship)"
+      ],
+      "gold_action_refs": [
+        9,
+        14
+      ],
+      "why_it_matters": "A doc-faithful agent computes 6.675%: 100,000 x 6.675% / 12 = $556.25, minus $333.33 = $222.92 credit. Both the savings credit and the report diverge from the gold, so the DB hash fails. The gold is reachable only by ignoring a required doc that the benchmark rewards in task_093.",
+      "suggested_fix": "Set Silver expected_apy to 6.675 and the credit/amount_difference to 222.92 (matching task_093), or define relationship-bonus eligibility so that it excludes this customer."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Even under the gold's 6.65%, the Silver credit depends on an undocumented rounding order: rounding expected interest first gives $220.84, while computing the APY gap directly gives $220.83.",
+      "evidence": [
+        "sav_mc80w7k3x9_silver.current_holdings = 100000.00; interest credit 333.33",
+        "100,000 x 6.65% / 12 = 554.1667 -> 554.17 - 333.33 = 220.84 (gold)",
+        "100,000 x 2.65% / 12 = 220.8333 -> 220.83",
+        "gold[9].arguments.amount = 220.84; gold[14].arguments.amount_difference = 220.84"
+      ],
+      "gold_action_refs": [
+        9,
+        14
+      ],
+      "why_it_matters": "The amount feeds the account balance, the credit transaction id (savings_credit:{account}:{type}:{amount}), and the report, so a one-cent difference fails the hash.",
+      "suggested_fix": "Choose balances whose differences are exact to the cent, or state the rounding convention in doc_043/044."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "Silver Plus has its own 0.025% relationship bonus with undefined 'relationship criteria' (in a retrievable but non-required doc), plus a direct-deposit +0.25% bonus; the gold applies neither. An agent that applies the Silver relationship bonus by analogy would also apply this one.",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_002: \"Earn an additional relationship APY bonus of 0.025% when you qualify under the relationship criteria.\"",
+        "doc_savings_accounts_silver_plus_account_006 (required): \"If you set up direct deposit, your APY increases by an additional 0.25%\"",
+        "gold[17].arguments.expected_apy = 5.3"
+      ],
+      "gold_action_refs": [
+        12,
+        17
+      ],
+      "why_it_matters": "Applying the 0.025% gives 5.325% and a $12.38 credit (18,000 x 0.825% / 12 = 12.375), which does not match $12.00. The direct-deposit bonus is unlikely to be applied, since the payroll deposit goes to Blue checking.",
+      "suggested_fix": "Define the Silver Plus relationship criteria, or exclude this customer from them, consistently with the Silver fix."
+    }
+  ],
+  "solution_check": "Platinum: 6.5 + 0.8 (Blue; beats Light Green 0.65) + 0.35 (Diamond Elite card) = 7.65%; 446.25 - 379.17 = $67.08, matches. Diamond Elite: 7.5 + 0.2 (Light Green; beats Evergreen 0.15) + 0.5 (Diamond Elite card) = 8.2%; $70.00, matches. Silver Plus: tier-2 4.5 + 0.35 (Blue) + 0.45 (EcoCard) = 5.3%; $12.00, matches unless relationship criteria are applied. Silver: 4.0 + 0.45 (Bluest) + 2.2 (EcoCard) + 0.025 (relationship bonus, doc_002/005) = 6.675%, giving $222.92, which does not match the gold's 6.65% / $220.84.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Major for the same omitted 0.025% Silver relationship bonus; I upgrade to Blocker because the doc-faithful computation (and task_093's own convention) fails exact-hash grading, and I add the cent-rounding ambiguity on the same credit.",
+  "notes": "The customer's misremembered balances and expected amounts are distractors resolved by DB reads. The notes' 'System used Blue (+0%)' for Diamond Elite is odd, since Blue is not a Diamond Elite pairing, but the actual APY 7.5% is just base. doc_012 pairings confirm all chosen boosts."
+}

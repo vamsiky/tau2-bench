@@ -1,0 +1,17 @@
+{
+  "task_id": "task_066",
+  "severity": "None",
+  "headline": "The best savings-plus-checking-plus-card combination for $6,000 can be worked out uniquely from the documents, and the official answer matches it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Savings accounts with an ongoing minimum at or below $6,000: Bronze 2.0%, Silver 2.5% (tier 1), Silver Plus 3.0% (tier 1), Green Account (savings) 4.0%. Gold needs $10,000 (or $5,000 only with a Gold Rewards Card, which requires Rho-Bank+, which the customer lacks). The best raw combo is Green savings 4.0% + Evergreen +0.55% (doc_..._(general)_012 pairing 3; evergreen_account_001) + a card. Card bonuses on Green savings (green_account_(savings)_003): Silver +0.45% ($0 fee) = 5.00%, EcoCard +0.5% ($50 fee) = 5.05%, Diamond Elite +0.6% (invitation-only, $495). Net yield: Silver $300.00 vs EcoCard $303.00 - $50 = $253.00, and the customer explicitly asks whether a fee card's extra interest covers the fee, so Silver Rewards is the unique answer. The other route, Silver savings 2.5% + EcoCard +2.2% + Green checking +0.25%, gives 4.95% (4.975% with the 0.025% relationship bonus); Bluest (+0.45% on Silver) needs a $75,000 opening deposit. Savings must be opened while Light Blue (opened 11/01/2024) still satisfies the 14-day checking-tenure check (doc_..._(general)_002), then Light Blue is closed (no early-closure fee, $0.00 balance). Gold replays cleanly. Opening Evergreen before the savings account, or passing a free-text closure reason, still matches under the verified scorer.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review rated this task clean, and so does this one.",
+  "notes": "Residual risk, not a defect: doc_..._(general)_001 gives 'Green Account (checking)' as an example official name. By analogy an agent could pass 'Green Account (savings)' for the savings account, which changes the accounts table (replayed: 'table accounts differs'). The savings procedure doc_..._(general)_002 requires a name 'ending with 'Account'', and doc_..._012 writes 'Green Account (savings)' with the parenthetical as a type qualifier, so 'Green Account' is the derivable value. The gold includes get_all_user_accounts_by_user_id_3847. It is the only way to learn the Light Blue id chk_rp65a7b3c4, and skipping it fails the verified scorer ('missing [get_all_user_accounts_by_user_id_3847]'). Passing waive_early_closure_fee=true writes early_closure_fee_waived=true and fails. Evergreen's $6/month maintenance fee (waived at $500) exceeds its $33/yr boost on $6,000. That only matters if checking fees enter the comparison, and the customer wants a new checking account regardless. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

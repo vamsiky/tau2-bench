@@ -1,0 +1,51 @@
+{
+  "task_id": "task_092",
+  "severity": "Major",
+  "headline": "The Blue-card fraud closure and the security-hold transfer are well-defined, but the Green card's outcome and the Evergreen 'unlock' each rely on readings that a careful agent could reasonably make differently.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "On the Green card the customer confirms she made the three sub-minute attempts herself (B3=3, so single-flag escalation). The protocol's Step 6 options include a PIN reset, which the customer would accept. The gold instead closes the card with reason fraud_suspected and reorders, even though no fraud is suspected.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\"",
+        "doc_041 STEP 6 options: \"Card closure and replacement (recommended if fraud suspected)\", \"Transfer to security team\", \"PIN reset (issues new PIN, invalidates potential compromise)\"",
+        "user instructions item 21: \"If agent offers to close and replace OR transfer to security: Fine, I'll take a new card then.\"; item 23: \"If agent offers to reset the PIN on the Green card: Sure, set it to 4567.\"",
+        "gold[13]: close_debit_card_4721 dbc_rw42b8d3e1_green reason fraud_suspected; gold[14]: order_debit_card_5739 chk_rw42b8d3e1_green"
+      ],
+      "gold_action_refs": [
+        13,
+        14
+      ],
+      "why_it_matters": "An agent that offers the PIN reset, which is the natural remedy for confirmed fat-fingering, gets 4567 from the customer and leaves a different DB (replayed: hash differs). An agent that closes the card might also choose a reason other than fraud_suspected, which changes closure_reason and the new card's issue_reason.",
+      "suggested_fix": "State in doc_041 that single-flag escalation forbids a PIN reset and requires closure, or script the customer to refuse a PIN reset."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "The Evergreen card scores LOW or MEDIUM and can be unlocked. With one prior lock, the protocol only requires offering lock notifications, not a PIN reset. No document or tool describes how to unlock a card, and the gold unlocks it by resetting the PIN to 8127.",
+      "evidence": [
+        "doc_041 STEP 5: \"1 prior lock: After unlock, MUST offer: 'Would you like me to enable PIN lock notifications...'\"",
+        "doc_bank_accounts_bank_accounts_(general)_027: the reset procedure is for \"Customer forgot their current PIN\"; unlocking is not mentioned",
+        "tools.py reset_debit_card_pin_6284 is the only code that sets card[\"pin_locked\"] = False",
+        "gold[18]: reset_debit_card_pin_6284 dbc_rw42b8d3e1_evergreen new_pin 8127"
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "An agent has to infer that resetting the PIN is the unlock mechanism. If it does not, the reset write is missing and the hash fails.",
+      "suggested_fix": "Document that unlocking a PIN-locked card is done with reset_debit_card_pin_6284, or add an unlock tool."
+    }
+  ],
+  "solution_check": "Blue: A1=3 (Tijuana MX vs Denver CO) triggers single-flag escalation, and the customer was asleep, so the agent closes with fraud_suspected and orders a replacement. Blue is Mid tier, so the fastest free shipping is STANDARD and the only free design is CLASSIC, matching gold[8] and gold[10]. Green: 3 (B3) + 2 (D3, Blue's fraud alert) = 5, with a 3-point single flag; the gold's close-and-reorder is one of the Step 6 options. Evergreen: about 4-6 (B3 1-2, D1 1, D3 2), so after confirmation it can be unlocked, matched via the reset. Light Blue has security_hold, so the agent transfers (no DB write; the gold transfer is not needed for the hash).",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this task Minor for fuzzy thresholds. Under exact-hash grading, the Green card's alternative PIN-reset path and the undocumented unlock-by-reset convention can each change the DB, so I rate it Major.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot (evaluator_env.py exact agent+user DB hash after gold replay; build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool json.loads(parse_int=float) and logging only when the underlying tool mutates state or is allowlisted). Extra facts: the logged record is {tool_name, status} keyed by tool name only, so a gold-required read is satisfied by any call to that tool with any arguments; unlock_discoverable_agent_tool writes nothing to the DB; transfer_to_human_agents (GENERIC) writes nothing. Replays: replacing the Green close/order with a 4567 PIN reset changes the hash; dropping gold[20] (transfer) does not. The Blue card has fraud_alert_active=true with alert_source=velocity_monitor; that alert is moot because the card is closed. D3 for Evergreen counts the Blue card's fraud alert even though Blue has been closed by then; Evergreen stays LOW or MEDIUM either way."
+}

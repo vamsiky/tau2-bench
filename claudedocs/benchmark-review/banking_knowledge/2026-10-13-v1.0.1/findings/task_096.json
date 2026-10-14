@@ -1,0 +1,17 @@
+{
+  "task_id": "task_096",
+  "severity": "None",
+  "headline": "Clean: each savings account's highest checking boost and highest credit-card bonus are documented, and both corrections follow uniquely.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze $30,000: base 2.0% (bronze_account_001). Checking boosts: Bluest 0.7 (bluest_account_003) vs Green Fee-Free 0.4 (green_fee-free_account_005); Gold Years has no Bronze pairing. Credit cards: Platinum 0.55, Diamond 0.15 (bronze_account_006), Gold Rewards 0.25, Crypto 0.3 (bronze_account_007); the highest is 0.55. Expected 3.25%, actual 63.75 x 12 / 30000 = 2.55%, difference $17.50. Gold Plus $60,000: base 6.0%; Gold Years 0.5 vs Green Fee-Free 0.35, and Bluest has no Gold Plus pairing. Credit cards: Gold Rewards 0.35 is highest (gold_plus_account_009). Expected 6.85%, actual 327.5 x 12 / 60000 = 6.55%, difference $15.00. Both match the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. Both apply_savings_account_credit_6831 and submit_interest_discrepancy_report_7294 cast amounts with float(), and record ids embed f'{amount}' / f'{expected_apy}', so 33 and 33.0 hash identically, but any difference in value (even one cent) changes the hash. Gold read get_bank_account_transactions_9173 and get_all_user_accounts_by_user_id_3847 are allowlisted, so skipping either changes the hash. Monthly interest convention: the posted credits equal balance x APY / 12 exactly (simple, not daily-compounded), so the agent can infer the convention from the data. No Bronze or Gold Plus document defines a relationship bonus. The Bronze credit-card bonuses are split across two docs (006 and 007) without conflict. doc_checking_accounts_green_fee-free_account_005, which holds the Green Fee-Free boost values, is not in required_documents but is retrievable."
+}

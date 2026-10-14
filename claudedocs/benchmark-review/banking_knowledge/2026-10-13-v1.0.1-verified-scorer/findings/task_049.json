@@ -1,0 +1,36 @@
+{
+  "task_id": "task_049",
+  "severity": "Blocker",
+  "headline": "The gold includes a customer-side 'request human transfer' write that the customer is never told to perform, so the result depends on whether the user simulator happens to call that tool exactly once.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "Gold action 17 is a user-side request_human_agent_transfer call, which writes a transfer_request_1 row to human_transfer_requests. The customer instructions only say to ask verbally for a transfer. The simulator guidelines say to call tools only when the agent asks, and the agent cannot see or request this tool.",
+      "evidence": [
+        "gold[17]: requestor user, request_human_agent_transfer {}",
+        "tools.py request_human_agent_transfer: add_to_db(\"human_transfer_requests\", request_id, record) with request_id = f\"transfer_request_{request_count}\"",
+        "user instructions: \"Transfer me to a human agent.\" (no mention of the tool)",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"Only call a tool if the agent has requested it or if it is necessary to answer a question the agent has asked.\"",
+        "contrast task_034/task_081 instructions: \"Call the `request_human_agent_transfer` tool (for tracking purposes — the agent cannot see this)\"",
+        "Replay: gold without gold[17] -> verified match False (human_transfer_requests: only_gold transfer_request_1); gold with the call made twice -> False (only_pred transfer_request_2)"
+      ],
+      "gold_action_refs": [
+        17
+      ],
+      "why_it_matters": "The agent cannot influence this table. Unless the simulator spontaneously calls the tool exactly once, against its guidelines, a perfect agent trajectory fails the DB check.",
+      "suggested_fix": "Remove gold[17]. Otherwise, add the explicit instruction used in task_034/081 ('call the request_human_agent_transfer tool exactly once when you ask for a supervisor')."
+    }
+  ],
+  "solution_check": "Green: closure history clsr_h1i2j3k4l5_green_001 (08/20/2025) falls within a year, so the card is closed without retention. EcoCard: replacement ccord_h1i2j3k4l5_eco_001 is SHIPPED, so closure is refused despite the customer's lie. Gold card: $175 balance against $50 in checking 08, so it cannot be paid. Crypto: reason annual_fee, oldest relationship 02/01/2024 (under 2 years), downgrade offered and refused, entry-tier $5 credit, and no extra credit for the Platinum lie (there is no Platinum account). All agent-side actions match the gold. Only the user-side transfer write is outside the agent's control.",
+  "prior_status": "new",
+  "prior_note": "The prior review found it clean. It did not report the uninstructed user-side write in human_transfer_requests.",
+  "notes": "Scorer dependence: to learn that checking holds only $50, the agent must call get_all_user_accounts_by_user_id_3847, which is not in the gold. As an extra read it is not logged. If the agent also tries pay_credit_card_from_checking_9182, the tool returns an insufficient-funds error but the call is logged. Replay shows this passes the verified scorer (True) but fails exact upstream grading. transfer_to_human_agents writes nothing to the DB, so whether and when the agent transfers does not affect the DB result. doc_credit_cards_credit_cards_(general)_010 (in required_documents) covers a 3-request transfer protocol for purchase declines only and does not apply here."
+}

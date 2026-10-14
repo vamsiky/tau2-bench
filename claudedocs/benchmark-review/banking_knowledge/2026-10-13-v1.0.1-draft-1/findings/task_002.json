@@ -1,0 +1,17 @@
+{
+  "task_id": "task_002",
+  "severity": "None",
+  "headline": "Clean: the Platinum Rewards Card gives the highest cash back (10%) and its fee after the documented $150 rebate ($50 net) fits the customer's $100 budget given her $50,000 monthly spend.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Highest cash back across personal cards is Platinum at 10% (doc_credit_cards_platinum_rewards_card_002: 'You earn 10.0% cash back on all eligible purchases'). Its $200 fee minus the $150 rebate for meeting '$7500.00' monthly spend (platinum_007) gives $50 effective, under her $100 cap, and her $50,000/month spend clears the threshold. Diamond Elite (5%) is invitation-only and costs more. This matches gold[0] apply_for_credit_card(Platinum Rewards Card, Sera Chen, 250000, false).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean; v1.0.1 also removed the old contradiction in platinum_rewards_card_002's title ('Earning 4% Cash Back' -> 'Earning 10% Cash Back', #388), which makes the 10% rate unambiguous.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). The agent has to ask about monthly spend (the user only discloses it when asked) to justify the rebate; that is a normal elicitation step, not a defect. The Platinum first-year fee waiver (platinum_009) expired 2024-12-31. Credit-score '$750' formatting in platinum_001 is not load-bearing here."
+}

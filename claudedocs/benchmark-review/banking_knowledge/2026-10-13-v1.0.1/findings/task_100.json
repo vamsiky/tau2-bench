@@ -1,0 +1,17 @@
+{
+  "task_id": "task_100",
+  "severity": "None",
+  "headline": "Clean: the on-file open date gives 65 days of tenure, which rules out World Blue, so Hunter Green's $175 is the best referrer bonus available.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The earliest checking account (World Blue) opened 09/10/2025, which is 65 days before 11/14/2025. Programs with tenure of 60 days or less and a deposit of $31,000 or less: Hunter Green $175, Cobalt Blue $150, Sky Blue $150 (45d, new LLC), Navy Blue $100. Lime Green, World Blue, and True Blue need 90 days and Beige needs 120. The customer has no prior referrals and a separate address. The answer is uniquely Hunter Green Account, which matches the gold.",
+  "prior_status": "resolved",
+  "prior_note": "The prior review rated this Minor because the customer misremembers her tenure ('mid-July'). I treat that as an intended verification trap: doc_047 defines tenure from the earliest checking open date, which is in the DB. It is not a defect.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. submit_referral (user tool, no tool-gating) writes {referral_id=hash(user_id, account_type), referred_account_type, NO_PROGRESS, date=11/14/2025}, so the DB records only the account_type string and whether the referral was submitted, not who was referred. get_referrals_by_user is an always-available read (not logged). get_all_user_accounts_by_user_id_3847 is discoverable and is logged only when the gold calls it. Business referral terms (referrer+referred; deposit; tenure; cap/yr): Navy Blue 100+75 $5k 60d 10; Cobalt Blue 150+100 $7.5k 60d 10; Hunter Green 175+125 $10k 60d 10; Lime Green 200+150 $15k 90d 12; Sky Blue 150+250 $10k 45d 8 (company <= 4 years old); World Blue 300+200 $25k 90d 12; True Blue 350+250 $50k 90d 15; Beige 500+350 $100k 120d 15. If an agent trusted the customer's 'mid-July' (about 120 days), it would recommend World Blue ($300), so the task depends on verifying the date with the gold-required get_all_user_accounts_by_user_id_3847 read. That read is logged and has to be made."
+}

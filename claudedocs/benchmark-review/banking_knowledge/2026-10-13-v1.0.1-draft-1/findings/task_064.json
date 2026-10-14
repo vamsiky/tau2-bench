@@ -1,0 +1,44 @@
+{
+  "task_id": "task_064",
+  "severity": "Minor",
+  "headline": "Gold Rewards Card plus Gold Plus Account is the unique best net return on $30,000, but the customer never gives the credit score the Gold card requires, and the KB still prints that score as a dollar amount.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The optimal card (Gold Rewards) requires a minimum credit score of 720, but the user script never states a score, so an agent checking eligibility gets an improvised answer from the simulator.",
+      "evidence": [
+        "doc_credit_cards_gold_rewards_card_001: \"Minimum credit score required: $720\"",
+        "user_scenario: no credit score anywhere (income $120,000 and Rho-Bank+ are given)",
+        "gold[1].arguments.card_type = \"Gold Rewards Card\""
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "If the simulator answers with a score below 720, a policy-following agent rules out Gold Rewards and recommends Bronze Rewards + Gold Plus (6.15%, $1,845), which fails the DB match.",
+      "suggested_fix": "Add 'Your credit score is about 760' to the user script."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Corrupted value: a credit score written as a dollar amount. v1.0.1 cleaned other '$' corruptions in this same doc (purchase protection '$105 days' -> '105 days') but left this one.",
+      "evidence": [
+        "doc_credit_cards_gold_rewards_card_001: \"Minimum credit score required: $720\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Cosmetic; an agent can read it as 720. Listed for completeness.",
+      "suggested_fix": "Change '$720' to '720'."
+    }
+  ],
+  "solution_check": "Filters: 10-12 withdrawals/month (Bronze 6 and Green 8 fail; Green+EcoCard reaches 15 but only 4.5%), no crypto, card fee < $100 (Platinum $200, Diamond $495/invitation, Green Rewards $100 not under). At $30k, net = interest - fee: Gold Plus 6.0% + Gold Rewards +0.35% (gold_plus_account_009) = 6.35% -> $1,905, $0 fee (Rho-Bank+ held; db users[jl72b4e9d1].rho_bank_plus_subscription = true). Others: Gold Plus + Bronze 6.15% = 1,845; Silver tier 2 4.0% + EcoCard 2.2% = 1,860 - 50 = 1,810; Gold + EcoCard 6.1% = 1,830 - 50 = 1,780; Gold + Silver Rewards 5.7% = 1,710. Platinum Account needs a $50k maintained balance (at $30k, 6.65% with Gold card = 1,995 - $300 fees = 1,695). Unique optimum matches gold (user applies 'Gold Rewards Card', income 120000, subscription true; agent opens 'Gold Plus Account').",
+  "prior_status": "new",
+  "prior_note": "Prior v1.0.0 review rated this clean; the missing credit score and the remaining '$720' corruption were not reported (v1.0.1 changed this doc only for the purchase-protection '$105' fix).",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. gold_account_013 states 'Total APY with the bonus: 6.0%' for 5.5% + 0.025%, an arithmetic error; even at 6.0%, Gold + Gold Rewards = $1,800 < $1,905, so the answer is unaffected. The gold has no get_all_user_accounts read, so calling it is harmless."
+}

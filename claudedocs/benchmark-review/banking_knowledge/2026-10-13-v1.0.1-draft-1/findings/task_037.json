@@ -1,0 +1,17 @@
+{
+  "task_id": "task_037",
+  "severity": "None",
+  "headline": "Clean: the replacement order and two fraud disputes with provisional credit both follow directly from the docs and the customer's answers.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The replacement order is the same as in task_036 (fraud_suspected, work address, expedited accepted). Both disputes use unauthorized_fraudulent_charge, contacted_merchant=false, full_refund, and issue noticed 11/14/2025. card_action=cancel_and_reissue because a replacement was ordered (doc_014). Provisional eligibility under doc_015: Silver opened 04/15/2024 (>60 days), fraud reason, $487.99 and $299.95 are between $25 and $5,000 (mid-tier), and there are no prior disputes. Both are true whether criterion 4 is read as history-only or as a running count (0 then 1 prior). Last-4 is 5320 from the user tool. All of this matches gold[0..7].",
+  "prior_status": "not_applicable",
+  "prior_note": "Agrees with the prior clean verdict.",
+  "notes": "Unlike task_031, the customer is not given her account id, so the agent must tell her cc_890389b165_silver when it hands over get_card_last_4_digits. The agent can read the id from get_credit_card_accounts_by_user, so this is not a gap. Calling get_user_dispute_history_7291 here is harmless (not in the allowlist, so not logged). The order tool sets the Silver account to CLOSED, and the dispute and last-4 tools ignore account status, so the replacement-then-dispute order works."
+}

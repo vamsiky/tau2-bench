@@ -1,0 +1,37 @@
+{
+  "task_id": "task_032",
+  "severity": "Minor",
+  "headline": "The gold matches the documented 'three speed-bumps, then transfer' protocol, but ACTION grading checks only that each tool was called at least once, so it never tests the count of three.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The three identical gold call_discoverable_agent_tool(initial_transfer_to_human_agent_0218) actions are all satisfied by a single call, and transfer_to_human_agents has compare_args=[]. An agent that calls 0218 once and transfers on the second request passes, which breaks doc_010's protocol.",
+      "evidence": [
+        "evaluator_action.py _check_actions: each gold action passes if ANY predicted tool call matches it (no count, no order); Action.compare_with_tool_call with compare_args=[] returns True for any call of that name",
+        "gold[1..3]: three identical call_discoverable_agent_tool {agent_tool_name: initial_transfer_to_human_agent_0218}, compare_args=['agent_tool_name']",
+        "gold[4]: transfer_to_human_agents {summary: \"\"}, compare_args=[]",
+        "doc_credit_cards_credit_cards_(general)_010: \"Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests.\""
+      ],
+      "gold_action_refs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "Correct work is not penalized, but premature transfers also score 1.0, so the task overstates protocol compliance.",
+      "suggested_fix": "Grade on DB or an env assertion that counts the 0218 calls and checks they come before the transfer, or have the ACTION evaluator honor multiplicity and order for this task."
+    }
+  ],
+  "solution_check": "doc_010 applies (purchase declines despite available credit, repeated human requests): unlock 0218, call it on requests 1-3, use transfer_to_human_agents on request 4. The user makes five requests, so the transfer comes on the 4th. This matches gold[0..4].",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The protocol and gold do agree; the new issue is that ACTION grading does not enforce the documented count.",
+  "notes": "The transfer_to_human_agents reason enum is not compared (compare_args=[]). No identity verification is needed or graded."
+}

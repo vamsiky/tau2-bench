@@ -1,0 +1,17 @@
+{
+  "task_id": "task_057",
+  "severity": "None",
+  "headline": "Blue Account is the only checking account that meets all of the customer's documented needs, the savings refusal leaves no DB trace, and the check deposit is scripted, so the task is clean.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I tabulated all ten personal checking products against the customer's criteria. Blue has a $0 overdraft fee, opt-in overdraft protection at $12.50 per transfer, direct deposit 1 day early, and a $625 waiver (within $500-700). Light Blue and Green Fee-Free offer 0 days early. Green (checking) has no overdraft protection. Evergreen documents no overdraft terms. Purple ($3,750) and Bluest ($112,500) waivers are too high. Dark Green (17-26), Light Green (13-24) and Gold Years (62+) fail on age. db.json has no accounts for a8c4e2f7b3, so the new Blue account (age 0) cannot support savings, and gold correctly omits it. A denied open_bank_account_4821 attempt would log the same tool-name record as the checking open, so it does not change the hash. The $2,000 deposit fits Blue's $2,500 mobile limit.",
+  "prior_status": "resolved",
+  "prior_note": "The prior Minor ('only one checking doc in required_documents') is not a validity defect: the agent retrieves from the full KB, and a full-KB comparison still makes Blue the unique answer, so I do not carry it forward.",
+  "notes": "The persona contradicts itself ('You remember being a 1 year customer with Rho-Bank' / 'in addition to my old one year old checking account' vs 'No existing Rho-Bank accounts (new customer)'). db.json has no account for this user, so the agent must trust the DB. This looks like part of the adversarial design, and the gold is the same either way. The get_current_time check the notes require is not graded and does not touch the DB."
+}

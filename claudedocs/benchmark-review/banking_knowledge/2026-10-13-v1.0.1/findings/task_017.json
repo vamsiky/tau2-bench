@@ -1,0 +1,48 @@
+{
+  "task_id": "task_017",
+  "severity": "Major",
+  "headline": "The gold disputes two clearly wrong rewards, but a third transaction is over-credited by one point under every rounding rule, and nothing tells the agent whether to dispute it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "txn_31fd03682992 (Hilton Seattle, Travel, $289.50) earns exactly 289.50 x 4 = 1158 points, with no fractional part, yet it is stored as 1159. This is a 1-point over-credit under any rounding convention. The gold leaves it out without any stated rule for ignoring over-credits or small differences.",
+      "evidence": [
+        "db.json credit_card_transaction_history[txn_31fd03682992]: transaction_amount '$289.50', category 'Travel', rewards_earned '1159 points'",
+        "doc_credit_cards_silver_rewards_card_002: \"Pay with your card for eligible travel and software transactions to earn 4.0% back\"",
+        "doc_credit_cards_credit_cards_(general)_003: \"Use this process when a customer believes there is a discrepancy between the cash back they received and the cash back they should have received.\"",
+        "task_017 instructions: \"help you fix any errors\"",
+        "gold disputes only txn_cfabb609133d and txn_913d14a20dc5 (gold[2], gold[3])"
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "An agent that reports every discrepancy, which is what tasks 018 and 022 reward for overpaid transactions, hands the user a third dispute. That adds a cash_back_disputes row and a user_discoverable_tool_calls row. A replay of gold plus a dispute on txn_31fd03682992 mismatches on both the agent and user hashes.",
+      "suggested_fix": "Set txn_31fd03682992.rewards_earned to '1158 points', or add it to the gold if over-credits are meant to be disputed."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rewards rounding rule that fixes the dispute set lives in doc_credit_cards_credit_cards_(general)_007, which is retrievable from the KB but is not listed in required_documents.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "Without the floor rule, txn_cedd88ce1f65 (Adobe, Software, $54.99 x 4 = 219.96, stored 219) also mismatches under round-half-up (220), giving a fourth candidate dispute."
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under the default retrieval configs the agent can find the floor rule, so the gold is reachable. Under configs that inline only required_documents (golden_retrieval / required_docs prompts) the rule is absent, the natural round-half-up convention flags many correctly credited transactions, and the extra disputes change the DB hash.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Silver Rewards Card: 4% on Travel/Software, else 1%, with floor rounding per doc_..._(general)_007. Expected vs stored: e4ed366 1800/1800; 913d14 floor(156.78)=156 vs 15; 31fd03 1158 vs 1159; cfabb6 floor(87.25)=87 vs 47; cedd88 floor(219.96)=219 vs 219. The two gross under-credits match gold[2] and gold[3]. The 1-point over-credit on 31fd03 is the unresolved case.",
+  "prior_status": "persists",
+  "prior_note": "The prior Major still holds, now for a narrower reason: the floor rule is documented in the KB (doc_..._(general)_007, unchanged since v1.0.0), which settles cedd88, but the off-by-one on 31fd03 fits no rounding rule.",
+  "notes": "txn_913d14a20dc5 also has an open duplicate-charge transaction dispute (transaction_disputes.dsp_7a3e91b4c2d8, status UNDER_REVIEW, provisional credit given). An agent that sees it via get_user_dispute_history_7291 might hesitate to file a cash-back dispute on a charge that may be reversed. It does not affect the hash unless the agent changes the dispute set. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

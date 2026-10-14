@@ -1,0 +1,17 @@
+{
+  "task_id": "task_015",
+  "severity": "None",
+  "headline": "Clean: working through the five claimed referral offers against the docs leaves only the Platinum Rewards Card terms as correct and active, so giving the referral-link tool and having the customer call it for Platinum is uniquely right.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Under (general)_009's pre-check: Crypto-Cash Back has no documented program, so refuse. Business Gold is '$200 ... $7,500 within 90' but 'accepts new referrals until 2025-09-15' (closed), so refuse. EcoCard is documented as 'Receive 50' for '$500 within 60 days', not the claimed $200, so the terms are wrong and the agent refuses. Silver Zoom is $150 for $7,500/90 days, not the claimed $100 for $3,000, and 'No new referrals are accepted after 2025-10-01', so refuse. Platinum is 'referral bonus of $100' for 'at least $1,500 within 90 days', which matches. Fatima has no referrals in db.json, so the weekly cap cannot auto-reject. The agent gives get_referral_link (gold[0]), and the user calls it with ('890389b165', 'Platinum Rewards Card') (gold[1]). Both DB records are keyed only by tool name and by tool name plus arguments.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and no relevant data changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). The customer knows only her user ID and phone, i.e. 1 of 4 verification fields, so she cannot be verified. The gold path never touches her DB data: the agent only hands over a tool and the user generates the link. An agent that insists on reading referral history for the auto-rejection check would be unable to verify her. If it then refused the link, it would fail. If it somehow logged a verification, the extra write would break the hash. The policy ('ONLY verify ... if you need to access or modify their customer information') supports skipping verification, so I left this as a note. give_discoverable_user_tool stores only the tool name, so the 'arguments' JSON the agent passes does not affect the hash."
+}

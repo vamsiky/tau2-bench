@@ -1,0 +1,17 @@
+{
+  "task_id": "task_064",
+  "severity": "None",
+  "headline": "Clean: with a Rho-Bank+ subscription, Gold Rewards Card plus Gold Plus Account is the single best net-return combination for $30,000.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "At least 10-12 withdrawals a month rules out Bronze (6), Green (8; 15 only with EcoCard) and Silver (10; 15 only with the $200 Platinum card). No crypto removes Crypto-Cash Back. A fee under $100 removes Platinum ($200), Diamond ($495) and the $100 business Green Rewards card. $30k is enough for Gold Plus's $25k minimum, but Platinum and above need more. Results: Gold Plus 6.0% + Gold Rewards +0.35% (gold_plus_account_009; $0 fee, available with Rho-Bank+) = 6.35% -> $1,905. Next best: Gold Plus + Bronze Rewards 6.15% -> $1,845, then Gold Plus + Silver Rewards $1,830, then Gold + EcoCard $1,780. The answer is unique and matches the gold; the gold replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; that still holds.",
+  "notes": "Gold Rewards requires a 720 credit score. The customer's score is never stated, so the agent recommends without verifying it; the application is submitted by the user tool with fixed arguments, so this does not affect grading. The customer says both 'won't be adding or withdrawing the principal' and '10-12 withdrawals per month'. The tension is cosmetic: the withdrawal-count criterion is what the task tests. db.json users[jl72b4e9d1].rho_bank_plus_subscription = true matches the persona."
+}

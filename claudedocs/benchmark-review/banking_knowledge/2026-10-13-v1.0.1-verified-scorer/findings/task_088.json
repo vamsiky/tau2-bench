@@ -1,0 +1,52 @@
+{
+  "task_id": "task_088",
+  "severity": "Major",
+  "headline": "The KB's chip-mismatch procedure says to freeze the card until a replacement arrives and to follow the stolen-card protocol, while the gold closes it as fraud; the fraud charge's PIN/signature type is also never given.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The CODE 82 procedure says \"Follow stolen card protocol\" and \"Recommend freezing the card until a replacement arrives\". The gold instead closes the Evergreen card with reason fraud_suspected (via the doc_031 close_and_reissue mapping) before ordering. Freezing and then ordering leaves the old card FROZEN and gives the new card issue_reason first_card; closing as \"stolen\" gives issue_reason stolen.",
+      "evidence": [
+        "doc_checking_accounts_purple_account_007: \"If suspicious transactions found: Follow stolen card protocol to assist the customer. - Recommend freezing the card until a replacement arrives.\"",
+        "doc_031: \"'card_present_fraud' \u2192 'close_and_reissue'\"",
+        "task notes: \"agent must follow stolen card protocol: file dispute, CLOSE the card (not freeze), order replacement\"",
+        "Replay: freeze instead of close, then order -> old card FROZEN and new card issue_reason first_card (VERIFIED MATCH False)",
+        "Replay: close reason \"stolen\" -> new card issue_reason stolen vs gold fraud (VERIFIED MATCH False)",
+        "user instructions step 21: \"If agent says they'll freeze the card: 'Okay, if that's what needs to happen.'\""
+      ],
+      "gold_action_refs": [
+        12,
+        14
+      ],
+      "why_it_matters": "Two doc-supported alternatives both fail, and the second fails even under the verified scorer because the close reason flows into the new card's issue_reason.",
+      "suggested_fix": "Rewrite the CODE 82 step to \"file a dispute, close the card as fraud_suspected and order a replacement\", matching the gold."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "For the Electro Mart Miami dispute the gold stores transaction_type \"signature_purchase\" and pin_compromised \"no\". The customer script has no PIN or transaction-type answers, and the tool row is a generic debit_card_purchase. Signature follows only from reasoning that a cloned card used without a known PIN must be signed.",
+      "evidence": [
+        "tool row btxn_28eee7145c29: \"ELECTRO MART MIAMI FL\", -347.99, type debit_card_purchase",
+        "user instructions: no line covering PIN or PIN/signature for the Miami charge",
+        "gold[10] \"transaction_type\": \"signature_purchase\", \"pin_compromised\": \"no\""
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "Both fields are stored; \"pin_purchase\" or \"unknown\" are defensible and fail.",
+      "suggested_fix": "Script the PIN answer and the transaction type, or set them from a field in the transaction record."
+    }
+  ],
+  "solution_check": "Reconstructed: Green card ACTIVE with $380.47 balance and a pending $3,000 mobile deposit -> CODE 51 explanation, no write; Evergreen card has 3 chip failures, undamaged -> review transactions, customer disowns ELECTRO MART MIAMI $347.99 -> card_present_fraud dispute (liability $50, provisional true), close and order STANDARD/CLASSIC (\"standard option\"); Blue card CANCELLED with stolen_reported_by unknown_caller -> transfer to security (no DB effect). This matches the gold, which replays without errors, if the agent closes as fraud_suspected and codes the purchase as signature.",
+  "prior_status": "changed",
+  "prior_note": "Prior Minor cited an unlisted guidelines doc and a soft liability value; this review finds the CODE 82 freeze/close contradiction and unscripted dispute fields, rated Major. The task file did not change in v1.0.1.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. Ordering a replacement for the CANCELLED Blue card instead of transferring would write an order and fail, which is correct per doc_037 CODE 43."
+}

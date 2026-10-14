@@ -1,0 +1,25 @@
+{
+  "domain": "banking_knowledge",
+  "benchmark_version": "v1.0.1",
+  "benchmark_ref": "v1.0.1",
+  "run_date": "2026-10-13",
+  "reviewer": "claude-opus-5-5: 8 parallel reviewers + 4 independent verifiers (Claude Code subagents)",
+  "effort": "high (set explicitly on every agent)",
+  "scorer": "upstream v1.0.1 grading: exact DB hash after gold replay, gold-derived read-log allowlist, closure_reason compared",
+  "prompts": [
+    "prompts/review.md",
+    "prompts/verification.md"
+  ],
+  "prior_run": "2026-06-25-v1.0.0",
+  "companion_run": "2026-10-13-v1.0.1-verified-scorer",
+  "notes": "Run in parallel with the verified-scorer run on identical prompts, task batches, and inputs; only the scorer differs.",
+  "incidents": [
+    "Incident: the 066-077 reviewer shared a scratch folder name with the companion run's reviewer and briefly executed that reviewer's write script; it rebuilt its own findings from a separate folder. Verifiers in both runs use per-agent scratch folders."
+  ],
+  "reconciliation": {
+    "file": "../reconciliation-2026-10-13-v1.0.1.json",
+    "side": "upstream"
+  },
+  "comparison": "../comparison-2026-10-13-v1.0.1.html",
+  "title": "Banking v1.0.1 Upstream Review"
+}

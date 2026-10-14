@@ -1,0 +1,17 @@
+{
+  "task_id": "task_031",
+  "severity": "None",
+  "headline": "Clean: one Marriott dispute, filed as goods/services not as described, with no provisional credit; every argument comes from the customer, the docs, or the tools.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "User 890389b165 has one Marriott transaction (txn_adea68821a1d, $167.34, 11/07/2025, Silver Rewards). The customer's story ('paid for king suite, got standard double') maps to goods_services_not_as_described, which doc_015 lists as not eligible, so eligible_for_provisional_credit=false. Last-4 comes from the user tool: sha256('card_last4:cc_890389b165_silver') gives 5320. contacted_merchant=true, keep_active, full_refund, and issue_noticed_date 11/14/2025 (today per get_current_time) all match the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Agrees with the prior clean verdict.",
+  "notes": "The customer says 'about two weeks ago' but the transaction is dated 11/07 (one week before); with a single Marriott charge this is harmless. doc_014 lists resolution 'reversal_of_charge', which the tool rejects; not relevant here (full_refund)."
+}

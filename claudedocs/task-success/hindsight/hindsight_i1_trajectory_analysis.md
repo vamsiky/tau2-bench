@@ -6,7 +6,7 @@ bank, 3565 facts)**:
 
 - **PLAIN** — `hindsight` variant, plain prompt, 1 trial
   (`data/simulations/hs_task_*` / `hs_smoke_064`).
-- **FIX4** — `hindsight` variant + `claudedocs/i1_fixes/fix4_pointed.txt`, 1 trial
+- **FIX4** — `hindsight` variant + `claudedocs/task-success/i1-fixes/i1_fixes/fix4_pointed.txt`, 1 trial
   (`data/simulations/hs_fix4_task_*`).
 
 Agent `claude-opus-4-8`, SDK user-sim opus-4-8/high, `--sdk-nl-judge`. Sequences resolve

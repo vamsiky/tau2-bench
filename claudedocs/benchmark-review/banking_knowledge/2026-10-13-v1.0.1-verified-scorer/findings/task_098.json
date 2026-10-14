@@ -1,0 +1,17 @@
+{
+  "task_id": "task_098",
+  "severity": "None",
+  "headline": "Blue Account is the single best combined referral bonus ($65) the friend's $600 deposit qualifies for, and the 9-day window still has room.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Tenure: earliest checking account opened 09/14/2025, so 61 days. Referral history: 11/04 COMPLETE (10 days ago, outside the window) and 11/10 IN_PROGRESS, so at most 1 in the window and one more is allowed. Programs a $600 deposit qualifies for: Blue $35+$30=$65 ($500 minimum), Green Fee-Free $55, Green $50, Light Blue $50, Light Green $40; Evergreen ($750) and higher do not qualify. Blue is the unique maximum, and the customer's submit_referral(\"Blue Account\") matches gold[2].",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior review rated this clean; still clean.",
+  "notes": "get_referrals_by_user is an always-available READ and logs nothing. Replay: an extra discoverable read (get_all_user_accounts) leaves the verified match True; it is also excluded from the logs by the read allowlist. The customer's remembered referral dates conflict with the DB, which the agent resolves by reading the DB."
+}

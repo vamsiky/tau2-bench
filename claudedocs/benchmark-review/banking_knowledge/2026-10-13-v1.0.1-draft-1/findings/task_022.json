@@ -1,0 +1,32 @@
+{
+  "task_id": "task_022",
+  "severity": "Minor",
+  "headline": "Across 77 transactions on four cards, the documented rates, exclusions, and round-down rule give exactly the ten gold disputes; the only gap is the rounding doc missing from the required list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding rule that makes the gold dispute set exact (doc_credit_cards_credit_cards_(general)_007) is not in this task's required_documents, so the golden_retrieval variant never shows it.",
+      "evidence": [
+        "task_022.required_documents does not include doc_credit_cards_credit_cards_(general)_007 (grep: only task_028 lists it)",
+        "src/tau2/domains/banking_knowledge/retrieval.py golden_prompt: replaces {{required_documents}} with task.required_documents only",
+        "src/tau2/domains/banking_knowledge/retrieval.py build_tools: \"# No retrieval tools (no_knowledge, full_kb, golden_retrieval)\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under golden_retrieval the agent cannot search the KB, so it must guess the rounding convention; round-half-up flags 26 extra transactions (e.g. txn_1c63bf5307a1 Diamond $487.50x5 = 2437.5 -> 2438 vs stored 2437). Search-based configs (default alltools, bm25, etc.) can retrieve doc_007, so headline scores are unaffected.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Computed all 77 rows for f9bf8de0be: Diamond 5%; Business Platinum 4% Travel/Software/Media else 1.5%; Business Silver 10% Travel/Software else 1%, with Apple/Microsoft/Dell/etc. excluded (doc_..._business_silver_rewards_card_005); EcoCard 5/$ Green except Target/Walmart/Amazon/ThredUp. The account opened 06/10/2024, before the double-cash promo window, so no promo. Under floor the mismatches are exactly the gold ten, e.g. ffeede Dell 1849.99 -> 1849 vs 18499, ba8b47 \"Target - Eco Collection\" 145.67x1 = 145 vs 728, 4f5e24 ThredUp 78 vs 391, 1a4918 Facebook Ads 875.33x4 = 3501 vs 8753, 508e27 Google Ads 1250x4 = 5000 vs 1875. Round-half-up adds 26 false positives.",
+  "prior_status": "resolved",
+  "prior_note": "Prior (Major) said the rounding convention was undocumented; doc_credit_cards_credit_cards_(general)_007 states floor rounding, is unchanged since v1.0.0, and reproduces the gold exactly, so that defect never applied to search-based configs. Only the required_documents omission remains.",
+  "notes": "\"Target - Eco Collection\" requires matching the excluded merchant by prefix; doc_..._ecocard_004 says \"Buying eco-labeled or 'sustainable' items from the excluded general retailers still earns the standard rate\", which covers it. Business Platinum has no merchant-exclusion list, so Microsoft 365 there earns 4% (599 = floor(599.96), consistent). get_credit_card_transactions_by_user returns every row with no truncation (query_database_tool)."
+}

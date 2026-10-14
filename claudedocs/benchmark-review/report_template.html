@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+:root {
+  --bg: #f7f8fa; --surface: #ffffff; --surface-2: #f1f3f6; --border: #dde1e7;
+  --text: #1c2330; --muted: #5d6878; --faint: #8a94a3; --accent: #2f6fde; --accent-soft: #e6eefc;
+  --blocker: #c62f3d; --blocker-soft: #fbe7e9; --major: #c76a12; --major-soft: #fdf0e1;
+  --minor: #8a7400; --minor-soft: #faf5d9; --none: #23864f; --none-soft: #e3f5ea;
+  --flash: #fff3b0; --code: #f4f5f8; --topbar: 52px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1218; --surface: #161b23; --surface-2: #1d232d; --border: #2a323e;
+    --text: #e6eaf0; --muted: #a0aab8; --faint: #6f7a89; --accent: #6ea2ff; --accent-soft: #1d2b45;
+    --blocker: #ff7380; --blocker-soft: #3a1b20; --major: #ffaa5c; --major-soft: #3a2a17;
+    --minor: #e6cd55; --minor-soft: #353015; --none: #5fd393; --none-soft: #173325;
+    --flash: #4a4317; --code: #1a2029; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1218; --surface: #161b23; --surface-2: #1d232d; --border: #2a323e;
+  --text: #e6eaf0; --muted: #a0aab8; --faint: #6f7a89; --accent: #6ea2ff; --accent-soft: #1d2b45;
+  --blocker: #ff7380; --blocker-soft: #3a1b20; --major: #ffaa5c; --major-soft: #3a2a17;
+  --minor: #e6cd55; --minor-soft: #353015; --none: #5fd393; --none-soft: #173325;
+  --flash: #4a4317; --code: #1a2029; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(var(--topbar) + 12px); }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); }
+a { color: var(--accent); }
+code, pre, .mono { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+h1 { font-size: 18px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 8px; }
+
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; height: var(--topbar); display: flex; align-items: center; gap: 16px;
+  padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.topbar nav { display: flex; gap: 14px; margin-left: auto; }
+.topbar nav a { text-decoration: none; color: var(--muted); font-weight: 500; }
+.topbar nav a:hover { color: var(--text); }
+.theme-btn { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+main { max-width: 1600px; margin: 0 auto; padding: 16px; }
+section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip { display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: 999px; padding: 2px 10px; font-size: 12.5px; color: var(--muted); }
+.chip b { color: var(--text); font-weight: 600; }
+
+.sev { display: inline-block; border-radius: 5px; padding: 0 7px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sev.Blocker { color: var(--blocker); background: var(--blocker-soft); }
+.sev.Major { color: var(--major); background: var(--major-soft); }
+.sev.Minor { color: var(--minor); background: var(--minor-soft); }
+.sev.None { color: var(--none); background: var(--none-soft); }
+.sev.dash { color: var(--faint); background: var(--surface-2); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }
+.stat .n { font-size: 26px; font-weight: 700; }
+.stat .d { color: var(--muted); font-size: 12.5px; }
+.summary-text { max-width: 900px; margin-top: 14px; }
+.systemic li { margin-bottom: 8px; }
+
+/* Tables: the scroll box is never taller than the viewport, so its horizontal
+   scrollbar is always on screen; header row and first column stay pinned. */
+.tscroll { max-height: min(68vh, 760px); overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; background: var(--surface); }
+thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+th:first-child, td:first-child { position: sticky; left: 0; z-index: 1; border-right: 1px solid var(--border); }
+thead th:first-child { z-index: 3; }
+td.wrap { max-width: 520px; min-width: 280px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--accent-soft); }
+.table-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+
+/* Explorer: one screen per task. */
+#explorer { padding: 0; overflow: hidden; scroll-margin-top: calc(var(--topbar) + 8px); }
+.explorer { display: grid; grid-template-columns: 250px minmax(0, 1fr); height: calc(100vh - var(--topbar) - 32px); min-height: 560px; }
+.tasknav { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+.filters { padding: 10px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+.filters input, .filters select, .table-tools input, .table-tools select { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface-2); color: var(--text); font: inherit; }
+.table-tools input, .table-tools select { width: auto; }
+.sevfilter { display: flex; flex-wrap: wrap; gap: 4px; }
+.sevfilter button { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 5px; padding: 1px 7px; font-size: 12px; cursor: pointer; }
+.sevfilter button.on { background: var(--accent-soft); color: var(--text); border-color: var(--accent); }
+.navlist { overflow: auto; flex: 1; }
+.navitem { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.navitem:hover { background: var(--surface-2); }
+.navitem.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.navitem .id { font-family: var(--mono); font-size: 12.5px; }
+.navitem .arrow { color: var(--faint); font-size: 11px; margin-left: auto; }
+.detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.dhead { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.dhead .title { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.dhead .title .id { font-family: var(--mono); font-size: 16px; font-weight: 700; }
+.dhead .headline { margin-top: 6px; font-size: 15px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1.15fr); flex: 1; min-height: 0; }
+.col { overflow: auto; padding: 4px 16px 24px; border-right: 1px solid var(--border); min-height: 0; }
+.col:last-child { border-right: 0; }
+.colhead { position: sticky; top: 0; background: var(--surface); padding: 10px 0 6px; z-index: 1; font-weight: 700; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.colhead small { font-weight: 400; color: var(--muted); }
+.instructions { background: var(--surface-2); border-radius: 8px; padding: 10px; font-size: 13px; }
+.instructions pre { font-family: var(--sans); font-size: 13.5px; line-height: 1.55; }
+details.doc { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; }
+details.doc summary { padding: 6px 8px; cursor: pointer; font-size: 13px; }
+details.doc summary .mono { color: var(--muted); font-size: 11.5px; display: block; }
+details.doc pre { padding: 8px; border-top: 1px solid var(--border); max-height: 420px; overflow: auto; background: var(--code); font-size: 12px; }
+.step { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px; transition: background .4s; }
+.step.ref { border-color: var(--major); box-shadow: inset 3px 0 0 var(--major); }
+.step.flash { background: var(--flash); }
+.step .sh { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.step .num { font-family: var(--mono); color: var(--faint); }
+.step .name { font-family: var(--mono); font-weight: 600; word-break: break-all; }
+.who { font-size: 11px; border-radius: 4px; padding: 0 5px; background: var(--surface-2); color: var(--muted); }
+.who.user { background: var(--accent-soft); color: var(--accent); }
+.args { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin-top: 6px; font-size: 12.5px; }
+.args .k { color: var(--muted); font-family: var(--mono); }
+.args .v { font-family: var(--mono); word-break: break-word; white-space: pre-wrap; }
+.issue-tag { font-size: 11px; color: var(--major); margin-left: auto; }
+.ratings { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; }
+.ratings .k { color: var(--muted); }
+.issue { border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.issue .ih { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.issue .cls { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.issue ul { margin: 6px 0; padding-left: 18px; }
+.issue li { margin-bottom: 3px; word-break: break-word; }
+.issue .lbl { font-weight: 600; }
+.steplink { cursor: pointer; color: var(--accent); text-decoration: underline; font-family: var(--mono); font-size: 12px; }
+.box { border-radius: 8px; padding: 10px; background: var(--surface-2); margin-bottom: 10px; font-size: 13px; }
+.muted { color: var(--muted); }
+.empty { color: var(--faint); font-style: italic; }
+
+@media (max-width: 1100px) {
+  .cols { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .col { overflow: visible; border-right: 0; border-bottom: 1px solid var(--border); }
+  .colhead { position: static; }
+}
+@media (max-width: 760px) {
+  main { padding: 16px 16px; }
+  .topbar nav { display: none; }
+  .explorer { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .tasknav { border-right: 0; border-bottom: 1px solid var(--border); max-height: 40vh; }
+  .detail { min-height: 70vh; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1 id="title"></h1>
+  <nav>
+    <a href="#summary">Summary</a><a href="#changes">Changes</a><a href="#all">All tasks</a><a href="#explorer">Task explorer</a><a href="#verification">Verification</a>
+  </nav>
+  <button class="theme-btn" id="theme" title="Toggle light/dark">◐</button>
+</header>
+<main>
+  <section class="card" id="summary"></section>
+  <section class="card" id="changes"></section>
+  <section class="card" id="all"></section>
+  <section class="card" id="explorer"></section>
+  <section class="card" id="verification"></section>
+</main>
+<script type="application/json" id="data">{{DATA}}</script>
+<script>
+(() => {
+const D = JSON.parse(document.getElementById('data').textContent);
+const SEV = ['Blocker', 'Major', 'Minor', 'None'];
+const $ = (sel, root = document) => root.querySelector(sel);
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid == null || kid === false) continue;
+    el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return el;
+}
+const sev = s => h('span', {class: 'sev ' + (SEV.includes(s) ? s : 'dash')}, s || '-');
+const fmt = v => v === '' ? '""' : typeof v === 'string' ? v : JSON.stringify(v, null, 1);
+// Scroll an element into view inside its own scroll container only, never the window.
+function scrollWithin(container, el, center) {
+  const c = container.getBoundingClientRect(), e = el.getBoundingClientRect();
+  if (center) container.scrollTop += (e.top - c.top) - (c.height - e.height) / 2;
+  else if (e.top < c.top) container.scrollTop -= c.top - e.top;
+  else if (e.bottom > c.bottom) container.scrollTop += e.bottom - c.bottom;
+}
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+// theme
+const savedTheme = store.get('review-theme');
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+$('#theme').onclick = () => {
+  const cur = document.documentElement.dataset.theme
+    || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next; store.set('review-theme', next);
+};
+
+const M = D.meta;
+$('#title').textContent = `${M.domain} correctness review · ${M.benchmark_version}`;
+
+// ---------------------------------------------------------------- summary
+(() => {
+  const counts = {}, prior = {};
+  for (const r of D.rows) { counts[r.severity] = (counts[r.severity] || 0) + 1; prior[r.prior_severity] = (prior[r.prior_severity] || 0) + 1; }
+  const statuses = {};
+  for (const r of D.rows) statuses[r.prior_status] = (statuses[r.prior_status] || 0) + 1;
+  const s = $('#summary');
+  s.append(
+    h('h2', {}, 'Summary'),
+    h('div', {class: 'meta'},
+      h('span', {class: 'chip'}, 'Domain ', h('b', {}, M.domain)),
+      h('span', {class: 'chip'}, 'Benchmark ', h('b', {}, M.benchmark_version), h('span', {class: 'mono'}, M.benchmark_commit.slice(0, 10))),
+      h('span', {class: 'chip'}, 'Run date ', h('b', {}, M.run_date)),
+      h('span', {class: 'chip'}, 'Reviewer ', h('b', {}, M.reviewer || '-')),
+      M.effort ? h('span', {class: 'chip', title: M.effort}, 'Effort ', h('b', {}, M.effort.split(';')[0])) : null,
+      M.prior_run ? h('span', {class: 'chip'}, 'Compared with ', h('b', {}, M.prior_run)) : null,
+      h('span', {class: 'chip'}, 'Tasks ', h('b', {}, D.rows.length))),
+    h('div', {class: 'stats', style: 'margin-top:14px'},
+      SEV.map(x => h('div', {class: 'stat'}, sev(x), h('div', {class: 'n'}, counts[x] || 0),
+        h('div', {class: 'd'}, `prior ${prior[x] || 0}`)))),
+    h('div', {class: 'meta'}, Object.entries(statuses).sort().map(([k, v]) => h('span', {class: 'chip'}, k.replace('_', ' '), ' ', h('b', {}, v)))),
+    D.synthesis.summary ? h('p', {class: 'summary-text'}, D.synthesis.summary) : '',
+  );
+  if ((D.synthesis.systemic_issues || []).length) {
+    s.append(h('h3', {}, 'Systemic issues'), h('ol', {class: 'systemic'},
+      D.synthesis.systemic_issues.map(x => h('li', {}, h('b', {}, x.title), ' ',
+        (x.tasks || []).map((t, i) => [i ? ', ' : '(', h('a', {href: '#' + t}, t)]), (x.tasks || []).length ? ') ' : '',
+        x.description))));
+  }
+})();
+
+// ---------------------------------------------------------------- tables
+function table(rows, cols) {
+  const tb = h('tbody');
+  for (const r of rows) {
+    tb.append(h('tr', {onclick: () => { location.hash = r.task_id; }},
+      cols.map(c => h('td', {class: c.wrap ? 'wrap' : null}, c.render ? c.render(r) : (r[c.key] ?? '-')))));
+  }
+  return h('div', {class: 'tscroll'}, h('table', {}, h('thead', {}, h('tr', {}, cols.map(c => h('th', {}, c.label)))), tb));
+}
+const idCell = r => h('span', {class: 'mono'}, r.task_id);
+
+(() => {
+  const changed = D.rows.filter(r => ['resolved', 'changed', 'new'].includes(r.prior_status) || r.severity !== r.prior_severity);
+  $('#changes').append(
+    h('h2', {}, `Changes since the prior review (${changed.length})`),
+    h('p', {class: 'muted'}, 'Tasks whose verdict moved, or whose defect was resolved, changed, or newly found. Click a row to open it in the explorer.'),
+    table(changed, [
+      {label: 'Task', render: idCell},
+      {label: 'Prior', render: r => sev(r.prior_severity)},
+      {label: 'Now', render: r => sev(r.severity)},
+      {label: 'Status', key: 'prior_status'},
+      {label: 'Headline', key: 'headline', wrap: true},
+      {label: 'What changed', wrap: true, render: r => D.findings[r.task_id].prior_note || '-'},
+    ]));
+})();
+
+(() => {
+  const host = $('#all');
+  const q = h('input', {type: 'search', placeholder: 'Filter: task id, class, text…'});
+  const sel = h('select', {}, h('option', {value: ''}, 'All severities'), SEV.map(s => h('option', {value: s}, s)));
+  const slot = h('div');
+  const cols = [
+    {label: 'Task', render: idCell},
+    {label: 'Final', render: r => sev(r.severity)},
+    {label: 'Headline', key: 'headline', wrap: true},
+    {label: 'Reviewer', render: r => sev(r.review_severity)},
+    {label: 'Verifier', render: r => r.verdict === 'Not sampled' ? 'Not sampled' : h('span', {}, r.verdict, ' ', sev(r.verified_severity))},
+    {label: 'Reconciled', render: r => r.reconciled ? h('span', {title: D.reconciled[r.task_id].reason}, `${D.reconciled[r.task_id].before} → ${D.reconciled[r.task_id].severity}`) : '-'},
+    {label: 'Prior', render: r => sev(r.prior_severity)},
+    {label: 'Status', key: 'prior_status'},
+    {label: 'Instructions', render: r => r.ratings.instructions_sufficient || '-'},
+    {label: 'Docs deterministic', render: r => r.ratings.docs_deterministic || '-'},
+    {label: 'Complexity', render: r => r.ratings.reasoning_complexity ?? '-'},
+    {label: 'Ordering', render: r => r.ratings.ordering_dependency || '-'},
+    {label: 'Gold consistent', render: r => r.ratings.gold_consistent || '-'},
+    {label: 'Grading', render: r => r.reward_basis.join(', ')},
+    {label: 'Defect classes', render: r => r.classes.join(', ') || '-'},
+  ];
+  const draw = () => {
+    const text = q.value.toLowerCase();
+    const rows = D.rows.filter(r => (!sel.value || r.severity === sel.value)
+      && (!text || JSON.stringify([r, D.findings[r.task_id]]).toLowerCase().includes(text)));
+    slot.replaceChildren(table(rows, cols));
+  };
+  q.oninput = draw; sel.onchange = draw;
+  host.append(h('h2', {}, 'All tasks'), h('div', {class: 'table-tools'}, q, sel), slot);
+  draw();
+})();
+
+// ---------------------------------------------------------------- explorer
+(() => {
+  const host = $('#explorer');
+  const active = new Set(SEV);
+  const search = h('input', {type: 'search', placeholder: 'Search tasks…'});
+  const status = h('select', {}, h('option', {value: ''}, 'Any prior status'),
+    [...new Set(D.rows.map(r => r.prior_status))].sort().map(s => h('option', {value: s}, s)));
+  const sevbar = h('div', {class: 'sevfilter'}, SEV.map(s => {
+    const b = h('button', {class: 'on', onclick: () => { active.has(s) ? active.delete(s) : active.add(s); b.classList.toggle('on'); drawNav(); }}, s);
+    return b;
+  }));
+  const list = h('div', {class: 'navlist'});
+  const detail = h('div', {class: 'detail'});
+  host.append(h('div', {class: 'explorer'},
+    h('div', {class: 'tasknav'}, h('div', {class: 'filters'}, search, sevbar, status), list), detail));
+  let current = null, visible = [];
+
+  function drawNav() {
+    const text = search.value.toLowerCase();
+    visible = D.rows.filter(r => active.has(r.severity) && (!status.value || r.prior_status === status.value)
+      && (!text || (r.task_id + ' ' + r.headline + ' ' + r.classes.join(' ')).toLowerCase().includes(text)));
+    list.replaceChildren(...visible.map(r => h('div', {class: 'navitem' + (r.task_id === current ? ' active' : ''), 'data-id': r.task_id,
+      onclick: () => { location.hash = r.task_id; }},
+      h('span', {class: 'id'}, r.task_id), sev(r.severity),
+      r.prior_severity !== r.severity ? h('span', {class: 'arrow', title: 'prior ' + r.prior_severity}, `was ${r.prior_severity}`) : null)));
+  }
+  search.oninput = drawNav; status.onchange = drawNav;
+
+  function flashStep(i) {
+    const el = detail.querySelector(`[data-step="${i}"]`);
+    if (!el) return;
+    scrollWithin(el.closest('.col'), el, true);
+    el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200);
+  }
+
+  function show(id) {
+    if (!D.tasks[id]) return;
+    current = id; drawNav();
+    const t = D.tasks[id], f = D.findings[id], row = D.rows.find(r => r.task_id === id);
+    const v = D.verdicts[id], p = D.prior[id] || {};
+    const refs = new Map();
+    (f.issues || []).forEach((iss, n) => (iss.gold_action_refs || []).forEach(i => refs.set(i, [...(refs.get(i) || []), n + 1])));
+
+    // column A: what the agent is given
+    const colA = h('div', {class: 'col'},
+      h('div', {class: 'colhead'}, 'Task ', h('small', {}, '— what the customer says and what the agent can read')),
+      h('h3', {}, 'Customer instructions'),
+      h('div', {class: 'instructions'}, h('pre', {}, t.instructions || '')),
+      t.persona ? [h('h3', {}, 'Persona'), h('div', {class: 'box'}, h('pre', {}, fmt(t.persona)))] : null,
+      h('h3', {}, `Required documents (${t.required_documents.length})`),
+      t.required_documents.length ? t.required_documents.map(d => {
+        const doc = D.documents[d] || {};
+        return h('details', {class: 'doc'}, h('summary', {}, doc.title || d, h('span', {class: 'mono'}, d)),
+          h('pre', {}, doc.content ?? '(document not found in this benchmark version)'));
+      }) : h('div', {class: 'empty'}, 'none listed'),
+      t.purpose ? [h('h3', {}, 'Task purpose (author)'), h('div', {class: 'box'}, t.purpose)] : null,
+      t.notes ? [h('h3', {}, 'Author notes (not shown to the agent)'), h('div', {class: 'box'}, h('pre', {}, t.notes))] : null,
+    );
+
+    // column B: expected trajectory
+    const colB = h('div', {class: 'col'},
+      h('div', {class: 'colhead'}, 'Gold trajectory ', h('small', {}, `— ${t.actions.length} expected tool calls · graded on ${t.reward_basis.join(', ') || '-'}`)),
+      t.actions.length ? t.actions.map((a, i) => h('div', {class: 'step' + (refs.has(i) ? ' ref' : ''), 'data-step': i},
+        h('div', {class: 'sh'}, h('span', {class: 'num'}, `#${i}`), h('span', {class: 'who' + (a.requestor === 'user' ? ' user' : '')}, a.requestor || 'assistant'),
+          h('span', {class: 'name'}, a.name), refs.has(i) ? h('span', {class: 'issue-tag'}, 'issue ' + refs.get(i).join(', ')) : null),
+        Object.keys(a.arguments || {}).length ? h('div', {class: 'args'},
+          Object.entries(a.arguments).flatMap(([k, val]) => [h('span', {class: 'k'}, k), h('span', {class: 'v'}, fmt(val))])) : null))
+        : h('div', {class: 'empty'}, 'no gold actions'),
+      t.communicate_info.length ? [h('h3', {}, 'Must communicate'), h('ul', {}, t.communicate_info.map(c => h('li', {}, fmt(c))))] : null,
+      t.nl_assertions.length ? [h('h3', {}, 'NL assertions'), h('ul', {}, t.nl_assertions.map(c => h('li', {}, fmt(c))))] : null,
+    );
+
+    // column C: findings
+    const g = f.ratings || {};
+    const colC = h('div', {class: 'col'},
+      h('div', {class: 'colhead'}, 'Findings ', h('small', {}, `— ${(f.issues || []).length} issue(s)`)),
+      h('div', {class: 'ratings'},
+        h('span', {class: 'k'}, 'Instructions'), h('span', {}, g.instructions_sufficient || '-'),
+        h('span', {class: 'k'}, 'Docs deterministic'), h('span', {}, g.docs_deterministic || '-'),
+        h('span', {class: 'k'}, 'Reasoning complexity'), h('span', {}, g.reasoning_complexity ?? '-'),
+        h('span', {class: 'k'}, 'Ordering dependency'), h('span', {}, g.ordering_dependency || '-'),
+        h('span', {class: 'k'}, 'Gold consistent'), h('span', {}, g.gold_consistent || '-')),
+      h('h3', {}, 'Issues'),
+      (f.issues || []).length ? f.issues.map((iss, n) => h('div', {class: 'issue'},
+        h('div', {class: 'ih'}, h('b', {}, `${n + 1}.`), sev(iss.severity), h('span', {class: 'cls'}, iss.class),
+          (iss.gold_action_refs || []).map(i => h('span', {class: 'steplink', onclick: () => flashStep(i)}, `#${i}`))),
+        h('div', {}, iss.summary),
+        (iss.evidence || []).length ? h('ul', {}, iss.evidence.map(e => h('li', {}, h('code', {}, e)))) : null,
+        iss.why_it_matters ? h('div', {}, h('span', {class: 'lbl'}, 'Why it matters: '), iss.why_it_matters) : null,
+        iss.suggested_fix ? h('div', {style: 'margin-top:4px'}, h('span', {class: 'lbl'}, 'Fix: '), iss.suggested_fix) : null))
+        : h('div', {class: 'empty'}, 'No defects found.'),
+      h('h3', {}, 'Solution check'), h('div', {class: 'box'}, f.solution_check || '-'),
+      v ? [h('h3', {}, 'Independent verification'), h('div', {class: 'box'},
+        h('div', {}, h('b', {}, v.verdict), ' · ', sev(v.review_severity), ' → ', sev(v.verified_severity)),
+        h('p', {}, v.note || ''),
+        (v.evidence || []).length ? h('ul', {}, v.evidence.map(e => h('li', {}, h('code', {}, e)))) : null,
+        (v.citation_problems || []).length ? [h('div', {class: 'lbl'}, 'Citation problems'), h('ul', {}, v.citation_problems.map(e => h('li', {}, e)))] : null)] : null,
+      D.reconciled[id] ? [h('h3', {}, 'Cross-run reconciliation'), h('div', {class: 'box'},
+        h('div', {}, sev(D.reconciled[id].before), ' → ', sev(D.reconciled[id].severity), ' · runs differed by ', h('b', {}, D.reconciled[id].why_runs_differed || '-')),
+        h('p', {}, D.reconciled[id].reason),
+        (D.reconciled[id].evidence || []).length ? h('ul', {}, D.reconciled[id].evidence.map(e => h('li', {}, h('code', {}, e)))) : null)] : null,
+      h('h3', {}, 'Compared with prior review'),
+      h('div', {class: 'box'},
+        h('div', {}, sev(p.severity), ' → ', sev(row.severity), ' · ', h('b', {}, f.prior_status || '-')),
+        f.prior_note ? h('p', {}, f.prior_note) : null,
+        p.plain_issue && p.plain_issue !== 'Clean — no issue' ? h('p', {class: 'muted'}, 'Prior: ', p.plain_issue) : null,
+        p.detail ? h('details', {}, h('summary', {}, 'Prior write-up'), h('pre', {}, p.detail)) : null),
+      f.notes ? [h('h3', {}, 'Reviewer notes'), h('div', {class: 'box'}, f.notes)] : null,
+    );
+
+    detail.replaceChildren(
+      h('div', {class: 'dhead'},
+        h('div', {class: 'title'}, h('span', {class: 'id'}, id), sev(row.severity),
+          row.prior_severity !== row.severity ? h('span', {class: 'chip'}, 'prior ', sev(row.prior_severity)) : null,
+          v ? h('span', {class: 'chip'}, 'verifier ', h('b', {}, v.verdict)) : null,
+          D.reconciled[id] ? h('span', {class: 'chip', title: D.reconciled[id].reason}, 'reconciled ', h('b', {}, `${D.reconciled[id].before} → ${D.reconciled[id].severity}`)) : null,
+          h('span', {class: 'chip'}, 'graded on ', h('b', {}, t.reward_basis.join(', ') || '-'))),
+        h('div', {class: 'headline'}, f.headline || '')),
+      h('div', {class: 'cols'}, colA, colB, colC));
+    const navEl = list.querySelector(`[data-id="${id}"]`);
+    if (navEl) scrollWithin(list, navEl, false);
+  }
+
+  function route(behavior = 'smooth') {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (D.tasks[id]) { show(id); host.scrollIntoView({behavior, block: 'start'}); }
+  }
+  addEventListener('hashchange', () => route());
+  addEventListener('keydown', e => {
+    if (!['ArrowDown', 'ArrowUp'].includes(e.key) || e.target.matches('input, select, textarea')) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.top > innerHeight / 2 || rect.bottom < innerHeight / 2) return;
+    const i = visible.findIndex(r => r.task_id === current);
+    const next = visible[i + (e.key === 'ArrowDown' ? 1 : -1)];
+    if (next) { e.preventDefault(); history.replaceState(null, '', '#' + next.task_id); show(next.task_id); }
+  });
+  drawNav();
+  const first = D.rows.find(r => r.severity === 'Blocker') || D.rows[0];
+  if (D.tasks[location.hash.slice(1)]) requestAnimationFrame(() => route('instant')); else show(first.task_id);
+})();
+
+// ---------------------------------------------------------------- verification
+(() => {
+  const V = D.verification, s = $('#verification');
+  const verdicts = Object.values(D.verdicts);
+  s.append(h('h2', {}, 'Verification'));
+  if (!verdicts.length) { s.append(h('p', {class: 'empty'}, 'No independent verification was run for this review.')); return; }
+  const tally = {};
+  for (const v of verdicts) tally[v.verdict] = (tally[v.verdict] || 0) + 1;
+  s.append(h('div', {class: 'meta'}, h('span', {class: 'chip'}, 'Tasks verified ', h('b', {}, verdicts.length)),
+    Object.entries(tally).map(([k, n]) => h('span', {class: 'chip'}, k, ' ', h('b', {}, n)))));
+  if (V.fact_checks.length) s.append(h('h3', {}, 'Grading-model fact checks'), h('ul', {}, V.fact_checks.map(c => h('li', {}, h('b', {}, c.status), ' — ', c.fact, c.evidence ? h('span', {class: 'muted'}, ` (${c.evidence})`) : null))));
+  if (V.calibration_notes.length) s.append(h('h3', {}, 'Calibration notes'), h('ul', {}, V.calibration_notes.map(c => h('li', {}, c))));
+  if (V.methodology_notes.length) s.append(h('h3', {}, 'Methodology'), V.methodology_notes.map(c => h('p', {}, c)));
+  const rows = D.rows.filter(r => D.verdicts[r.task_id]);
+  s.append(h('h3', {}, 'Per-task verdicts'), table(rows, [
+    {label: 'Task', render: idCell},
+    {label: 'Verdict', render: r => D.verdicts[r.task_id].verdict},
+    {label: 'Reviewer', render: r => sev(D.verdicts[r.task_id].review_severity)},
+    {label: 'Verified', render: r => sev(D.verdicts[r.task_id].verified_severity)},
+    {label: 'Note', wrap: true, render: r => D.verdicts[r.task_id].note || '-'},
+  ]));
+})();
+})();
+</script>
+</body>
+</html>

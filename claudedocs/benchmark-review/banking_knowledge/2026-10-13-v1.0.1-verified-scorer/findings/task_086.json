@@ -1,0 +1,83 @@
+{
+  "task_id": "task_086",
+  "severity": "Major",
+  "headline": "The six-dispute workflow is reconstructible, but whether to file the ATM-deposit dispute at all, how to code the skimmed-card fraud, and the liability amounts each have more than one defensible answer.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Major",
+      "summary": "The customer claims a $500 deposit with $300 credited; the record shows $400 credited and no images are available. When told the records differ, the scripted reply is \"I might be mixing it up with another deposit. If your records show that, then I'll go with what you have.\" The gold still files a $100 atm_deposit_not_credited dispute (500 - 400). Accepting the record can equally mean nothing is missing and no dispute is filed.",
+      "evidence": [
+        "user instructions step 5: \"I deposited $500 in cash but only $300 was credited ... If agent says records show a different amount: 'Hmm... Actually, I might be mixing it up with another deposit. If your records show that, then I'll go with what you have.'\"",
+        "tool row btxn_0788d2513c8c: \"RHO-BANK ATM #6172 DEPOSIT\", amount 400.0, type atm_deposit",
+        "get_atm_deposit_images_8473(btxn_0788d2513c8c): \"Status: IMAGES NOT AVAILABLE\"",
+        "gold[16] atm_deposit_not_credited disputed_amount 100.0"
+      ],
+      "gold_action_refs": [
+        16
+      ],
+      "why_it_matters": "Filing or not filing adds or removes a whole dispute row; an agent that takes the customer's concession at face value fails.",
+      "suggested_fix": "Script the customer to keep claiming a $500 deposit after seeing $400 credited, or drop the dispute from the gold."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "For the TechWorld fraud the customer says only \"I think someone skimmed my card at a gas station\". The gold stores pin_compromised \"unknown\" and transaction_type \"pin_purchase\". doc_031 defines \"yes_observed\" as \"PIN was observed/skimmed\", and nothing says whether the Miami purchase used a PIN or a signature.",
+      "evidence": [
+        "doc_031: \"'yes_observed': Customer believes PIN was observed/skimmed\"; \"'unknown': Customer unsure\"",
+        "user instructions step 5: \"Still have card - I think someone skimmed my card at a gas station or something.\"",
+        "tool row btxn_5690acdd3de5: type debit_card_purchase (no PIN/signature field)",
+        "gold[15] \"transaction_type\": \"pin_purchase\", \"pin_compromised\": \"unknown\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "Both fields are stored; \"yes_observed\" or \"signature_purchase\" are defensible and fail.",
+      "suggested_fix": "Script the PIN/signature detail and the PIN belief, as task_084 does."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Liability is 50 for the four recent disputes and 500 for TechWorld. Discovery-based timing (doc_031 \"based on when they noticed\") puts the ATM (noticed 11/07), SupplyPro (11/09), Phoenix Kitchen (11/09) and ATM deposit (11/08) disputes in the $500 tier, which after capping gives 100, 189.99, 200 and 100.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount.\"",
+        "gold[11],[12],[14],[16] liability 50 with discovery dates 11/07, 11/09, 11/09, 11/08; gold[15] TechWorld liability 500"
+      ],
+      "gold_action_refs": [
+        11,
+        12,
+        14,
+        15,
+        16
+      ],
+      "why_it_matters": "The gold is reproducible under \"recent transaction -> $50, old transaction -> min($500, amount)\", but not under the discovery-timing reading the doc describes.",
+      "suggested_fix": "Document one liability formula with a stated reference date."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The script gives the TechWorld discovery date as \"today 01/12\" although today is 11/14; the gold uses 11/14/2025.",
+      "evidence": [
+        "user instructions: \"Just discovered today 01/12 during year-end reconciliation.\"",
+        "gold[15] \"discovery_date\": \"11/14/2025\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "A simulated customer may state January 12; an agent recording it fails.",
+      "suggested_fix": "Change the script to \"today, November 14th\"."
+    }
+  ],
+  "solution_check": "Reconstructed: Green Fee-Free (ENTRY, max 2) takes the third-party ATM $100 and SupplyPro goods_services_not_received $189.99 (customer defers CryptoMiner); Evergreen (PREMIUM, max 4, one open) takes Phoenix Kitchen incorrect_amount $200, TechWorld card_present_fraud $625 and the ATM-deposit dispute; then close the Evergreen card for fraud and order EXPEDITED $0 with PREMIUM design $0 (best free PREMIUM-tier options) to the restaurant address. This matches the gold apart from the ambiguities above. Gold replays without errors.",
+  "prior_status": "changed",
+  "prior_note": "Prior Minor flagged the $100 ATM-deposit derivation; this review rates the file-or-not ambiguity Major and adds the skimmed-card coding and liability issues. v1.0.1 only added reads to this task.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. The doc_033 step for deposit disputes (get_atm_deposit_images_8473) is not in the gold; under both scorers an extra read of it is harmless."
+}

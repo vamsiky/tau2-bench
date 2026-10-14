@@ -1,0 +1,35 @@
+{
+  "task_id": "task_010",
+  "severity": "Major",
+  "headline": "The diagnosis (weekly referral cap) is clear, but if the agent helps the customer retry the referral the way the KB documents, by handing over the referral-link tool, the gold scores that as wrong.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "To retry a credit-card referral, the KB documents one mechanism: give the customer the get_referral_link user tool. The gold instead expects the customer to call submit_referral, a native user tool the KB never mentions. Handing over get_referral_link writes a user_discoverable_tools row the gold lacks, which fails DB grading.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009: \"Provide the customer with this tool and instruct them to run it themselves: `get_referral_link(user_id: str, card_name: str)`\"",
+        "doc_credit_cards_credit_cards_(general)_002: \"If a referral is denied for hitting the limit, wait until enough time has passed to drop under the cap before attempting another.\"",
+        "grep of documents/: \"submit_referral\" appears in no KB document; \"get_referral_link\" appears only in credit_cards_(general)_009",
+        "task_010 user_tools = [\"apply_for_credit_card\", \"submit_referral\"] (no call_discoverable_user_tool)",
+        "Replay: gold + give_discoverable_user_tool(get_referral_link) -> verified match False, reason \"table user_discoverable_tools differs\""
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "An agent that tells Wei Chen he can now retry the Platinum referral and, following the internal referral-link doc, gives him the tool to do it fails, even though the customer still submits the gold referral. Only an agent that explains and leaves the mechanism to the customer passes, so a KB-faithful helpful step is penalized.",
+      "suggested_fix": "Either add give_discoverable_user_tool(get_referral_link) and the matching user call to the gold (and give the user call_discoverable_user_tool), or document submit_referral in the KB as the way to re-submit a rejected referral."
+    }
+  ],
+  "solution_check": "Verify Wei Chen (unique name; phone 617-555-0834 and email wei.chen.boston@gmail.com match users[76ad9cc60e]) and log_verification with the DB values and \"2025-11-14 03:40:00 EST\". get_referrals_by_user shows Bronze COMPLETE 10/20/2025, Gold COMPLETE 10/22/2025, Platinum REJECTED 10/25/2025, Silver IN_PROGRESS 11/05/2025. Platinum was the third within a rolling 7 days (credit_cards_(general)_002), and that window has passed by 11/14, so retrying is possible; Silver is still in progress. The customer then submits submit_referral(76ad9cc60e, \"Platinum Rewards Card\"). Replaying the gold matches exactly.",
+  "prior_status": "new",
+  "prior_note": "Prior marked this clean; the conflict between the KB's referral-link procedure and the gold's undocumented submit_referral path was not reported.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. log_verification stores all four identity fields; the gold fills address and DOB from the DB even though the customer confirms only phone and email. Filling unconfirmed fields with placeholders (\"N/A\") fails verification_history on replay. The tool docstring (\"The verified user's address\") and the seed verification_history rows support full DB values, so this is a convention, not a defect. get_referrals_by_user is an always-available tool and is not logged. The verified-scorer relaxations do not affect this task."
+}

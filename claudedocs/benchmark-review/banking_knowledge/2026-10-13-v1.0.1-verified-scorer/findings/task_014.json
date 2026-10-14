@@ -1,0 +1,52 @@
+{
+  "task_id": "task_014",
+  "severity": "Blocker",
+  "headline": "The gold requires a transfer to a human, but the KB's internal referral-link procedure says that for a card with no documented referral program the agent must explain and must not transfer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Blocker",
+      "summary": "The customer asks for a referral link for the Crypto-Cash Back card, which has no documented referral program. The referral-link procedure says not to transfer in exactly this case; the gold's only graded action is a transfer.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009: \"If no referral program is documented for the requested card, or if the user's claimed terms are incorrect, or if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool. Do not transfer to a human in these cases.\"",
+        "task_014 user_scenario opening line: \"How can I get a referral link for this offer so that I can share it with friends?\"",
+        "grep of documents/: no Crypto-Cash Back referral document exists (referral docs exist for Platinum, Silver, EcoCard and business cards only)",
+        "doc_bank_accounts_bank_accounts_(general)_042 Tier 2: \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
+        "policy_header.md guideline 5: transfer guidance \"may be overridden by specific scenario-based transfer guidance in the knowledge base\"",
+        "gold[0] transfer_to_human_agents reason = \"unconfirmed_external_communication\"; reward_basis = [\"ACTION\"]",
+        "task_015 (same customer, identical opening message) gold contains no transfer, consistent with credit_cards_(general)_009"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "The customer's literal request (\"referral link\") is the title topic of credit_cards_(general)_009, so retrieval is likely to surface it, and the system policy says scenario-specific KB transfer guidance overrides the default. An agent that follows it explains and does not transfer. The scenario only has the customer accept a transfer the agent offers; it never has her demand one, so the episode ends with no transfer and ACTION reward 0. Only agents that miss or ignore the doc pass.",
+      "suggested_fix": "Either change the gold to no transfer (grade with an NL assertion that the agent explained the program is undocumented and gave no link tool), or narrow the \"Do not transfer\" sentence in credit_cards_(general)_009 to exclude customers citing an unverifiable official communication, and add credit_cards_(general)_009 to required_documents."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Two codes in the transfer-reason table overlap. The Tier 1 customer_demands_after_unavailable_offer_refusal also covers a customer who persists about an offer the agent cannot find, and Tier 1 outranks the gold's Tier 2 code. Only the clause \"now demands human\", absent here because the customer merely accepts an offered transfer, keeps Tier 2 correct.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_042: \"always select from the highest tier that applies\"",
+        "doc_bank_accounts_bank_accounts_(general)_042 Tier 1: \"customer persisted multiple times, and now demands human\"",
+        "task_014 user_scenario: \"Express confusion since you have the letter 'right here'\" / \"Ask them to double-check or look harder\" / \"Accept the transfer\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that reads the customer's persistence as satisfying Tier 1 picks it under the highest-tier rule and fails ACTION grading; task_008 grades the near-identical flyer case the other way.",
+      "suggested_fix": "Make the boundary between the two codes explicit in credit_cards_(general)_042 (who initiates the transfer, how many refusals)."
+    }
+  ],
+  "solution_check": "Reconstructing from the KB: the Crypto-Cash Back card has no referral program document, and credit_cards_(general)_020 says \"Not all credit cards participate in the referral program\". The referral-link procedure (credit_cards_(general)_009) then says explain, do not give the tool, and do not transfer. So my reconstruction is \"explain, no tool, no transfer\". The gold expects a transfer with unconfirmed_external_communication, which is defensible only if the general reason-code table overrides the scenario-specific referral procedure.",
+  "prior_status": "new",
+  "prior_note": "Prior marked this clean; it did not weigh credit_cards_(general)_009's explicit no-transfer instruction (not in this task's required_documents), which task_015's gold follows.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. ACTION grading compares only reason, so any transfer call with unconfirmed_external_communication passes. I rate this Blocker because the KB-faithful trajectory never produces the graded call. If a reader decides retrieval of credit_cards_(general)_009 is unlikely for this query, Major is the floor. The verified-scorer relaxations do not apply (ACTION-only task)."
+}

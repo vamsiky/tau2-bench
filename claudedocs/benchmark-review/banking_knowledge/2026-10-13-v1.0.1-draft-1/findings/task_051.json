@@ -1,0 +1,51 @@
+{
+  "task_id": "task_051",
+  "severity": "Minor",
+  "headline": "Mostly sound deny, pay off, then approve flow, but the official answer's second request submission silently fails with a 'similar request exists' error the agent must work around.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The gold resubmission gold[17] (same account, user and $1000) generates the same request_id as the first submission, so the tool returns an error and writes nothing. The approval at gold[19] also reuses that id, so no APPROVED row is added.",
+      "evidence": [
+        "utils.py generate_credit_limit_increase_request_id seed = f\"cli_request:{credit_card_account_id}:{user_id}:{requested_increase_amount:.2f}\"",
+        "replay of gold[17] -> \"Error: A similar request may already exist.\"",
+        "final credit_limit_increase_requests after replay: cli_e33db0778663 status PENDING + cli_ce18a03fbbe2 status DENIED (no APPROVED row)",
+        "replaying gold without gold[17] gives the identical DB hash"
+      ],
+      "gold_action_refs": [
+        17,
+        19
+      ],
+      "why_it_matters": "The final state is unchanged, but an agent that resubmits, sees the error, and tells the customer the request cannot be processed never calls approve and fails. A sound agent should go on to approve the existing request.",
+      "suggested_fix": "Make the resubmission produce a distinct id (e.g. include a sequence number or status in the seed), or drop gold[17]."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Customer-facing logistics_005 says to confirm eligibility before submitting, while internal logistics_007 says to submit first and then check. The deny record only exists if the agent submits before checking utilization.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_005: \"Before submitting a CLI request, confirm all of the following for your card tier\"",
+        "doc_credit_cards_credit_card_account_logistics_007: \"Eligibility checks are internal and not exposed to customers, so the submission must happen first.\"",
+        "gold[2] submit then gold[12] deny high_utilization"
+      ],
+      "gold_action_refs": [
+        2,
+        12
+      ],
+      "why_it_matters": "The internal doc is explicit ('MUST be followed in the exact order listed'), so a careful agent can resolve the conflict. An agent that follows 005 would skip the first submit and deny, and fail.",
+      "suggested_fix": "Add to logistics_005 that agents follow the internal workflow in logistics_007."
+    }
+  ],
+  "solution_check": "Entry-tier Bronze: 30% of $4,000 = $1,200 is over the 25% maximum, so the request is adjusted to $1,000. Submit 1000. Utilization is $3,000/$4,000 = 75%, at or above 70%, so deny with high_utilization. Pay $3,000 from chk_5e4c1a83b0 ($5,000). Denials trigger no cooldown, so resubmit and approve new_credit_limit 5000. 6 on-time months meet the entry-tier requirement. The derived final state matches gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. Required doc logistics_005 changed only by removing '$' corruption; the two Minor issues were not reported before.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. initial_state overrides the seed bronze record (db.json shows $2,847.53 with no limit) to $3,000 balance and $4,000 limit. The replay confirms 'Previous Limit: $4000.00'."
+}

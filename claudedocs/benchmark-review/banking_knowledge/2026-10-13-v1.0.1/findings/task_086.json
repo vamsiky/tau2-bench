@@ -1,0 +1,80 @@
+{
+  "task_id": "task_086",
+  "severity": "Major",
+  "headline": "The six-dispute task is mostly derivable, but the gold's PIN-compromise and purchase-type values for the skimmed-card fraud contradict the customer's own words, and its liability values rest on an undocumented convention.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "For the TechWorld fraud the customer says the card was probably skimmed. Doc_031 defines 'yes_observed' as 'believes PIN was observed/skimmed', yet the gold uses 'unknown'. transaction_type 'pin_purchase' is also never established, because the customer did not make the purchase and the script gives no PIN/signature detail.",
+      "evidence": [
+        "user_scenario: \"Still have card - I think someone skimmed my card at a gas station or something.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'yes_observed': Customer believes PIN was observed/skimmed\"",
+        "gold[15].arguments: \"transaction_type\": \"pin_purchase\", \"pin_compromised\": \"unknown\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "Both fields are stored in the debit_card_disputes record. An agent choosing 'yes_observed' or 'signature_purchase' fails the hash with defensible reasoning.",
+      "suggested_fix": "Have the customer state whether the fraudster used a PIN and whether they think the PIN was seen, or change the gold to 'yes_observed'."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "The four non-fraud disputes use liability 50, but they were noticed 11/07-11/09 and reported 11/14 (3+ business days), and the docs give no liability rule for non-fraud categories.",
+      "evidence": [
+        "doc_..._031: \"Reported within 2 business days of statement: Maximum liability $50 / Reported within 60 days of statement: Maximum liability $500\"",
+        "gold[11] (noticed 11/07), gold[12] (11/09), gold[14] (11/09), gold[16] (11/08): \"customer_max_liability_amount\": 50"
+      ],
+      "gold_action_refs": [
+        11,
+        12,
+        14,
+        16
+      ],
+      "why_it_matters": "A business-day count from discovery gives the $500 tier (stored 100/189.99/200/100 under a cap), which differs from the gold.",
+      "suggested_fix": "Document the liability anchor and the non-fraud convention once in doc_031 and regenerate."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The ATM deposit claim ($500 deposited, $300 credited) conflicts with the record (+$400) and no images exist. The customer then says 'I'll go with what you have', which can be read as withdrawing the claim rather than disputing $100.",
+      "evidence": [
+        "bank_account_transaction_history btxn_0788d2513c8c amount 400.0, type atm_deposit",
+        "get_atm_deposit_images_8473(btxn_0788d2513c8c) -> \"Status: IMAGES NOT AVAILABLE\"",
+        "user_scenario: \"If your records show that, then I'll go with what you have.\"",
+        "gold[16].arguments: \"disputed_amount\": 100.0 (500 claimed - 400 credited)"
+      ],
+      "gold_action_refs": [
+        16
+      ],
+      "why_it_matters": "An agent that treats the customer's reply as dropping the claim files no deposit dispute and fails. The more natural reading files $100.",
+      "suggested_fix": "Script the customer to confirm 'I deposited $500, so $100 is missing' after being told the credited amount."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The script gives the TechWorld discovery date as 'today 01/12', which contradicts the fixed clock (11/14/2025) used in the gold.",
+      "evidence": [
+        "user_scenario: \"Just discovered today 01/12 during year-end reconciliation.\"",
+        "gold[15]: \"discovery_date\": \"11/14/2025\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "It can be resolved from 'today' plus get_current_time, but a literal agent could record 01/12/2025.",
+      "suggested_fix": "Change the script to 'today, November 14th'."
+    }
+  ],
+  "solution_check": "Reconstructed: GFF (ENTRY, max 2, no open disputes) takes the third-party ATM shortage (100) and SupplyPro goods_not_received (provisional false); CryptoMiner is deferred by the customer. Evergreen (PREMIUM, max 4, one OPEN dispute) takes incorrect_amount 200, TechWorld card_present_fraud 625 (late, $500 tier -> 500), and the ATM deposit. Then close Evergreen fraud_suspected and reorder EXPEDITED $0 + PREMIUM design $0 (PREMIUM tier free options) to the restaurant address. The writes match the gold except the field-level choices above.",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor (deposit-amount derivation) is kept as Minor. Under exact-hash grading the skimming/PIN field and the liability convention are more consequential, so the task moves to Major.",
+  "notes": "The v1.0.1 gold adds reads 086_1a/2a/2b; get_atm_deposit_images_8473 is not in the gold, so calling it (as doc_..._033 instructs) is not logged. If the agent offers to freeze the GFF card because of the deferred CryptoMiner fraud and the simulator accepts, the hash diverges. The script tells the customer not to suggest it but does not cover an agent offer. TechWorld liability 500 = min(500, 625) is consistent under either cap convention."
+}

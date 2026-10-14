@@ -1,0 +1,318 @@
+{
+  "verifier_id": "v2",
+  "fact_checks": [
+    {
+      "fact": "DB grading replays gold actions on a fresh environment and requires exact agent-side and user-side DB hash match",
+      "status": "Confirmed",
+      "evidence": "src/tau2/evaluator/evaluator_env.py EnvironmentEvaluator.calculate_reward: gold_environment.make_tool_call(...) for each golden action, then agent_db_hash == predicted_agent_db_hash and user_db_hash == predicted_user_db_hash; db_reward 0.0 otherwise. Replayed every assigned gold with PYTHONPATH=<snapshot>/src: all replay without errors and agent hash == user hash."
+    },
+    {
+      "fact": "Discoverable reads are logged only when the gold makes that read (_derive_read_log_allowlist)",
+      "status": "Confirmed",
+      "evidence": "src/tau2/runner/build.py _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; _build_env_kwargs passes it for domain banking_knowledge; runner/batch.py and scripts/evaluate_trajectories.py both thread it into evaluation. tools.py call_discoverable_agent_tool logs only if underlying_mutates or name in allowlist. Nuance: the record id is generate_agent_discoverable_tool_id(tool_name) (name only), so an allowlisted read is satisfied by any one call with any arguments, and repeats collapse; the same holds for every mutating discoverable tool's agent_discoverable_tools row."
+    },
+    {
+      "fact": "Integers are parsed as floats on call_discoverable_agent_tool / call_discoverable_user_tool; some tools cast their own numbers",
+      "status": "Confirmed",
+      "evidence": "tools.py: json.loads(arguments, parse_int=float) in both wrappers; apply_for_credit_card casts annual_income to float; submit_credit_limit_increase_request_7392 casts to int; pay_credit_card_from_checking_9182 casts to float. Replay: task_039 partial_refund_amount 50 vs 50.0 same hash; task_050 new_credit_limit 7500 vs 7500.0 same hash. give_discoverable_user_tool uses plain json.loads but stores only tool_name/status in the DB, so its arguments never affect the hash."
+    },
+    {
+      "fact": "ACTION grading: at least one matching call per gold action on compare_args; order, repetition and extras ignored",
+      "status": "Confirmed",
+      "evidence": "evaluator_action._check_actions (existence match per gold action) and tasks.py Action.compare_with_tool_call (compare_args [] returns True on name match). Additional nuance: compare_with_tool_call does not compare requestor, only name and args."
+    },
+    {
+      "fact": "Agent and user toolkits share one DB; writes are logged even when the tool returns an error string",
+      "status": "Confirmed",
+      "evidence": "environment.py get_environment passes the same db to build_tools and KnowledgeUserTools(db). call_discoverable_agent_tool logs the agent_discoverable_tools row after the inner call regardless of its return text (replay: task_049 failed pay_credit_card_from_checking_9182 'Insufficient funds' changes the hash). Nuances: an unknown/not-unlocked tool or a TypeError returns before logging, and because the row is keyed by tool name, a failed call only changes the hash when no other call of that tool name exists (task_031 rejected 'reversal_of_charge' followed by a valid filing gives the gold hash). get_card_last_4_digits logs the user call before checking the account exists."
+    },
+    {
+      "fact": "Clock is fixed",
+      "status": "Confirmed",
+      "evidence": "utils.py get_now() returns datetime(2025, 11, 14, 3, 40, 0); tools.py get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'"
+    },
+    {
+      "fact": "Some reads are always available, others discoverable and must be unlocked via documented names",
+      "status": "Confirmed",
+      "evidence": "Always-on agent reads: get_user_information_by_*, get_credit_card_accounts_by_user, get_credit_card_transactions_by_user, get_current_time. Dispute history, pending replacements, closure history, CLI history, payment history, bank accounts are @is_discoverable_tool. No agent tool reads cash_back_disputes; the alltools shell sandbox exports KB documents only (retrieval.py _create_sandbox), not db.json."
+    }
+  ],
+  "task_verdicts": {
+    "task_029": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "task_029 initial_state agent_data.task_config.data.dispute_settings.auto_resolve_disputes = false; task_028 = true",
+        "tools.py submit_cash_back_dispute_0589: status 'SUBMITTED' and 'Status: SUBMITTED - Your dispute has been queued for review.' when auto_resolve is false",
+        "No agent tool reads cash_back_disputes (tool list in tools.py); doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database\"",
+        "Recomputed all 47 transactions of user 890389b165 (Silver 4/1, Business Platinum 4/1.5, EcoCard 5/1, Crypto 2): floor gives exactly 6 mismatches = gold[2..7]; round-half-up gives 28",
+        "task_028 gold[8..14] unlocks update_transaction_rewards_3847 and makes six updates; task_029 gold has none"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced: the only fact separating 029 (refuse) from 028 (update) is the cash_back_disputes status, which no agent tool exposes, while the customer makes the same 'approved and resolved' claim. Refusing is still a reading the docs support (doc_003 says submissions are 'queued for review'; doc_004 requires a lookup the agent cannot perform), so this is two document-supported readings and Major is the calibrated severity. The doc_007 omission (Minor, decisive for floor rounding) and the EcoCard '$5.00 points' corruption (Minor, because it is the deciding rate for txn_896ac64b98d7) are correctly calibrated. Unlike 028, the script has no 'insist on disputing the overpaid one' line, a residual risk for gold[7]."
+    },
+    "task_031": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "db.json txn_adea68821a1d Silver Rewards Card Marriott Hotels, 11/07/2025, $167.34 (only Marriott charge for 890389b165)",
+        "get_card_last_4_digits(cc_890389b165_silver) = 5320 (replay)",
+        "doc_015 NOT Eligible: \"Dispute reason is ... 'goods_services_not_as_described'\"",
+        "Replay: rejected 'reversal_of_charge' then valid filing = gold hash; omitting partial_refund_amount = gold hash; extra get_user_dispute_history_7291 read = gold hash; dispute_reason incorrect_amount changes hash"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch: every persisted field comes from the script, the DB, or doc_014/015, and the customer's 'I paid for one thing but got something completely different' maps to goods_services_not_as_described. Provisional credit is false on reason alone, so the missing doc_016 (dispute history) is not needed here. Clean."
+    },
+    "task_032": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "reward_basis ['ACTION']; gold[1..3] identical call_discoverable_agent_tool(initial_transfer_to_human_agent_0218) compare_args ['agent_tool_name']; gold[4] transfer_to_human_agents compare_args []",
+        "doc_credit_cards_credit_cards_(general)_010: \"Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests\""
+      ],
+      "citation_problems": [],
+      "note": "Existence-only matching means one 0218 call plus an early transfer passes. That is a rule the grader cannot see, which the calibration rates Minor. The gold matches the documented protocol."
+    },
+    "task_033": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_011: \"Note: Always maintain this order. Each tool must be unlocked before it can be called. Do not skip steps.\"",
+        "gold[0..3] compare_args ['agent_tool_name'], gold[4] compare_args []; ACTION basis"
+      ],
+      "citation_problems": [],
+      "note": "Symptoms and date (before 11/15/2025 11:59 PM) match doc_011. The ordering is ungraded, which is Minor under the calibration."
+    },
+    "task_034": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_checking_accounts_checking_accounts_(general)_009: \"do not transfer them until they have asked exactly 8 times\"",
+        "gold[0..7] user request_human_agent_transfer compare_args []; gold[8] transfer_to_human_agents compare_args []",
+        "Instructions name the tool explicitly: \"Call the `request_human_agent_transfer` tool\""
+      ],
+      "citation_problems": [],
+      "note": "The 8-request threshold collapses to 'one user request and one transfer' under existence matching. Minor, consistent with 032/033. The policy header's 4-request rule explicitly yields to scenario guidance."
+    },
+    "task_037": {
+      "verdict": "Upgraded",
+      "review_severity": "None",
+      "verified_severity": "Minor",
+      "evidence": [
+        "required_documents = [replacements_001, general_013, general_014, general_015]; lacks doc_credit_cards_credit_cards_(general)_016",
+        "doc_015 criterion 4: \"The customer has not filed more than 2 disputes in the past 12 months\"; get_user_dispute_history_7291 is documented only in doc_016 (grep over documents/)",
+        "gold[6],[7] eligible_for_provisional_credit true (depends on criterion 4)",
+        "Replay: disputes filed before the replacement order give the gold hash; get_card_last_4_digits(cc_890389b165_silver) = 5320"
+      ],
+      "citation_problems": [],
+      "note": "The substance is clean: fraud reason, card opened 04/15/2024, $487.99/$299.95 within the mid-tier $5,000 cap, no prior disputes, cancel_and_reissue, last-4 5320, and the scripted work address and expedited acceptance all reproduce the gold. But both 'eligible' flags rest on criterion 4, and the only tool for checking it is documented solely in doc_016, which is absent from required_documents. That is the same missing-required-document class the review rated Minor in task_029, and the calibration rates it Minor. Under the default alltools config the agent can still retrieve doc_016, so the risk is limited to golden_retrieval."
+    },
+    "task_038": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "gold[4] expedited_shipping true; task_036/037 scripts contain 'If offered expedited shipping, accept it', task_038 does not",
+        "doc_credit_cards_credit_card_replacements_001: \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\"",
+        "doc_015 criterion 5: non-fraud disputes require merchant contact; gold[8] duplicate_charge contacted_merchant false -> eligible false",
+        "required_documents lacks doc_016 (same gap as task_037)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the three disputes and flags. The unscripted expedited choice is Minor because the doc's 'strongly recommend' for fraud is a default that matches the gold. The review also missed the doc_016 omission (criterion 4 for the eligible fraud dispute), another Minor, so the task severity is unchanged. 'Sent the wrong item' as not_as_described rather than not_received is the better fit to doc_014's definitions. It remains a residual risk, not a defect."
+    },
+    "task_039": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "get_user_dispute_history_7291(01f21c9970) returns 'No transaction disputes found for this user.' (replay)",
+        "gold[6..8] ($312.87 dup, $234.56 fraud, $215.67 dup) eligible true; gold[9] txn_2f16599b9075 $129.45 fraud eligible false",
+        "Listing-order running count: Costco fraud(0 prior, T), Costco dup(1, T), NAD, incorrect, Amazon fraud(4 prior, F), Amazon dup(5, F) -> 2 eligible, not 3",
+        "Replay: gold[9] eligible=true changes hash; skipping history read changes hash; 50 vs 50.0 same; replacement before disputes same; expedited false changes hash"
+      ],
+      "citation_problems": [
+        "Evidence 'doc_credit_cards_credit_card_replacements_002: Premium-tier (Gold Rewards Card) expedited $0.00' is a paraphrase; the doc reads 'Premium-tier and above (Gold Rewards Card, Business Gold Rewards Card, Platinum Rewards Card, Business Platinum Rewards Card, Diamond Elite Card): $0.00 (complimentary).'"
+      ],
+      "note": "Both readings of criterion 4 are document-supported: the literal 'has not filed more than 2 disputes in the past 12 months' supports counting in-session filings, and the 'Previous Disputes' label supports history only. The gold follows one of them, so Major is calibrated. The gold also requires filing the largest eligible disputes first, a preference the customer reveals only if the agent raises provisional credit. I considered Blocker, but the information needed exists, so Major holds. The unscripted resolution for the $50 overcharge is entailed by the script's facts ('charged you $50 extra'), so Minor is defensible there (see calibration notes)."
+    },
+    "task_040": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "initial_state dsp_ed3ab3dce038: purchase_date 10/02/2025, issue_noticed_date 09/15/2025, submitted_at 09/20/2025, status APPROVED",
+        "gold[7] Grainger, gold[8] Uline eligible true; gold[9] American Airlines, gold[10] Best Buy eligible false",
+        "user_scenario Comcast: \"were promised a partial refund weeks ago\"; gold[14] resolution_requested full_refund; replay: partial_refund changes hash",
+        "last-4 via user tool: gold 1652, bgold 0581 (replay)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the 1-prior running count and the Comcast full-vs-partial ambiguity. Both are Major-class: two supported readings, and an unscripted customer choice with no documented default, where the gold choice is still a natural one. The fixture date inconsistency (noticed and submitted before the purchase) changes no count, so under the calibration it belongs in notes rather than as a Minor issue. Task severity is unaffected."
+    },
+    "task_041": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[19] txn_dd095dee227f XFINITY $189.99: resolution_requested partial_refund, partial_refund_amount 69.99; script: \"Your usual bill is around $120\"",
+        "gold[24] AT&T refund_never_processed: full_refund vs script \"were promised a partial refund\"",
+        "Replay: XFINITY partial 70 changes hash; XFINITY full_refund changes hash; reversed filing order gives the same hash",
+        "gold[9],[10] Staples/Coinbase true; 8 other reason-eligible disputes false; 1 prior dispute dsp_dfab0685d198 (09/20/2025)",
+        "task_080/081 initial transaction_disputes empty and all three disputes eligible true (cross-task claim holds)"
+      ],
+      "citation_problems": [
+        "Summary says the 69.99 'can only be guessed from around $120'; it is exactly 189.99 - 120, so it is derivable from the approximate figure. The defect is that the persisted value hinges on the simulator volunteering a precise number and resolution type that the script never states."
+      ],
+      "note": "Reproduced all 16 records. I keep Blocker, and the stated reason that separates it from 040 is this: the gold persists a precise partial amount (69.99) that appears nowhere in the materials except as an approximation, on top of an unscripted resolution choice that the doc says to ask for. A correct agent therefore matches only if the simulator improvises exactly that value. This stacks with the AT&T full-vs-partial mismatch (the same defect 040 rates Major) and the running-count provisional cap (Major)."
+    },
+    "task_043": {
+      "verdict": "Adjusted",
+      "review_severity": "Minor",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_001: \"Minimum credit score required: $750.\" (no gold argument depends on it)",
+        "db.json cc_224959b99e_plat opened 11/10/2022, balance $75.00; account 05 checking current_holdings 2850.00 (only checking account)",
+        "gold[14] annual_fee_waived expiration 11/14/2026 = one year from get_now()"
+      ],
+      "citation_problems": [],
+      "note": "The solution reproduces cleanly. The only issue is a cosmetic credit-score '$' that decides nothing here. The calibration rule makes that a note, not an issue, so the task is clean. The closure reason is unambiguous ('It's really just the annual fee')."
+    },
+    "task_044": {
+      "verdict": "Adjusted",
+      "review_severity": "Minor",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"; platinum_001: \"Foreign transaction fee: 0% on international purchases\", \"Annual fee: $200\"",
+        "Survey of all card _001/_002/_008 docs: no other personal card exceeds 8% with 0% FTF (Business Silver 10% only on travel/software, FTF 1.5% per business_silver_rewards_card_010)",
+        "doc_credit_cards_platinum_rewards_card_009 promo window 2024-06-01 to 2024-12-31 (expired)"
+      ],
+      "citation_problems": [],
+      "note": "Platinum Rewards is the unique fit, and the $200 fee is 'comparable' to $195. The '$750' credit score is cosmetic and non-deciding, so under the calibration it is a note, and the task is clean."
+    },
+    "task_045": {
+      "verdict": "Adjusted",
+      "review_severity": "Minor",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_business_credit_cards_business_platinum_rewards_card_001 title 'Platinum Rewards Card: Elite Business Credit Card Application' and 'Minimum personal credit score required: $765' (neither decides any gold value)",
+        "Business Silver mid-tier (doc_015, replacements_002) -> $20 credit; gold[14] amount 20.0 reason retention_offer"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the payment, reason, Business Platinum recommendation and $20 credit. The title and credit-score corruptions are cosmetic and decide nothing, so the calibration makes them notes and the task is clean. The residual closure_reason risk (not_using_card or simplifying_finances are both named by the customer) is correctly left as a note, consistent with 047/048/049."
+    },
+    "task_046": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "db.json cc_224959b99e_bsilver current_balance $125.00; script: \"please pay that off from my checking account\"",
+        "doc_credit_cards_credit_card_account_logistics_003: \"Check these in order ... If any requirement is not met, explain what must be resolved and do not proceed with retention offers.\"",
+        "Replay: gold + extra reads (accounts, pending replacements) = gold hash; gold + pay_credit_card_from_checking_9182 125 changes hash",
+        "Fixture: dsp_yuki_bsilver_001 card_last_4_digits 7823 and transaction txn_bsilver_dup_001; that transaction is not in credit_card_transaction_history, and the hash-derived last-4 for cc_224959b99e_bsilver is 9568 (plat 7053)"
+      ],
+      "citation_problems": [],
+      "note": "Confirmed. Reporting every unmet requirement and settling the resolvable balance at the customer's request is a reasonable reading of 'explain what must be resolved', and it fails the hash. Two supported readings make this Major. A new minor observation: the pending dispute cannot be tied to the bsilver account from data (the transaction does not exist, and its last-4 matches neither card). An agent can only detect this via a path that already fails, so it does not change severity."
+    },
+    "task_047": {
+      "verdict": "Adjusted",
+      "review_severity": "Minor",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_business_credit_cards_business_platinum_rewards_card_011: promotion 2025-11-01 to 2026-02-28, 'First-year annual fee for new customers: 0'",
+        "Tenure: checking 06 opened 03/10/2024, szoom 03/15/2024, plat 06/20/2024 -> < 2 years -> downgrade offer, declined -> $50 (premium and above)",
+        "Cited typos verified verbatim; neither decides a gold value"
+      ],
+      "citation_problems": [],
+      "note": "The two-card flow reproduces. The only issues are cosmetic doc corruptions, which the calibration makes notes, so the task is clean. One more residual risk: bp_011 says 'Offer is for new customers only', and an agent that tells this existing Rho-Bank customer the waiver does not apply quotes a $450 fee. The script accepts only if the fee is 'waived for the first year or reasonable'. The doc's 'applies to new accounts opened within the promotion window' supports the gold, so I leave this as a note."
+    },
+    "task_048": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_003: \"If Rho-Bank offers a card with similar or better benefits, offer to help them apply\" (no tie-breaker)",
+        "silver_rewards_card_002 4.0% travel/software, $0 fee; platinum_rewards_card_002 10.0% all, $200 fee; business_silver_rewards_card_002 10.0% travel/software",
+        "required_documents include only silver_rewards_card_001/002 among product docs; user step 7 names 'Silver Rewards Card'",
+        "Gold closure history clsr_e3f4a5b6c7_green_001 logged 09/15/2025; eco order ccord_e3f4a5b6c7_eco_001 SHIPPED; checking 07"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced all four card outcomes. Several cards beat 3.25% on travel and software and the doc gives no rule for picking one, so an agent that recommends Platinum is followed by the simulator and fails. That is two supported choices: Major. Not Blocker, because Silver is the closest category match with no fee and the simulator script favours it. The silver '$680' credit-score typo is cosmetic and should be a note."
+    },
+    "task_049": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[17] requestor user request_human_agent_transfer {}",
+        "Only tasks 034, 049, 081 have this user action in gold; 034 and 081 instructions name the tool, 049 does not (scan of all task files)",
+        "No document mentions request_human_agent_transfer (grep documents/)",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"Only call a tool if the agent has requested it or if it is necessary to answer a question the agent has asked.\"",
+        "Replay: gold without the user call changes hash; with two user calls changes hash; transfer summary text does not affect hash"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The record depends on whether the simulator happens to call the tool exactly once, with no documented way for the agent to cause it, so correct agent work passes only by chance: Blocker. The agent-side flow (close Green, refuse EcoCard, recognise the $50 checking shortfall, downgrade then $5 entry-tier credit) matches the gold."
+    },
+    "task_050": {
+      "verdict": "Upgraded",
+      "review_severity": "None",
+      "verified_severity": "Minor",
+      "evidence": [
+        "required_documents = logistics_004..007, replacements_005, general_016; none maps 'Gold Rewards Card' to a tier",
+        "Tier mapping exists only in doc_015 ('Premium Tier (Gold Rewards Card, ...)'), replacements_002, and gold_rewards_card_001 title 'Apply for a Premium Credit Card', none of them required",
+        "logistics_005/006 thresholds (age 60, utilization <90%, 3 payments, 50% cap) all hinge on the tier",
+        "Replay: months 6 vs 3 and 7500 vs 7500.0 give the gold hash"
+      ],
+      "citation_problems": [],
+      "note": "The gold reproduces ($5,000 x 50% = $2,500, 0% utilization, 6 on-time payments). The review's own notes say the tier mapping is missing from required_documents. That is the missing-required-document class it rated Minor in task_029 and the calibration rates Minor, and here the tier decides the cap and every threshold. Under golden_retrieval an agent could mis-tier the card. In the default config it is retrievable."
+    },
+    "task_051": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "initial_state cc_5e4c1a83b0_bronze credit_limit $4,000.00, balance $3,000.00 (75%); chk_5e4c1a83b0 current_holdings 5000.00 (only checking account after init)",
+        "logistics_006 entry-tier 25% cap -> $1,000; 6 consecutive ON_TIME payments present",
+        "Replay: second submit returns 'Error: A similar request may already exist.'; gold without it gives the gold hash"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. Every value is derivable, and logistics_007's explicit 'submit first, then check' order forces the deny-then-pay-then-approve path. The duplicate-submit error is a tool quirk that leaves the DB unchanged. One residual risk is shared with 050/053/054: after submission, get_credit_limit_increase_history shows the just-submitted PENDING request, and logistics_007 says 'If a request exists within this period, deny'. logistics_005's 'applies only if your most recent request was approved' resolves it, so this is a note."
+    },
+    "task_053": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[13] give_discoverable_user_tool get_card_last_4_digits; no user call in gold; gold[15] card_last_4_digits '2791'",
+        "'2791' = digits of sha256('card_last4:cc_e9d195fe8e_silver'); the string 2791 appears nowhere in db.json or documents/",
+        "Replay: inserting the user's call_discoverable_user_tool(get_card_last_4_digits, cc_e9d195fe8e_silver) changes the hash; dispute filed before CLI makes approve return 'Error: Credit limit increase request cannot be approved at this time.'"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The only source of '2791' is the user tool, whose call writes a user_discoverable_tool_calls row the gold lacks, so no trajectory that obtains the digits matches. Blocker."
+    },
+    "task_054": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "gold[14] expedited_shipping true; script step 9 silent on speed; replacements_001: Premium-tier $0.00 and 'strongly recommend expedited shipping' for fraud",
+        "Replay: expedited false changes hash; dispute before replacement gives the same hash",
+        "initial_state cc_584f9c5d00_gold card_last_4_digits '7823' (agent-visible via get_credit_card_accounts_by_user); hash-derived get_card_last_4_digits value for the same account is 0791; giving the user tool changes the hash"
+      ],
+      "citation_problems": [],
+      "note": "Confirmed Minor for the unscripted expedited choice, which has a documented default matching the gold. New observation: the gold last-4 '7823' comes from an account field only this task's fixture carries, while the KB's documented route (doc_013, give the user get_card_last_4_digits) would both write an extra record and return 0791. An agent that reads the account record passes, so this is a residual risk, not a severity change."
+    }
+  },
+  "calibration_notes": [
+    "Cosmetic credit-score '$' corruptions (platinum_001 '$750', business_platinum_001 '$765', silver_001 '$680') and the business_platinum_001 title are rated as Minor issues in 043, 044, 045, 047 (making each task Minor) and 048. Under calibration.md these are notes because no gold value depends on them, so 043/044/045/047 should be None. By contrast, 029's EcoCard '$5.00 points' is correctly Minor because it is the deciding rate for a disputed transaction.",
+    "Missing required documents are rated inconsistently. 029 (doc_007 omitted) is rated Minor, but 050 (no tier mapping in required_documents) is left in notes, and 037/038 (doc_016, the only source of the dispute-history tool needed for provisional-credit criterion 4) are not mentioned. Calibration says Minor for all of them.",
+    "Unscripted resolution_requested gets three severities: 039 Minor, 040 Major (Comcast), 041 Blocker (XFINITY). By the letter of the calibration ('Major when there is no default'), 039's issue is Major-class, since doc_014 only says 'Ask user what resolution they want'. The scenario's '$50 extra' entails the gold, which makes Minor defensible but unstated. 041's Blocker is justified by the precise amount 69.99 resting on 'around $120'. 039 and 040 are Major anyway, so no task severity changes.",
+    "040's fixture date inconsistency (dispute noticed and submitted before its purchase date) is rated a Minor issue even though no count or gold value depends on it. By analogy with the cosmetic-defect rule it should be a note.",
+    "Closure-reason ambiguity under exact closure_reason grading (045 found_better_card vs not_using_card/simplifying_finances, 047 annual_fee vs not_using_card, 048 unhappy_with_rewards vs not_using_card, 049 annual_fee vs unhappy_with_rewards) is consistently treated as residual risk in notes. I agree in each case, because the customer's first or explicit reason maps to the gold.",
+    "The ACTION-leniency class (032/033/034) and the unscripted-expedited class (038/039/054) are applied consistently as Minor."
+  ],
+  "methodology_note": "The review's grading model matches the snapshot code, and its replay-based claims reproduced in every case I re-ran (about 40 variant replays across 15 tasks, using a harness that builds the environment with the gold-derived read allowlist). The substantive Blocker and Major calls (029, 039, 040, 041, 046, 048, 049, 053) hold. The main method weakness is calibration rather than evidence. Cosmetic doc corruptions were turned into task-level Minor ratings, and the missing-required-document rule was applied only when the gap was dramatic. Two blind spots are worth a pass across the rest of the benchmark. First, some fixtures disagree with derived data: 046's dispute last-4 7823 matches neither of the user's cards and its transaction does not exist, and 054's account-field last-4 7823 contradicts the tool-derived 0791. Second, a provisional-credit decision depends on doc_016 in tasks that omit it from required_documents."
+}

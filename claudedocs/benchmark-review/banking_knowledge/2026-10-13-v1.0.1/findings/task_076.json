@@ -1,0 +1,35 @@
+{
+  "task_id": "task_076",
+  "severity": "Major",
+  "headline": "Purple is a sound pick, but Bluest also gives 2-day early deposit and $0 fees abroad with a larger rebate. It is ruled out only by a $75,000 opening deposit the customer is never asked about.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Among accounts with 2-day early direct deposit, Bluest matches or beats Purple on ATM fees abroad ($0 Rho-Bank fee, $50/month rebate cap against $30). Only its $75,000 minimum opening deposit and $112,500 balance rule it out, and the customer's ability to fund it is never stated.",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_001: \"| Minimum opening deposit | $75,000 |\", \"| Early direct deposit | 2 day(s) before payday |\"",
+        "doc_checking_accounts_bluest_account_003: \"Withdraw from ATMs abroad with no Rho-Bank fee: $0.00\"; \"rebated up to $50 per monthly statement cycle\"",
+        "doc_checking_accounts_purple_account_001: \"No foreign ATM withdrawal fees: $0.00 per withdrawal\"; \"Early direct deposit | 2 days early\"; \"Global ATM fee rebates | Up to $30 per month\"",
+        "task_076 description.notes: Bluest \"requires $50k-100k minimum deposit - NOT PRACTICAL\" (not derivable from the customer script)",
+        "gold[2].arguments.arguments account_class = \"Purple Account\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that asks about the deposit gets whatever the simulator improvises. An agent that doesn't ask can reasonably choose Bluest for its larger rebate. Either path can end on Bluest and fail the DB match.",
+      "suggested_fix": "Add the customer's deposit capacity (well below $75,000) to the instructions."
+    }
+  ],
+  "solution_check": "A requirement of at least 2 days early deposit leaves Purple (2 days), Bluest (2 days), Evergreen (up to 2 days) and Gold Years (age 62+, excluded). Green Fee-Free, Light Blue and Light Green (0 days) and Blue, Green and Dark Green (1 day) fail. For 8 withdrawals of $300 abroad: Purple $0 by docs ($20 under the notes' undocumented OON-plus-foreign premise), Bluest $0 ($16 under the premise), Evergreen 8 x $6 = $48. With Bluest excluded by the deposit, Purple is the answer under either premise, matching the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The unanswered Bluest deposit question is new.",
+  "notes": "The notes' Purple $20 figure relies on the same undocumented 'OON fee also applies abroad' premise as task_075, but the gold choice does not depend on it. The notes list Blue and Green as 0 days early, but the docs give 1 day; both are excluded either way."
+}

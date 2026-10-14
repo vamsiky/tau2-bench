@@ -1,0 +1,41 @@
+{
+  "task_id": "task_047",
+  "severity": "Minor",
+  "headline": "Two-card retention (a Business Platinum upgrade, then a $50 credit after the customer declines a downgrade); the logic is sound and only cosmetic doc typos remain.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "A required card document states a minimum credit score as a dollar amount. The value is cosmetic here: no gold argument depends on it and apply_for_credit_card takes no credit score.",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_001: \"Minimum credit score required: $750.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "No change to the correct final state. It is a corrupted value of the kind v1.0.1 cleaned elsewhere (e.g. \"$120 days\" in logistics_005) but left here.",
+      "suggested_fix": "Change \"$750\" to \"750\"."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Business Platinum application doc states the minimum personal credit score as a dollar amount, and its title calls the card \"Platinum Rewards Card\", which is the name of the separate personal card. Both are cosmetic for this task.",
+      "evidence": [
+        "doc_business_credit_cards_business_platinum_rewards_card_001 title: \"Platinum Rewards Card: Elite Business Credit Card Application\"",
+        "doc_business_credit_cards_business_platinum_rewards_card_001: \"Minimum personal credit score required: $765\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "No change to the correct final state. The title could make an agent confuse the business and personal Platinum cards when it recommends one.",
+      "suggested_fix": "Change \"$765\" to \"765\" and retitle the doc \"Business Platinum Rewards Card: ...\"."
+    }
+  ],
+  "solution_check": "Silver Zoom (cc_c7d8e9f0a1_szoom): eligible ($0, no disputes or replacements), no closure history, reason found_better_card. The only business card beating 3.5% on travel/advertising with 0% foreign fee is Business Platinum (bp_002 4.0%, bp_008 FTF 0%, bp_011 first-year fee 0 during the 2025-11-01 to 2026-02-28 promo), and the customer applies. Platinum (cc_c7d8e9f0a1_plat): $0, no history, reason annual_fee. Tenure is under 2 years on every relationship (checking 03/10/2024, Silver Zoom 03/15/2024, Platinum 06/20/2024), so the agent offers a Bronze downgrade (logistics_008) and the customer declines. Step 5 for premium-and-above is $50 or 5,000 points; the customer takes the $50 credit with reason retention_offer. This matches the gold and the replay is clean.",
+  "prior_status": "new",
+  "prior_note": "Prior clean; still clean in substance, with newly reported Minor doc typos.",
+  "notes": "The Platinum closure answer \"The annual fee on that one is really bothering me. I don't use it as much as I used to.\" also names not_using_card. The customer's goal names only the annual fee, and the waiver/downgrade branch the script follows is the annual_fee branch, so I recorded residual risk, not a defect. Diamond Elite (5%, 0% FTF) is a personal, invitation-tier card and the customer asked for a business card, so Business Platinum is the unique fit."
+}

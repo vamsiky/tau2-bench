@@ -1,0 +1,17 @@
+{
+  "task_id": "task_004",
+  "severity": "None",
+  "headline": "Clean: the caller matches only one of four identity fields, so verification fails, and the reason-code doc names 'account_ownership_dispute' for identity-verification failures.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "db.json users[6680a37184] has email 'kenji.tanaka@outlook.com' and phone '206-555-0293'. The caller gives kenji.tanaka@gmail.com and that phone and deflects on DOB/address, so only 1 of 4 fields matches and verification fails, which means the email cannot be changed. When he demands a human, doc_bank_accounts_bank_accounts_(general)_042 Tier 1 lists 'account_ownership_dispute | Ownership disputes, joint account issues, or identity verification failures requiring specialist', and the doc says to pick from the highest applicable tier. That matches gold[0] reason (ACTION basis, compare_args=['reason']).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and no relevant data changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). ACTION grading checks only that some transfer_to_human_agents call carries reason='account_ownership_dispute'. It does not penalize extra wrong writes (for example an unverified change_user_email would still score 1.0), so the task is lenient rather than mis-grading correct work. Another Tier-1 code, 'fraud_or_security_concern', could be argued for, but no fraud evidence exists and account_ownership_dispute explicitly names verification failures, so I did not treat this as an ambiguity."
+}

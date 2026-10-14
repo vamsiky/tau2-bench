@@ -1,0 +1,17 @@
+{
+  "task_id": "task_045",
+  "severity": "None",
+  "headline": "Clean: after paying a $125 balance and declining the Business Platinum recommendation, the customer accepts the mid-tier $20 retention credit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The Step 1 checks find a $125.00 balance on cc_224959b99e_bsilver, which is paid from checking '05'. found_better_card is logged. Business Platinum is the only business card with advertising rewards (4% travel/software/media) and 0% FX (Business Gold earns 2.5% on operations; Business Silver charges 1.5% FX). After the decline, Step 5 gives a mid-tier offer of 2,000 points or $20 (replacements_002 lists Business Silver as Mid-tier), and $20 is applied with reason retention_offer. This matches gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found it clean; the task and docs are unchanged and it is still clean.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. Low-probability risks, not counted as defects: (a) the opening gives two reasons ('found a better card ... don't really use this one much'), so an agent could log not_using_card instead of found_better_card; (b) the customer already holds a personal Platinum Rewards Card (10% on all, 0% FX), and an agent that points to it instead of Business Platinum would trigger the simulator's 'worse card' hang-up branch."
+}

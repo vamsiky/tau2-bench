@@ -1,0 +1,35 @@
+{
+  "task_id": "task_006",
+  "severity": "Minor",
+  "headline": "Mostly clean: EcoCard is the only card that fits, but ruling out the Crypto-Cash Back card depends on a credit-score minimum written as a dollar amount ('$660').",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The one fact that eliminates Crypto-Cash Back for a customer with a 540 credit score is its minimum credit score, and the doc writes it as a dollar amount. Without that fact, Crypto-Cash Back would also meet every hard requirement (FTF 0%, minimum payment 1.5%, virtual cards Yes).",
+      "evidence": [
+        "doc_credit_cards_crypto-cash_back_009: \"What is the minimum credit score to apply for the card to earn crypto rewards? $660.\"",
+        "doc_credit_cards_crypto-cash_back_008: \"What is the foreign transaction fee if I use the card abroad? 0%.\" / \"What is the minimum monthly payment? 1.5% of the outstanding balance.\"",
+        "doc_credit_cards_crypto-cash_back_001: \"Virtual card management availability: Yes.\"",
+        "task_006 instructions: \"You have a credit score of 540.\"",
+        "doc_credit_cards_ecocard_001: \"Minimum credit score required to apply: 0 (0 indicates no credit score requirement).\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "A careful agent will read '$660' as a 660 score and exclude Crypto-Cash Back, so the correct final state does not change. The corruption sits on the deciding fact, though, and an agent that dismissed it as malformed could recommend Crypto-Cash Back (which the crypto-loving customer would welcome), and the gold application would not match.",
+      "suggested_fix": "Change '$660.' to '660.' in doc_credit_cards_crypto-cash_back_009, and strip the '$' from the other credit-score minimums ('$640', '$680', '$720', '$750')."
+    }
+  ],
+  "solution_check": "Filters: FTF <= 1.5%, minimum payment <= 1.5%, virtual card management, and a score of 540. Bronze and Silver fail on FTF 2.75% and VCM 'No'. Gold requires Rho-Bank+ (he has none) and a 2.0% minimum payment. Platinum has a 2.5% minimum payment. Diamond Elite is invitation-only with a 3.0% minimum payment. Every business card needs a score of $660 or more. Crypto-Cash Back fails only on its '$660' score minimum. EcoCard passes everything (FTF 1.0%, minimum payment 1.0%, VCM Yes, score 0). That gives gold[0] apply_for_credit_card(EcoCard, Bob Nakamoto, 95000, false).",
+  "prior_status": "new",
+  "prior_note": "The prior review marked this clean. The dollar-formatted score was not flagged, even though it is load-bearing here: it is the only thing excluding the crypto card.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). required_documents does not list the Crypto-Cash Back docs, even though excluding that card is the core of the task. I applied one rule across my tasks: a '$'-formatted credit score is flagged Minor only where it decides the outcome (here), and goes in notes elsewhere."
+}

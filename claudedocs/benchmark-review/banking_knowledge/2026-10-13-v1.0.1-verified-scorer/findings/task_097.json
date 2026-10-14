@@ -1,0 +1,54 @@
+{
+  "task_id": "task_097",
+  "severity": "Blocker",
+  "headline": "For the Silver account, the official credit leaves out a 0.025% relationship bonus that this task's own document grants (and that task_093 applies), and the cent amount also depends on the rounding method.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "Gold Silver expected APY 6.65% = 4.0 tier + 0.45 Bluest + 2.2 EcoCard, with no relationship bonus. The required doc silver_002 and FAQ silver_005 grant +0.025% for holding multiple Rho-Bank products, and this customer holds 13. task_093 applies the same bonus with just two products. A doc-following agent computes 6.675% and credits $222.92 instead of $220.84.",
+      "evidence": [
+        "doc_savings_accounts_silver_account_002 (required): \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+        "doc_savings_accounts_silver_account_005: \"Do I get a bonus for having multiple Rho-Bank products? - Yes. Eligible customers receive a relationship APY bonus of 0.025% added to the base Silver APY.\"",
+        "doc_bank_accounts_bank_accounts_(general)_044: \"Missing Relationship Bonus: Customer maintains multiple Rho-Bank products but the relationship bonus was not applied.\"",
+        "task_093 gold[8].expected_apy = 4.275 (includes the 0.025 with two products)",
+        "gold[9].arguments.amount = 220.84; gold[14].arguments.expected_apy = 6.65",
+        "computation: 100000 x 6.675% / 12 = 556.25; 556.25 - 333.33 = 222.92",
+        "replay: Silver credit 222.92 -> verified match False (accounts, bank_account_transaction_history differ)"
+      ],
+      "gold_action_refs": [
+        9,
+        14
+      ],
+      "why_it_matters": "Leaving the bonus out requires ignoring a required document and contradicts task_093. A competent agent includes it and fails. doc_savings_accounts_silver_plus_account_002 (\"an additional relationship APY bonus of 0.025% when you qualify under the relationship criteria\") creates the same exposure for the Silver Plus credit (12.375 vs gold 12.00).",
+      "suggested_fix": "Add the 0.025% to the Silver (and, if intended, Silver Plus) expected APY and credit, or define relationship-bonus eligibility so that it excludes this customer, and keep task_093 consistent."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Even without the bonus, the Silver gap rounds differently depending on method. Gold uses round(expected interest) minus actual (554.17 - 333.33 = 220.84); the equally natural balance x APY difference / 12 gives 220.83.",
+      "evidence": [
+        "db: btxn_silver_interest_oct amount 333.33, sav_mc80w7k3x9_silver current_holdings 100000.00",
+        "computation: 100000 x 6.65% / 12 = 554.1667 -> 554.17 - 333.33 = 220.84; 100000 x 2.65% / 12 = 220.8333 -> 220.83",
+        "gold[9].arguments.amount = 220.84",
+        "replay: Silver credit 220.83 -> verified match False"
+      ],
+      "gold_action_refs": [
+        9
+      ],
+      "why_it_matters": "The credit amount is persisted and hashed into the transaction id, so a one-cent difference fails the DB check. No document specifies the rounding method.",
+      "suggested_fix": "Pick balances whose gaps are exact to the cent (as in tasks 093-096), or state the rounding convention."
+    }
+  ],
+  "solution_check": "Platinum 6.5 + Blue 0.8 + Diamond card 0.35 = 7.65%; actual 6.5%; $67.08 (matches). Diamond Elite 7.5 + Light Green 0.2 + Diamond card 0.5 = 8.2%; $70.00 (matches). Silver Plus tier 2 4.5 + Blue 0.35 + EcoCard 0.45 = 5.3%; $12.00 (matches unless the silver_plus relationship bonus is added). Silver: 4.0 + Bluest 0.45 + EcoCard 2.2 + relationship 0.025 = 6.675%, giving $222.92, which does not match gold's $220.84.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major (omitted Silver relationship bonus, inconsistent with task_093) persists; I raise it to Blocker because the omission contradicts this task's own required doc, and I add a new rounding ambiguity on the same credit.",
+  "notes": "submit_interest_discrepancy_report_7294 calls add_to_db(\"interest_discrepancy_reports\", ...), but TransactionalDB has no such table, so add_to_db returns False and the tool still prints success. The report persists nothing; only its tool name in agent_discoverable_tools (a write, always logged) is graded. Its expected_apy, actual_apy, and amount_difference arguments therefore never affect the DB result; only the apply_savings_account_credit_6831 amount does (it changes accounts.current_holdings and a transaction_id hashed from the amount). The savings docs say interest is \"compounded daily\" from a daily periodic rate, but every posted credit equals balance x APY / 12 exactly. Gold uses that monthly convention, and an agent that back-solves actual_apy from the posted credit adopts it naturally. A literal daily-compounding computation would give a slightly different credit. doc_savings_accounts_silver_account_009 lists Platinum +0.2%/Diamond +0.25% card bonuses not in silver_006; the max is still EcoCard 2.2%, so there is no impact. silver_002 still contains the \"[[linked_checking_apy_bonus]]\" placeholder."
+}

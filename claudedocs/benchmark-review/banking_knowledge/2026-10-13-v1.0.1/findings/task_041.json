@@ -1,0 +1,65 @@
+{
+  "task_id": "task_041",
+  "severity": "Blocker",
+  "headline": "Sixteen card disputes whose gold record stores a $69.99 partial refund and refund types the customer is never told to ask for, plus a provisional-credit cap the documents only imply.",
+  "ratings": {
+    "instructions_sufficient": "Insufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Blocker",
+      "summary": "Every dispute record stores resolution_requested, and the XFINITY record also stores partial_refund_amount = 69.99. The customer's instructions never say what resolution they want for any charge. The 69.99 can only be guessed from \"around $120\", and the AT&T charge, described as a promised partial refund, is gold full_refund.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_014: \"13. resolution_requested (string) - Ask user what resolution they want.\"",
+        "user_scenario.instructions (XFINITY): \"Your usual bill is around $120. They overcharged you significantly.\" (no resolution stated)",
+        "user_scenario.instructions (AT&T): \"were promised a partial refund weeks ago\"",
+        "gold[19].arguments: \"resolution_requested\": \"partial_refund\", \"partial_refund_amount\": 69.99 (txn_dd095dee227f, $189.99)",
+        "gold[24].arguments: \"resolution_requested\": \"full_refund\" (AT&T txn_db96f3228527)",
+        "tools.py file_credit_card_transaction_dispute_4829 stores resolution_requested and partial_refund_amount in the transaction_disputes record"
+      ],
+      "gold_action_refs": [
+        19,
+        22,
+        24
+      ],
+      "why_it_matters": "Replay check: changing only the XFINITY dispute to full_refund, or to partial_refund 70, changes the DB hash. Which resolution the simulated customer names, and what amount, is improvised, so a correct agent that asks as the doc instructs matches only by chance. add_to_db refuses a second dispute on the same transaction, so the first answer cannot be corrected later.",
+      "suggested_fix": "Add the resolution the customer wants for each charge to the instructions, e.g. \"For XFINITY, ask for a partial refund of $69.99 (the overcharge); for all others, a full refund.\""
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The gold marks only Staples and Coinbase eligible for provisional credit, though all 10 disputes with an eligible reason pass criteria 1, 2, 3 and 5. The cap of two comes from reading criterion 4 as a running count that includes disputes filed earlier in the same call. That reading fits the text and the other tasks, but the doc does not say whether same-call filings count, and it gives no rule for which two qualify. The gold resolves that with the customer's conditional \"prioritize those\" line.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "initial_state transaction_disputes.dsp_dfab0685d198.submitted_at = \"09/20/2025\" (1 prior dispute)",
+        "gold[9]/gold[10]: eligible_for_provisional_credit true (Staples $623.45, Coinbase $512.34); gold[11] Delta $487.50 fraud on a Gold card opened 03/15/2024: false",
+        "user_scenario.instructions: \"If the agent mentions provisional credit or asks about it, say: ... Please prioritize those if there's any limit.\"",
+        "description.notes: \"Only the 2 highest-value can get provisional credit\" (tie-breaker not in any document)",
+        "Cross-task: task_039 (0 prior) gold has 3 of 8 true; task_040 (1 prior) 2 true; task_080/081 (0 prior) 3 of 3 true, consistent with a running count capped at 3 total"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "why_it_matters": "Replay check: marking all 10 reason-eligible disputes true changes the hash. Reading criterion 4 as counting only disputes filed before the call gives 10 true. Counting the dispute being filed gives 1. Under the running count, an agent that never brings up provisional credit never hears the customer's priority, so it files in card order and marks Delta and Apple. Only the agent that recognises the cap and asks lands on Staples and Coinbase.",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the same interaction count toward criterion 4, and either have the customer name Staples and Coinbase unconditionally or document a tie-break rule such as highest amount first."
+    }
+  ],
+  "solution_check": "Reconstructed from DB and docs: four card accounts, all opened in 2024, last-4 digits obtained via the user tool (0573/3081/3604/0652), 16 transactions matched by merchant, amount and date, and issue_noticed_date taken as today, 11/14/2025. Card actions, reasons and contacted_merchant flags match the gold. The gold diverges where the customer must state a resolution: XFINITY is partial_refund 69.99, never stated. The provisional-credit picks match only under the running-count reading plus the customer's conditional priority. Gold replay runs without errors.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Blocker for an unwritten provisional-credit cap. Re-derived here, that cap follows from a running count under criterion 4 and matches tasks 039/040/080/081, so it is now Major; the Blocker is now the unscripted resolution_requested/partial_refund_amount, which the prior review did not report.",
+  "notes": "Gold replay: agent and user DB hashes are identical (one shared DB). Filing order does not affect the hash (reversed filing order gives the same hash), but criterion 4 under the running count makes eligibility depend on the order the agent chooses. Skipping the gold read get_user_dispute_history_7291 changes the hash because it is on the read allowlist. get_card_last_4_digits logs the user's call before checking that the account exists, so a user call with a mistyped account id also changes the hash. Netflix $22.99 is under the $25 minimum, so it is ineligible anyway."
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "task_062",
+  "severity": "Major",
+  "headline": "The four-step reordering puzzle is fully documented and the products are unique, but both gold closures leave the free-text closure reason at a hidden default, so an agent that records a reason fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 stores its optional free-text 'reason' argument in accounts[...].closure_reason. Gold omits it, so the record gets the hidden default 'Customer requested closure'. No document says which reason to pass or to leave it out, so an agent that records a sensible reason produces a different DB state.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\"; body: account[\"closure_reason\"] = reason",
+        "unlock output: \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason value anywhere in the KB)",
+        "gold[9] and gold[12] arguments: {\"account_id\": \"61c9d8e7f6a5b432\"} / {\"account_id\": \"61a8b7c6d5e4f321\"} (no reason)"
+      ],
+      "gold_action_refs": [
+        9,
+        12
+      ],
+      "why_it_matters": "Passing a reason (e.g. 'Customer wants to consolidate checking accounts') is a reasonable, even diligent, use of an offered parameter, but it fails DB grading. Only omitting the argument, or guessing the exact default string, matches gold.",
+      "suggested_fix": "Exclude closure_reason from the hashed state, or have the closure doc state the exact reason string and put it in the gold call."
+    }
+  ],
+  "solution_check": "Business checking requires no CLOSED accounts (doc_(general)_003). Personal savings needs a checking account at least 14 days old: Evergreen (03/15/2025) qualifies, Light Blue (11/02/2025, 12 days) does not. Hence: open Navy Blue, open savings, then close. Navy Blue is the only business checking with a $0 fee, no minimum balance, and no expiring startup free period (Sky Blue). Silver Plus is the only savings product with at least 15 withdrawals, daily compounding, a relationship bonus, ATM rebates and a $2,500 minimum (no Platinum card, so Silver has 10 withdrawals). The user dictates the transfers ($150 Bronze to Silver Plus; $2,500 and $1,000 from Evergreen). There are no early-closure fees: Bronze is 674 days old and Evergreen 244. The gold replays cleanly, and swapping the two opens or the transfer/closure blocks gives the same hash (verified).",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean under a scorer that ignored closure_reason. Under upstream exact-hash grading, the free-text reason on both closures is compared.",
+  "notes": "Data typo: db.json accounts.61c9d8e7f6a5b432.class = \"saving\" (not \"savings\"). Because of it, close_bank_account_7392 finds no early-closure config for the Bronze savings. That has no effect here (the account is past the 60-day window), and nothing else reads the class, so I list it only as an observation. Opening the business checking also requires a personal checking balance of at least $500 (Evergreen $3,500, Light Blue $600), which is met."
+}

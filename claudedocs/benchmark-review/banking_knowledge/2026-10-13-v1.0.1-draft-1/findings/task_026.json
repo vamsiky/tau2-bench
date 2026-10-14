@@ -1,0 +1,73 @@
+{
+  "task_id": "task_026",
+  "severity": "Blocker",
+  "headline": "The gold writes 1500 points where the documented round-down rule gives 1499, and the agent has no tool to confirm the disputes were resolved, so following the documented process fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "gold[10] sets txn_a8f1c2d3e411 to \"1500 points\". The correct value under the documented rules is 149.99 x 10% = 1499.9 floored to 1499 (Business Silver Software; 09/15/2025 is after the 6-month double-cash window ending 08/13/2025).",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "db.json txn_a8f1c2d3e411: Zoom Video, Software, $149.99, 09/15/2025, Business Silver Rewards Card",
+        "doc_credit_cards_credit_cards_(general)_004: \"new_rewards_earned: a string formatted as 'X points' where X is the correct whole-number point value\"",
+        "gold[10].arguments.arguments = {\"transaction_id\": \"txn_a8f1c2d3e411\", \"new_rewards_earned\": \"1500 points\"}",
+        "Other update values are exact: 315x20%=6300, 255x4%=1020, 380x10%=3800"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "An agent that applies the KB's rounding policy writes \"1499 points\" to credit_card_transaction_history, and the agent DB hash fails. Policy-faithful work is marked wrong.",
+      "suggested_fix": "Change gold[10] new_rewards_earned to \"1499 points\" (and re-seed the rows from task_020's issue), or change doc_007 to round half up across the board."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "doc_004 step 1 says to look up the user's resolved disputes in cash_back_disputes before updating rewards, but no agent tool reads that table. The agent's only evidence is the user's word, and task_027 gives the agent the identical claim (\"I just got a notification that they've all been approved and resolved!\") with the opposite gold. Whether the agent updates depends on its trust disposition, not on anything it can observe.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: cash_back_disputes is only written (submit_cash_back_dispute_0589 add_to_db); no @is_tool or @is_discoverable_tool reads it (get_user_dispute_history_7291 reads transaction_disputes only)",
+        "orchestrator.py: ToolMessage with requestor 'user' is routed back to the user, so the agent never sees the user tool's \"Status: RESOLVED\" / \"Status: SUBMITTED\" output",
+        "task_026 initial_state task_config auto_resolve_disputes = true and gold includes 4 update_transaction_rewards_3847 calls; task_027 auto_resolve_disputes = false and gold has none",
+        "Both personas use the same Phase-2 script line claiming approval"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "No fixed policy passes both tasks: an agent that trusts the claim fails task_027, and one that refuses because it cannot verify fails task_026. The pair's outcome is chance with respect to the materials.",
+      "suggested_fix": "Add an agent-readable cash-back-dispute status tool (and document it in doc_004), and put that read in both golds so 026 updates only after seeing RESOLVED and 027 refuses after seeing SUBMITTED."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Same seed as task_020: the docs say rewards are floored, but these rows were stored with round-half-up, so a doc-faithful agent sees nine extra 1-point over-credits besides the four gold disputes (one of which, b7e2d4c5f506, is itself an over-credit).",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "Floor mismatches on non-gold rows (+1 each, stored at round-half-up): txn_a8f1c2d3e402 (1099.8 vs 1100), a8f1c2d3e404 (159.98 vs 160), a8f1c2d3e406 (254.86 vs 255), a8f1c2d3e409 (313.56 vs 314), a8f1c2d3e414 (49.99 vs 50), b7e2d4c5f503 (179.96 vs 180), b7e2d4c5f507 (22.99 vs 23), b7e2d4c5f509 (143.56 vs 144), b7e2d4c5f512 (187.5 vs 188)"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "why_it_matters": "An agent that disputes every discrepancy files 13 disputes. One that disputes only under-credits misses b7e2d4c5f506. Either way cash_back_disputes differs from the gold.",
+      "suggested_fix": "Re-seed the nine rows with floor values so the documented rule reproduces the gold set."
+    }
+  ],
+  "solution_check": "Phase 1 reproduces task_020: the documented floor rule gives 13 disputes, while round-half-up gives the gold four. In Phase 2 the user says the disputes were approved; doc_004 asks the agent to confirm in cash_back_disputes, which it cannot read. A trusting agent then unlocks update_transaction_rewards_3847 and writes 6300/1020/3800/1499 by doc_007, mismatching gold's 1500. Only an agent that both skips verification and rounds half-up matches.",
+  "prior_status": "changed",
+  "prior_note": "Prior rated this Minor (undocumented rounding, natural rounding works); with doc_007 in the KB the gold update value contradicts the docs, and the unverifiable-resolution problem shared with task_027 was not reported before.",
+  "notes": "doc_007 is not in required_documents. Under golden_retrieval, agents round naturally and can hit 1500, but that rests on the omission. unlock_discoverable_agent_tool writes nothing to the DB; each update call is logged to agent_discoverable_tools (mutating tool). update_transaction_rewards_3847 accepts any string, so \"1500\" without the \" points\" suffix would also mismatch."
+}

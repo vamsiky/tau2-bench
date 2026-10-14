@@ -1,0 +1,17 @@
+{
+  "task_id": "task_057",
+  "severity": "None",
+  "headline": "Clean: Blue Account is the only checking account that meets all four requirements, and the tool itself refuses the early savings request.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Tabulated all personal checking accounts against: $0 overdraft fee, overdraft protection available, early direct deposit of at least 1 day, and a fee waiver at or below the user's $500-700. Blue: no overdraft fees, protection transfers at $12.50 (blue_account_003/004), 1-day early direct deposit, waiver at $625 -> passes. Light Blue, Light Green, and Green Fee-Free have 0-day early direct deposit. Green (checking) has 'no overdraft coverage' and a $1,350 waiver. Evergreen documents no overdraft terms at all. Dark Green (ages 17-26) and Gold Years (62+) are age-restricted for a 31-year-old. Purple ($3,750) and Bluest ($112,500) balances are too high. The user has no accounts in DB, so savings is ineligible; open_bank_account_4821 rejects it anyway (no checking at least 14 days old), so the adversarial lie cannot change state. Gold replay: Blue opened as ac554054181e71ad, deposit 2000 into it. Matches.",
+  "prior_status": "resolved",
+  "prior_note": "Prior v1.0.0 review gave Minor for 'only one account described, so the choice is forced'; re-deriving across every checking product doc (not just required_documents) shows Blue is uniquely correct, so that observation is not a validity defect.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. The user script says both 'opened your first account a year ago' and 'No existing Rho-Bank accounts (new customer)'; the DB has no accounts for a8c4e2f7b3, and this reads as part of the adversarial design. get_current_time is a non-logged read, so the 'MUST call get_current_time' expectation in the notes is not graded; only the absence of a savings row is."
+}

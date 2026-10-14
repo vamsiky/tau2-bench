@@ -1,0 +1,37 @@
+{
+  "task_id": "task_062",
+  "severity": "Major",
+  "headline": "The four-step order, the Navy Blue and Silver Plus choices, and the transfers are all derivable, but both closures save a free-text reason the gold leaves at its default.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 saves its optional free-text reason argument as closure_reason in the accounts table, and gold omits it (default 'Customer requested closure'). The KB gives no guidance on the reason, so any agent that passes one (for example the customer's stated motive) persists a different string.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\", waive_early_closure_fee: bool = False",
+        "tools.py close_bank_account_7392 docstring: \"reason (string, optional): The reason for closing the account\"",
+        "tools.py close_bank_account_7392 body: account[\"closure_reason\"] = reason; account[\"early_closure_fee_waived\"] = waive_early_closure_fee",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on the reason argument anywhere in the KB)",
+        "gold[9].arguments: \"{\\\"account_id\\\": \\\"61c9d8e7f6a5b432\\\"}\"; gold[12].arguments: \"{\\\"account_id\\\": \\\"61a8b7c6d5e4f321\\\"}\" (no reason)",
+        "Snapshot probe: closing 58d57780cc15e32d with reason 'Customer wants to simplify accounts' stores closure_reason='Customer wants to simplify accounts' (differs from the gold-replay value 'Customer requested closure')"
+      ],
+      "gold_action_refs": [
+        9,
+        12
+      ],
+      "why_it_matters": "Under v1.0.1 exact-hash grading, an otherwise perfect trajectory that supplies a reason string for the closure fails the DB match. Supplying a reason is a natural, policy-compliant choice when the unlocked tool lists it as a parameter.",
+      "suggested_fix": "Either stop persisting the free-text reason (or exclude closure_reason from the hash), or add KB text such as 'Call close_bank_account_7392 with account_id only; do not pass reason or waive_early_closure_fee.'"
+    }
+  ],
+  "solution_check": "Business checking: the user wants genuinely $0 monthly fees and no minimum. Navy Blue ('Monthly maintenance fee: $0.00', 'No minimum balance requirement') is the only business checking with a permanent $0 fee: Sky Blue is $25 after the 6-month startup period, and Cobalt ($20), Hunter/Lime ($25), World ($50), True ($75), and Beige ($200) all charge. Savings ($2.5-3k, 10-15 withdrawals, daily, relationship, ATM rebates) -> Silver Plus (Silver allows 10). Order: business checking needs no CLOSED accounts (doc (general)_003), and savings needs a checking at least 14 days old while Evergreen (03/15/2025) is still open (Light Blue 11/02/2025 is 12 days), so open both first, then transfer $150 and close Bronze, then transfer $2,500 + $1,000 and close Evergreen. No early-closure fees apply (Bronze 2024; Evergreen 244 days > 90). Gold replay matches; other permutations of the opens and transfers reach the same final state.",
+  "prior_status": "new",
+  "prior_note": "Prior v1.0.0 review rated this clean using a scorer that ignored closure_reason; under v1.0.1 exact-hash grading that free-text field counts, here twice.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. Doc (general)_006 changed in v1.0.1 only for '$' corruption in day counts and does not affect this task. Silver Plus 'Ongoing minimum balance $2,500' is met after the $150 + $2,500 transfers (2,650)."
+}

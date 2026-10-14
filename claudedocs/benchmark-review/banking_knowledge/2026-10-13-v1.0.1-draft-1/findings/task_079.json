@@ -1,0 +1,59 @@
+{
+  "task_id": "task_079",
+  "severity": "Minor",
+  "headline": "The stolen-wallet case can be worked out, but two rules in one document conflict over a pending refund, and the grade also depends on freezing the cards before closing them.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Green account's only blocker is a pending refund row. That row is both a 'pending transaction' (req 4, absolute block) and a 'pending refund' (req 5, waivable by written acknowledgment). Gold applies req 5 and closes and reissues the card.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_025 req 4: \"No pending transactions: The card must not have any pending or processing transactions.\"",
+        "doc_bank_accounts_bank_accounts_(general)_025 req 5: \"No pending refunds ... or acknowledge in writing that the refunds will be credited to the linked checking account instead.\"",
+        "task_079 initial_state btxn_d0b8b00ed468: type=\"refund\", status=\"pending\", account chk_cr89a2b3c4_3",
+        "gold[19] close_debit_card_4721 dbc_cr89a2b3c4_green; gold[24] order_debit_card_5739 chk_cr89a2b3c4_3 STANDARD"
+      ],
+      "gold_action_refs": [
+        19,
+        24
+      ],
+      "why_it_matters": "An agent that reads req 4 literally refuses to close the Green card, so the close and order are missing and the hash differs. The more specific req 5 is the intended reading and the customer script supports the acknowledgment, so most careful agents get there.",
+      "suggested_fix": "State in req 4 that pending refunds are governed by req 5 instead."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Freezing a lost/stolen card leaves 'frozen_date' and 'unfrozen_date' fields on the card record, and a frozen card must be unfrozen before close_debit_card_4721 will accept it, so the final DB depends on whether the agent froze first. Doc 026 tells agents to recommend closing instead of freezing once loss/theft is confirmed, which gives a second defensible path with a different final state.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "tools.py freeze_debit_card_3892: card[\"frozen_date\"] = get_today_str(); unfreeze_debit_card_3893: card[\"unfrozen_date\"] = get_today_str()",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\"",
+        "task_079 instructions step 1: \"I need to freeze all my debit cards immediately.\" (theft already confirmed in the opening)"
+      ],
+      "gold_action_refs": [
+        4,
+        5,
+        6,
+        13,
+        14,
+        15,
+        17,
+        18,
+        19
+      ],
+      "why_it_matters": "An agent that follows doc 026, recommends closing outright, and gets the simulated customer's agreement (the script says to follow the agent's guidance) closes the cards without the freeze/unfreeze round trip. Its card records then lack the two date fields and the unfreeze tool is never logged, so the hash differs from gold. A replay that drops the freeze/unfreeze calls for the closed cards confirmed the mismatch for task_078. The customer's explicit opening request to freeze makes the gold path the usual one, so this is rated Minor.",
+      "suggested_fix": "Exclude transient freeze bookkeeping fields (frozen_date/unfrozen_date) from the hash, or have close_debit_card_4721 accept FROZEN cards and clear those fields, so both paths converge."
+    }
+  ],
+  "solution_check": "Independently: freeze all three. Transactions show no pending rows on Evergreen or Light Blue, and only the pending refund on Green. Light Blue has two 'lost' replacements within 12 months (04/05/2025, 08/10/2025), so it is at the ENTRY limit. The customer accepts the $25 fee, but the ENTRY 48-hour post-closure wait still blocks the order. Evergreen is PREMIUM: RUSH $35 and PREMIUM design $0. Green is MID: STANDARD/CLASSIC (metallic costs $10, which the customer declines). Unfreezing and closing all three as 'stolen' and ordering Evergreen and Green matches gold exactly, and gold replays without errors.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. #402 only added a gold get_all_user_accounts read. Both Minor issues are newly reported.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. The refund row's type 'refund' is not in doc 018's documented type enum (fee_refund is), a cosmetic data inconsistency."
+}

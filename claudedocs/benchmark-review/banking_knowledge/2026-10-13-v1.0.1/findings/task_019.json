@@ -1,0 +1,30 @@
+{
+  "task_id": "task_019",
+  "severity": "Minor",
+  "headline": "Applying the KB's documented round-down rule gives exactly the four gold disputes; the rounding document is just missing from the required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rewards rounding rule that fixes the dispute set lives in doc_credit_cards_credit_cards_(general)_007, which is retrievable from the KB but is not listed in required_documents.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "Under round-half-up, 11 correctly credited transactions become +1 false positives (e.g. txn_f2a3b4c5d6e7 Sprouts $112.58 x 5 = 562.9 -> 563 vs stored 562)."
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under the default retrieval configs the agent can find the floor rule, so the gold is reachable. Under configs that inline only required_documents (golden_retrieval / required_docs prompts) the rule is absent, the natural round-half-up convention flags many correctly credited transactions, and the extra disputes change the DB hash.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "User af0581dcbf: Gold Rewards Card 2.5% on everything (doc_..._gold_rewards_card_001/005); EcoCard 5/$ Green else 1/$; floor rounding. Of 23 transactions, exactly four mismatch: f093f9 Thrive Market (875 vs 175), 580773 Uber (600 vs 240), d39854 Tentree (1000 vs 600), 37b5b8 Nordstrom (800 vs 775). This matches gold[2..5] with no false positives.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major relied on the rounding convention being unwritten; doc_..._(general)_007 documents floor rounding, so only the Minor required_documents omission remains.",
+  "notes": "The v1.0.1 change to doc_credit_cards_gold_rewards_card_001 is cosmetic ('$105 days' -> '105 days' for purchase protection) and does not touch the 2.5% rate. Note that required_documents lists doc_..._gold_rewards_card_002, which is about concierge services; the rate is in 001 and 005. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

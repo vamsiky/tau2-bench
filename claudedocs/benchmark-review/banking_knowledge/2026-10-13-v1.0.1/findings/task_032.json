@@ -1,0 +1,36 @@
+{
+  "task_id": "task_032",
+  "severity": "Minor",
+  "headline": "The speed-bump protocol (three 'lines are busy' calls, then a real transfer on the fourth request) is documented clearly, but the ACTION grader only checks that each tool was called at least once, so the count it is meant to test goes unchecked.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The gold has three identical call_discoverable_agent_tool(initial_transfer_to_human_agent_0218) actions and one transfer_to_human_agents, each compared on agent_tool_name only or on nothing. Action matching ignores order and repetition, so a single 0218 call followed by an early transfer scores the same as the documented 3-then-transfer sequence.",
+      "evidence": [
+        "evaluator_action._check_actions: a gold action matches if ANY predicted tool call matches; order and multiplicity are not checked",
+        "gold[1..3].compare_args = ['agent_tool_name'] (identical); gold[4] transfer_to_human_agents compare_args = []",
+        "doc_credit_cards_credit_cards_(general)_010: \"Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests... On the fourth request - Use the regular `transfer_to_human_agents` tool\""
+      ],
+      "gold_action_refs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "Correct work is never failed, but agents that cut the protocol short (transfer on the 2nd request after one speed-bump call) also pass, which inflates scores on the behavior the task targets.",
+      "suggested_fix": "Grade on a count-aware check, e.g. an env assertion on the number of 0218 calls before the transfer, or log 0218 calls with a sequence number in the DB and use DB grading."
+    }
+  ],
+  "solution_check": "The customer reports declines despite available credit, which matches doc_010. The documented sequence is unlock 0218, call it on requests 1-3, and call transfer_to_human_agents on request 4. That matches the gold exactly (unlock + 3 calls + transfer). The fifth scripted request never arrives because the transfer ends the conversation.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; under upstream ACTION grading I record a Minor leniency defect: the speed-bump count is not graded.",
+  "notes": "doc_011 (11/13 payment-reflection incident) also uses 0218 plus 1822, but its symptoms (payment deducted, not reflected) don't match this customer, so it doesn't conflict. The policy-header guideline 6 ('If the user asks for a human agent 4 times') agrees with doc_010."
+}

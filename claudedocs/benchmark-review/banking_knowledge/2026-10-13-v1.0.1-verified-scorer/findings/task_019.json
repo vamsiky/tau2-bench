@@ -1,0 +1,31 @@
+{
+  "task_id": "task_019",
+  "severity": "Minor",
+  "headline": "The documented round-down rule reproduces the four gold disputes exactly; the only defect is that the rounding doc is missing from required_documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding policy doc that decides which transactions are discrepant (doc_credit_cards_credit_cards_(general)_007) is not listed in required_documents, so the golden_retrieval config, which inlines only required_documents and exposes no search tool, never shows it to the agent.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_019.required_documents = [general_003, general_006, gold_rewards_card_001/002, ecocard_001/002] (no general_007)",
+        "src/tau2/domains/banking_knowledge/retrieval_toolkits.py: KnowledgeToolsPlain 'Used by: no_knowledge, full_kb, golden_retrieval' (no retrieval tools)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "In the golden_retrieval config, half-up rounding flags 11 extra transactions (for example txn_f2a3b4c5d6e7, Sprouts $112.58 x 5 = 562.9: 563 vs stored 562) and fails.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 23 transactions for af0581dcbf with Gold 2.5% flat and EcoCard 5x Green else 1x, flooring per doc_007. Exactly four mismatch, matching the gold: Thrive Market 875 vs 175, Uber 600 vs 240, Tentree 1000 vs 600, Nordstrom 800 vs 775. Half-up gives 15 mismatches (11 false positives). Both accounts were opened in 2024, so no new-customer promo applies.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round down') is overturned: doc_007 documents floor rounding. What remains is a Minor required_documents omission.",
+  "notes": "The v1.0.1 change to doc_credit_cards_gold_rewards_card_001 is cosmetic ('$105 days' -> '105 days'); 'Minimum credit score required: $720' is still corrupted but irrelevant here. Thrive Market is an online membership marketplace; ecocard_003 says 'Marketplaces and delivery platforms may process payments through non-green parent entities; in those cases, the purchase may not qualify.' The DB category is 'Green', so the category-based reading (5x, dispute) is the natural one, but a cautious agent could hesitate on this row."
+}

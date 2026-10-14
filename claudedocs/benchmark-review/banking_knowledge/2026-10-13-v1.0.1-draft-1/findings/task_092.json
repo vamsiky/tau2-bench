@@ -1,0 +1,54 @@
+{
+  "task_id": "task_092",
+  "severity": "Minor",
+  "headline": "The four-card PIN-lock case is solvable, and the customer's scripted answers steer each card to the gold outcome, but the 'supervisor review' rule it claims to test has no tool and can derail the conversation.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_041 says any single 3-point flag forces supervisor escalation regardless of total score, but no supervisor-review tool exists and the gold resolves those cards in-chat with no escalation; the only escalation path (transfer_to_human_agents) ends the conversation.",
+      "why_it_matters": "An agent that honours the single-flag rule by transferring before the remaining cards are handled never makes the later gold writes and fails the DB hash; an agent that escalates only after all writes (or not at all) passes. The escalation itself leaves no DB trace.",
+      "suggested_fix": "Either drop the single-flag escalation clause from doc_041 or state that 'supervisor review' is a note with no tool action and does not block the Step 6 options.",
+      "evidence": [
+        "doc_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\"",
+        "Blue: A1 Tijuana MX vs Denver CO -> \"Different country: 3 points\"; B1 03:08-03:12 -> 3 points; Green: B3 gaps 17s/19s -> \"Less than 1 minute apart: 3 points\"",
+        "task notes: \"Tests 'Single Flag Escalation' rule where ANY single 3-point flag requires supervisor review\"",
+        "gold has no escalation for Blue or Green (gold[8],[10],[13],[14] resolve them in-chat); the only transfer is gold[20] for Light Blue",
+        "instructions step 11 (offer of supervisor transfer for Blue): \"Oh, okay. How long will that take?\" (non-committal)"
+      ],
+      "gold_action_refs": [
+        8,
+        10,
+        13,
+        14,
+        20
+      ]
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Green is closed with reason 'fraud_suspected' even though the customer confirms every attempt was hers; the closure is forced by the security rule, and no closure reason fits a security-protocol closure exactly.",
+      "evidence": [
+        "instructions step 17: \"Yes, that was definitely me!\"",
+        "doc_bank_accounts_bank_accounts_(general)_025 reasons: \"lost, stolen, fraud_suspected, damaged, no_longer_needed, account_closing\"",
+        "gold[13].arguments.reason = \"fraud_suspected\""
+      ],
+      "gold_action_refs": [
+        13
+      ],
+      "why_it_matters": "fraud_suspected is the closest of the six enums, so most agents will match, but an agent choosing no_longer_needed writes a different closure_reason.",
+      "suggested_fix": "Add a 'security_protocol' closure reason, or say in doc_041 Step 6 that closures under this protocol use fraud_suspected."
+    }
+  ],
+  "solution_check": "Blue scores about 14 (A1 3, A3 1, B1 3, B3 2, C1 2, C2 1, C4 2) and the customer was asleep, so close and replace (MID tier, fastest free = STANDARD, CLASSIC $0). Green: B3 = 3 and D3 +2 (Blue's fraud_alert_active), so it cannot be unlocked under the single-flag rule; the customer picks close and replace (STANDARD/CLASSIC), and the reset path is blocked by an invalid sequential PIN (4567). Evergreen totals about 5 (B3 2, D1 1, D3 2), MEDIUM; the customer confirms and the reset to 8127 matches. Light Blue has a security_hold, so it is transferred with no DB effect. All writes match the gold.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Minor for fuzzy thresholds that the customer's answers settle; this review agrees the gold is reachable and keeps Minor, reframing the main risk as the untestable single-flag escalation.",
+  "notes": "transfer_to_human_agents (gold[20]) writes nothing, so under DB-only grading the Light Blue transfer is unchecked. B3 for Evergreen: 07:28:42->07:30:15 is 93s (2 pts), 07:30:15->07:32:16 is 121s (1 pt); the total stays in MEDIUM either way. The doc_005 change in v1.0.1 is cosmetic ('$180 days' -> '180 days')."
+}

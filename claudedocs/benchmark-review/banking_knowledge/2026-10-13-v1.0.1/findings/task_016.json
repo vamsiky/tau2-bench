@@ -1,0 +1,34 @@
+{
+  "task_id": "task_016",
+  "severity": "Minor",
+  "headline": "The referral answer ($750 Silver card spend) is uniquely determined, but the customer's story says the friend has already made purchases while the database has no record of the friend at all.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The user script says the friend 'has been consistently using the card - they've made some transactions on it', but db.json has no user, credit card account, or transaction for friend_user_5839. The gold still assumes the agent quotes the full $750 requirement, not a remaining balance.",
+      "evidence": [
+        "task_016 instructions: \"Your friend has already been approved and has been consistently using the card - they've made some transactions on it.\"",
+        "db.json users['friend_user_5839'] = absent; credit_card_accounts / credit_card_transaction_history rows with user_id friend_user_5839 = 0",
+        "doc_credit_cards_silver_rewards_card_011: \"The referred person must be approved and spend at least $750 within 60 days of account opening\"",
+        "gold[1].arguments.amount = 750 (user submit_transaction, card 'Silver Rewards Card', merchant 'Best Buy', category 'Shopping')"
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "The user only submits a transaction when the agent names a concrete dollar amount. An agent that, consistent with the story, says the friend needs '$750 minus whatever they have already spent' and cannot see that figure gives no concrete amount, so the user never calls submit_transaction and the DB hash misses gold[1]. Most agents will just quote $750, so the effect is small.",
+      "suggested_fix": "Either drop 'they've made some transactions on it' from the instructions, or tell the user to submit $750 whenever the agent states the $750 requirement."
+    }
+  ],
+  "solution_check": "Lookup by name gives user 86e92f639e; get_referrals_by_user shows 15 referrals, and the most recent (11/13/2025) is the only IN_PROGRESS one: f2a3b4c5d6789012, Silver Rewards Card. doc_..._silver_rewards_card_011 sets the qualifying spend at $750 within 60 days, and doc_..._(general)_002's weekly cap (two bonuses per rolling 7 days; only the 11/11 COMPLETE referral falls in 11/08-11/14) does not block it. Gold = log_verification + user submit_transaction(friend_user_5839, Silver Rewards Card, Best Buy, 750, Shopping), which matches. A replay with amount 750.0 gives the same agent and user hashes.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor but described it as 'No real issue; uniquely determined'. I agree the answer is unique and name a concrete Minor defect: the narrative contradicts the DB.",
+  "notes": "Card limits checked: Silver referral bonuses capped at 7 per calendar year (one Silver COMPLETE in 2025: 10/26). The friend user does not exist in the DB, so submit_transaction just writes a txn row keyed by friend_user_5839 (txn_758bc1b7306a in replay). Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

@@ -1,0 +1,67 @@
+{
+  "task_id": "task_086",
+  "severity": "Major",
+  "headline": "The six-dispute case can mostly be worked out, but several recorded details (liability, PIN status, transaction type, the deposit amount) depend on readings the documents and the customer leave open.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "For TechWorld, the customer says 'I think someone skimmed my card at a gas station'. That matches the doc's 'yes_observed: Customer believes PIN was observed/skimmed', but gold stores pin_compromised='unknown'. Gold's transaction_type='pin_purchase' is never stated by the customer.",
+      "evidence": [
+        "instructions step 5: \"Still have card - I think someone skimmed my card at a gas station or something.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'yes_observed': Customer believes PIN was observed/skimmed\"",
+        "gold[15] btxn_5690acdd3de5 \"transaction_type\": \"pin_purchase\", \"pin_compromised\": \"unknown\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "An agent that maps the customer's skimming belief to 'yes_observed', or records signature_purchase for an unspecified in-store fraud, writes a different dispute record.",
+      "suggested_fix": "Set gold pin_compromised to 'yes_observed' (or script 'I don't know' for the PIN), and add a customer line on PIN vs signature."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "customer_max_liability_amount for the November disputes is 50 even though each was discovered more than 2 business days before reporting. Doc 031 ties the tier both to when the customer noticed and to the statement, and no statement dates exist.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount.\"",
+        "gold[11] ATM discovery 11/07/2025, gold[12] SupplyPro 11/09/2025, gold[14] Phoenix 11/09/2025, gold[16] deposit 11/08/2025; all reported 11/14/2025 and all store customer_max_liability_amount 50"
+      ],
+      "gold_action_refs": [
+        11,
+        12,
+        14,
+        16
+      ],
+      "why_it_matters": "Anchoring on discovery (a plain reading of 'based on when they noticed') gives the $500 tier, capped at the disputed amount if applying the docstring, and changes four stored records.",
+      "suggested_fix": "Provide statement dates in the data or define the anchor explicitly in doc 031."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "For the ATM deposit, the customer claims a $500 deposit with $300 credited. Records show +$400. The customer's fallback line ('I might be mixing it up with another deposit... I'll go with what you have') can be read as retracting the claim, or as keeping $500 deposited and accepting $400 credited (gold: dispute $100). The TechWorld discovery line also says 'today 01/12', which contradicts today's date (11/14) used by gold.",
+      "evidence": [
+        "instructions step 5: \"I deposited $500 in cash but only $300 was credited\" / \"Actually, I might be mixing it up with another deposit. If your records show that, then I'll go with what you have.\"",
+        "initial_state btxn_0788d2513c8c amount 400.0, type atm_deposit; get_atm_deposit_images_8473 returns IMAGES NOT AVAILABLE for this id",
+        "gold[16] \"disputed_amount\": 100.0; instructions: \"Just discovered today 01/12\" vs gold[15] discovery_date 11/14/2025"
+      ],
+      "gold_action_refs": [
+        15,
+        16
+      ],
+      "why_it_matters": "An agent can resolve both by asking a clarifying question, but an agent that takes the fallback as a retraction files no deposit dispute and fails.",
+      "suggested_fix": "Have the customer say 'I'm sure I deposited $500, so $100 is missing', and fix the date to 11/14."
+    }
+  ],
+  "solution_check": "Independently: GFF (ENTRY, max 2, none open) allows two disputes, and the customer prioritizes the third-party ATM ($100, provisional true, required even for third-party ATMs) and SupplyPro (goods not received, provisional false). Evergreen (PREMIUM, max 4, one open) allows three: incorrect_amount $200 (provisional false), late TechWorld fraud (min(500,625)=500, provisional true, close_and_reissue), and deposit not credited (provisional false). Then close Evergreen as fraud_suspected and reorder PREMIUM-tier free options (EXPEDITED $0, PREMIUM design $0) to the restaurant address. This matches gold except the PIN, transaction-type and liability-anchor values noted above.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor (deposit-amount derivation). That item persists as Minor. The PIN-status mismatch with the customer's own words and the liability-anchor ambiguity are newly reported and raise the task to Major.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Gold replays without errors. Doc 033 says deposit disputes should use get_atm_deposit_images_8473. Gold omits it, but it is a read, so calling it does not affect the hash."
+}

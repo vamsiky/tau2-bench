@@ -378,10 +378,16 @@ def policy_register_prompt(
 ) -> str:
     """Use the pre-synthesized RhoBank Policy Register as the static policy.
 
-    Reads ``claudedocs/RhoBank_Policy_Register.md`` from the repo root.
+    Reads ``claudedocs/task-success/policy-register/RhoBank_Policy_Register.md`` from the repo root.
     No retrieval tools are added — the register is the complete knowledge source.
     """
-    register = DATA_DIR.parent / "claudedocs" / "RhoBank_Policy_Register.md"
+    register = (
+        DATA_DIR.parent
+        / "claudedocs"
+        / "task-success"
+        / "policy-register"
+        / "RhoBank_Policy_Register.md"
+    )
     return register.read_text()
 
 

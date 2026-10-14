@@ -1,0 +1,34 @@
+{
+  "task_id": "task_077",
+  "severity": "Major",
+  "headline": "The lost-wallet procedure can be followed step by step, but the replacement card's design is ambiguous: the customer asks for the 'best free option' and no 'fancy design', and the answer key only accepts the PREMIUM design.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "For the Elite-tier Bluest replacement, all three designs are free. The customer's only guidance is 'whatever the best option is that's free with my account. I don't want to pay extra for shipping or a fancy card design', and she says it only if the agent asks. The gold's card_design='PREMIUM' (metallic) is one of three defensible choices. CLASSIC fits 'no fancy design' and CUSTOM is also free. card_design is stored in both debit_card_orders and debit_cards.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029 ELITE TIER: \"CLASSIC design: design_fee $0\", \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\", \"CUSTOM design (uploaded image): design_fee $0 (complimentary)\"",
+        "task_077 user_scenario: \"ONLY IF agent asks about shipping speed or card design options: \\\"I'd like whatever the best option is that's free with my account. I don't want to pay extra for shipping or a fancy card design.\\\"\"",
+        "gold[22].arguments.arguments: \"delivery_option\": \"RUSH\", \"card_design\": \"PREMIUM\"",
+        "Replay: card_design CLASSIC -> ['table debit_card_orders differs', 'table debit_cards differs']; delivery_option EXPEDITED -> ['table debit_card_orders differs']"
+      ],
+      "gold_action_refs": [
+        22
+      ],
+      "why_it_matters": "An agent that picks CLASSIC (taking 'no fancy design' literally, or because it never asked) or CUSTOM fails on two tables despite a correct and free replacement. RUSH is reasonably derivable as the best free shipping, but the design choice is a coin flip.",
+      "suggested_fix": "Have the customer state the design ('the standard classic design is fine' or 'the metallic premium one if it's free') and say it unprompted, or don't grade card_design."
+    }
+  ],
+  "solution_check": "Steps: verify and log; get accounts; get debit cards for both accounts (dbc_lj82d4f1a9_bluest, dbc_538bfb9cba); freeze both (doc_026); proactively check credit cards with get_credit_card_accounts_by_user and order a Silver Rewards replacement, reason 'lost', standard (free) shipping (doc_030, credit_card_replacements_001); check transactions for pending items (doc_025 requirement 4); unfreeze then close both with reason 'lost' (close_debit_card_4721 rejects FROZEN: 'Only ACTIVE or PENDING cards can be closed'). Order a Bluest (Elite, doc_005) replacement: RUSH, $0 fees. Do not order Light Green (Entry tier, 48-hour wait after closure, doc_029). Activate the new card with 8292 (issue_reason 'lost'). Everything except the card design is uniquely derivable, and the gold replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. It did not check how card_design is chosen, and v1.0.1 has since added the agent-required reads to the gold.",
+  "notes": "Under the verified scorer, closure_reason on debit_cards is stripped. A different close reason (e.g. 'stolen') still fails, because order_debit_card_5739 copies it into the new card's issue_reason (replay: ['table debit_cards differs']). Skipping the gold-required get_bank_account_transactions_9173 read fails ('missing'), but the read is documented by doc_025's no-pending-transactions requirement. Choosing expedited credit-card shipping ($10 for mid-tier Silver Rewards) changes credit_card_orders. The customer's 'free' preference makes standard derivable. Unfreezing a lost card before closing it is unusual but forced and announced by the tool error. Ordering the Light Green replacement anyway also fails. The persona says age 22, but DOB 04/12/2002 gives 23 (cosmetic). Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

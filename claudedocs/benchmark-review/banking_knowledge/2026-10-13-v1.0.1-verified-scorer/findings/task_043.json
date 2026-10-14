@@ -1,0 +1,17 @@
+{
+  "task_id": "task_043",
+  "severity": "None",
+  "headline": "Clean: the retention protocol leads the agent from the $75 balance payoff to the loyalty fee waiver, and every persisted value can be derived.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Retention protocol (logistics_003) step 1 checks disputes (get_user_dispute_history_7291), pending replacements (get_pending_replacement_orders_5765), account age, and balance. cc_224959b99e_plat has current_balance $75.00, which is paid from the only checking account 05 ($2850.00), found through get_all_user_accounts_by_user_id_3847. Then come get_closure_reason_history_8293 (no records), logging annual_fee, and, because the card was opened 11/10/2022 (3 years), the annual_fee_waived flag with reason loyalty_benefit expiring 11/14/2026. This matches the gold exactly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also found it clean, and the task files are unchanged.",
+  "notes": "The verified scorer strips closure_reason, so logging 'simplifying_finances' (the customer mentions it) instead of 'annual_fee' would still pass. Under exact upstream grading the customer's 'It's really just the annual fee' still makes annual_fee the clear choice. Required doc doc_credit_cards_platinum_rewards_card_001 contains a corrupted value (\"Minimum credit score required: $750.\"), which plays no part in this task."
+}

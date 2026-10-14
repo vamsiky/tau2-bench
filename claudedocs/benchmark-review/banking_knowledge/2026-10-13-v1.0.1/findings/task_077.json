@@ -1,0 +1,35 @@
+{
+  "task_id": "task_077",
+  "severity": "Major",
+  "headline": "The lost-wallet sequence is fully documented, but the gold's choice of the PREMIUM card design depends on reading a vague 'best free option' as metallic rather than classic.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "order_debit_card_5739 requires a card_design and stores it on both the order and the new card. For the ELITE tier, CLASSIC, PREMIUM and CUSTOM are all $0. The customer states a preference only if asked, and then says 'whatever the best option is that's free... I don't want to pay extra for shipping or a fancy card design', which does not pick between CLASSIC and PREMIUM. The gold requires PREMIUM.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029: \"ELITE TIER: - CLASSIC design: design_fee $0 - PREMIUM design (metallic silver): design_fee $0 (complimentary) - CUSTOM design (uploaded image): design_fee $0 (complimentary)\"",
+        "user_scenario.instructions step 8: \"ONLY IF agent asks about shipping speed or card design options: 'I'd like whatever the best option is that's free with my account. I don't want to pay extra for shipping or a fancy card design.'\"",
+        "gold[22].arguments.arguments: \"delivery_option\": \"RUSH\", \"card_design\": \"PREMIUM\"",
+        "tools.py order_debit_card_5739 stores card_design in debit_card_orders and debit_cards records",
+        "Replay: identical trajectory with card_design CLASSIC -> DB hash mismatch"
+      ],
+      "gold_action_refs": [
+        22
+      ],
+      "why_it_matters": "An agent that defaults to CLASSIC without asking, or reads 'I don't want ... a fancy card design' as wanting a plain card, does everything else right (freeze, credit-card replacement, unfreeze, close, RUSH order, correct activation tool) and still fails.",
+      "suggested_fix": "Have the customer name the design explicitly (e.g. 'the metallic premium design, since it's free'), or exclude card_design from the hashed state."
+    }
+  ],
+  "solution_check": "Rebuilt from docs 024-030 and 005: verify; read accounts (Bluest = ELITE, Light Green = ENTRY per doc_005); read both debit cards; freeze both (doc_026); check credit cards with the always-available get_credit_card_accounts_by_user and, once the customer confirms, order a Silver Rewards replacement with reason 'lost' and standard shipping (expedited costs $10 for mid-tier, and the customer wants free); read transactions to check for pending items (doc_025 requirement 4); unfreeze both, because close_debit_card_4721 accepts only ACTIVE or PENDING cards (documented in doc_025 requirement 3 and enforced); close both with reason 'lost'; order the Bluest replacement with RUSH and $0 fees (ELITE complimentary); skip Light Green because of the 48-hour ENTRY-tier wait; activate with activate_debit_card_8292 since issue_reason is 'lost'. The gold replays without errors, and the generated card dbc_8eed7b16caeb accepts 7260/11/29/741. Everything matches except the design choice, which is underdetermined.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. v1.0.1 (#402) added the required reads to the gold, which are reasonable and documented. The card-design ambiguity is a new finding.",
+  "notes": "Gold-required reads (get_all_user_accounts, get_debit_cards_by_account_id_7823, get_bank_account_transactions_9173) are logged once per tool name, so calling each once with any arguments satisfies them. get_credit_card_accounts_by_user is now a non-discoverable read and is not logged. shipping_address is free text persisted in two order records; the gold uses the on-file address verbatim, which an agent will normally copy, so I did not raise an issue for it. Persona age 22 vs DB DOB 04/12/2002 (23) is cosmetic."
+}

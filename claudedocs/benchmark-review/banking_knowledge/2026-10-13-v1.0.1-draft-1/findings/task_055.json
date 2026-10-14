@@ -1,0 +1,17 @@
+{
+  "task_id": "task_055",
+  "severity": "None",
+  "headline": "Clean: Purple Account is the only checking account with a multi-currency wallet, and Silver Plus is the only savings account that meets every savings requirement at the customer's balance.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Checking: tabulated all 10 personal checking products; only doc_checking_accounts_purple_account_001 has 'Multi-currency wallet | Yes' (World Blue is business), with 0% foreign transaction fee, $30/month global ATM rebates, and a $3,750 fee waiver (purple_account_002) within the user's $3-5k. Savings at <= $7k with 3-4 withdrawals/week: Bronze 6 and Green 8 free withdrawals fail, Gold needs $10,000, and Silver gets 15 withdrawals/ATM rebates/0.025% relationship only via the user's Platinum card (silver_account_009) but pays 2.5% below $10k, failing 'at least 3%'. Silver Plus (15 withdrawals, 0.025% relationship bonus, $2,500 minimum, daily compounding, $25 ATM rebates, 3.0%/4.5% tiers) is the unique fit. Gold replay: Purple then Silver Plus open; give deposit_check_3847; user deposits 1500 into the new savings id 7e48bf3b0589cfad, matching the reconstruction.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior v1.0.0 review also rated this clean; task and required docs are unchanged.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. DB detail: user 224959b99e holds a Platinum Rewards Card and a Business Silver Rewards Card, and her Green checking was opened 11/10/2022 (the script says ~6 months); neither changes the answer because Silver Plus still beats Silver on APY at the user's $5-7k. The gold get_all_user_accounts_by_user_id_3847 read is required (logged), and doc (general)_009 tells the agent to use it for eligibility checks."
+}

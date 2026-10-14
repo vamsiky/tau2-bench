@@ -1,0 +1,17 @@
+{
+  "task_id": "task_099",
+  "severity": "None",
+  "headline": "Clean: World Blue ($300 to the referrer) is the unique best referrer bonus for a $30,000 business deposit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Tenure: first checking 11/10/2023, 2 years. Referrer bonuses reachable with $30,000: World Blue $300 ($25k, 90-day tenure; world_blue_001/007), Lime Green $200 ($15k), Hunter Green $175 ($10k; 9/10 used), Cobalt $150, Sky Blue $150, Navy $100; True Blue ($50k) and Beige ($100k) are out of reach. The last referral was 10/30 (15 days ago), so the window is clear. The user submits 'World Blue Account', matching gold[4].",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean; the v1.0.1 edits to beige_012, sky_blue_001, and true_blue_002 only removed stray '$' signs from day counts.",
+  "notes": "gold[2] is the discoverable read get_all_user_accounts_by_user_id_3847, so the agent must call it at least once (it is DB-logged via the allowlist). A competent agent checking tenure per doc_047/doc_009 will, but an agent relying on the customer's '2 years' would fail the hash. world_blue_007 frames the program for 'international businesses'; the user script tells the sim not to object."
+}

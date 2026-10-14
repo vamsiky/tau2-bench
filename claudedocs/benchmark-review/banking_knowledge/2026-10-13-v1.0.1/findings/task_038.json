@@ -1,0 +1,34 @@
+{
+  "task_id": "task_038",
+  "severity": "Minor",
+  "headline": "The three disputes and their provisional-credit flags follow cleanly from the docs, but the gold's expedited shipping relies on the simulated customer accepting an offer the script never mentions.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Gold[4] orders the replacement with expedited_shipping=true. Unlike tasks 036/037, this user script has no 'if offered expedited shipping, accept it' line, and expedited costs $10 on a Silver card. The doc tells the agent to ask and to strongly recommend expedited for fraud, so acceptance is the natural simulator reply, but it isn't scripted.",
+      "evidence": [
+        "gold[4].arguments: \"expedited_shipping\": true",
+        "task_036/037 user_scenario step 6: \"If offered expedited shipping, accept it\" (absent in task_038)",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier...)\" and \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\"",
+        "doc_credit_cards_credit_card_replacements_002: Mid-tier (Silver Rewards Card) expedited fee $10.00"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "If the simulator declines the $10 fee, or the agent doesn't ask and the tool default (False) applies, the order record differs and the DB hash fails, even though the agent followed procedure.",
+      "suggested_fix": "Add the 'If offered expedited shipping, accept it' line to the user scenario, as in tasks 036/037."
+    }
+  ],
+  "solution_check": "Amazon on Silver: 10/05 $89.99 (txn_e45e7acb56a0) fraud, no merchant contact, so eligible. 10/08 $124.50 (txn_28cb62125078): wrong item received, so goods_services_not_as_described with contacted=true, NOT eligible by reason. 10/10 $89.99 (txn_2017c3b2b119): duplicate_charge, but the customer didn't contact the merchant, and criterion 5 requires that for non-fraud reasons, so NOT eligible. All are full_refund, cancel_and_reissue, last-4 5320, noticed 11/14/2025. The $42.17 and $67.89 charges are excluded. The replacement goes to the work address, fraud_suspected. This all matches the gold, and the gold replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; I add a Minor scripting gap (expedited shipping unscripted). The dispute logic itself is confirmed correct.",
+  "notes": "The author notes call the duplicate 'eligible', but the gold correctly marks it false under doc_015 criterion 5. The notes aren't agent-visible. 'Sent the wrong item' could be read as goods_services_not_received, which would be eligible (purchase >30 days ago, merchant contacted). doc_014's definition, 'Received item/service differs from description', fits the gold's reason better. Criterion 4 doesn't bind here: the third dispute sees at most 2 prior, which is 'not more than 2'."
+}

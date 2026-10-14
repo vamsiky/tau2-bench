@@ -1,0 +1,411 @@
+{
+  "verifier_id": "v4",
+  "fact_checks": [
+    {
+      "fact": "DB grading replays the gold actions on a fresh environment and compares final DB state (upstream: exact hash)",
+      "status": "Confirmed",
+      "evidence": "snapshot src/tau2/evaluator/evaluator_env.py: golden_actions loop -> gold_environment.make_tool_call; agent_db_hash == predicted_agent_db_hash"
+    },
+    {
+      "fact": "Scorer variant: gold's agent_discoverable_tools tool_names must be a subset of the agent's; closure_reason stripped from every record; all other tables compared exactly; applied to both agent- and user-side DB",
+      "status": "Confirmed",
+      "evidence": "working repo src/tau2/evaluator/evaluator_env.py:_strip_free_text/_verified_db_match (_FREE_TEXT_ANNOTATION_FIELDS = {'closure_reason'}); calculate_reward uses it for agent and user DB when use_verified_scorer. Note it also strips credit_card_closure_reasons.closure_reason (log_credit_card_closure_reason_4521), so that whole record's value is ignored; only its existence (id from card+user) is graded."
+    },
+    {
+      "fact": "Known gap: order_debit_card_5739 copies a closed card's reason into the new card's issue_reason",
+      "status": "Confirmed",
+      "evidence": "snapshot tools.py order_debit_card_5739: closed_card = next(c for c in existing_cards if status == 'CLOSED'); lost/stolen kept, fraud_suspected -> 'fraud', anything else -> 'first_card'. It takes the FIRST closed card on the account in insertion order, so an older closed card could set issue_reason; none of tasks 077-102 hit that case."
+    },
+    {
+      "fact": "Discoverable reads are logged only when in the gold allowlist (_derive_read_log_allowlist); writes always logged",
+      "status": "Confirmed",
+      "evidence": "snapshot tools.py call_discoverable_agent_tool: `if underlying_mutates or agent_tool_name in self._read_log_allowlist`; build.py:_derive_read_log_allowlist collects gold call_discoverable_agent_tool names. Record id is generate_agent_discoverable_tool_id(tool_name), so repeats collapse to one row."
+    },
+    {
+      "fact": "Arguments through call_discoverable_agent_tool / call_discoverable_user_tool parse integers as floats",
+      "status": "Confirmed",
+      "evidence": "json.loads(arguments, parse_int=float) in both wrappers (snapshot tools.py)."
+    },
+    {
+      "fact": "ACTION grading: compare_with_tool_call on compare_args (all passed args when unset); inner arguments JSON string compared verbatim",
+      "status": "Confirmed",
+      "evidence": "snapshot src/tau2/data_model/tasks.py Action.compare_with_tool_call: tool_args == action_args over tool_call.arguments.keys() when compare_args is None."
+    },
+    {
+      "fact": "Agent and user toolkits share one DB; writes logged even when the tool returns an error string",
+      "status": "Confirmed",
+      "evidence": "environment.py: KnowledgeUserTools(db) with the same db. Agent discoverable writes are logged before/regardless of the result string; exceptions: JSON decode errors and TypeError (missing/extra args) return before logging, and user discoverable tools return the 'not given' error before _log_user_tool_call."
+    },
+    {
+      "fact": "Fixed clock",
+      "status": "Confirmed",
+      "evidence": "snapshot utils.py get_now() -> datetime(2025, 11, 14, 3, 40, 0); get_current_time returns '2025-11-14 03:40:00 EST'."
+    },
+    {
+      "fact": "transfer_to_human_agents writes nothing to the DB",
+      "status": "Confirmed",
+      "evidence": "snapshot tools.py transfer_to_human_agents only returns a string; the user tool request_human_agent_transfer does write human_transfer_requests, compared exactly."
+    }
+  ],
+  "task_verdicts": {
+    "task_077": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029 ELITE TIER: \"CLASSIC design: design_fee $0\" / \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\" / \"CUSTOM design (uploaded image): design_fee $0 (complimentary)\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\" and step 5 \"Ask customer for preferred card design\"",
+        "task_077 script step 8 (only if asked): \"I'd like whatever the best option is that's free with my account. I don't want to pay extra for shipping or a fancy card design.\"",
+        "gold[22] order_debit_card_5739: delivery_option RUSH, delivery_fee 0, card_design PREMIUM, design_fee 0",
+        "db accounts chk_lj82d4f1a9 level \"Bluest Account\" (ELITE per doc_005); chk_538bfb9cba \"Light Green Account\" (ENTRY, 48-hour wait per doc_029)",
+        "replay (verified copy): gold self True; card_design CLASSIC -> False [debit_card_orders, debit_cards]; delivery EXPEDITED -> False [debit_card_orders]; Bluest close reason stolen -> False [debit_cards, via issue_reason]; Light Green close reason no_longer_needed -> True (no replacement ordered, closure_reason stripped); dropping get_bank_account_transactions_9173 -> False (missing required discoverable call)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced: the gold replays cleanly and every step except the design is derivable (freeze, cross-product credit-card replacement per doc_030, pending-transaction read per doc_025 req. 4, forced unfreeze before close, RUSH free for ELITE, no Light Green order). The design is a real fork: doc_023 names CLASSIC as the default and the customer says no 'fancy card design', while the gold reads 'best free option' as PREMIUM. Under calibration (unscripted choice where the documented default differs from the gold) this is Major. The review did not cite doc_023's default, which supports its rating more strongly than the free-tie argument it gave."
+    },
+    "task_078": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "init data debit_cards: dbc_mc78a5b9d2_lb issue_date 07/25/2025 issue_reason lost; dbc_mc78a5b9d2_lb_old1 CLOSED issue_date 03/15/2025 issue_reason lost (2 replacements in 12 months, ENTRY max 2)",
+        "init data bank_account_transaction_history chk_mc78a5b9d2_3: btxn_9034c8e42248 and btxn_3e4b057911a1 status \"pending\" (doc_025 req. 4 blocks closing Light Green)",
+        "tools.py freeze_debit_card_3892 writes card[\"frozen_date\"]; unfreeze_debit_card_3893 writes card[\"unfrozen_date\"]; close_debit_card_4721 rejects non-ACTIVE/PENDING cards",
+        "script step 1: \"I need to freeze all of them right away and get replacements.\"",
+        "gold[21] order chk_mc78a5b9d2_2 EXPEDITED delivery_fee 15 CLASSIC design_fee 0",
+        "replay: gold self True; gold minus freeze/unfreeze of lb/green -> False [missing unfreeze_debit_card_3893; debit_cards differs only in frozen_date/unfrozen_date]"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the reconstruction: Light Blue is over its ENTRY limit (customer declines the $25 fee), Light Green is blocked by two pending rows and stays FROZEN, and Green (MID) is reordered EXPEDITED $15 with CLASSIC, the only free design. The freeze/unfreeze path dependence is real but small, because the customer asks for an immediate freeze in her opening line. Minor stands."
+    },
+    "task_079": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "init data btxn_d0b8b00ed468: chk_cr89a2b3c4_3, \"REFUND - AMAZON.COM RETURN\", 89.99, type refund, status pending (only non-posted row for this user)",
+        "doc_bank_accounts_bank_accounts_(general)_025 req. 4: \"No pending transactions: The card must not have any pending or processing transactions.\" req. 5: \"No pending refunds: ... or acknowledge in writing that the refunds will be credited to the linked checking account instead.\"",
+        "init data dbc_cr89a2b3c4_lb issue_date 08/10/2025 lost + dbc_cr89a2b3c4_lb_old1 04/05/2025 lost (ENTRY limit reached; 48-hour wait still blocks an order today)",
+        "gold[23] Evergreen RUSH 35 PREMIUM 0; gold[24] Green STANDARD 0 CLASSIC 0; all three closes reason stolen",
+        "replay: gold self True; refusing the Green close (literal req. 4) -> False [debit_card_orders, debit_cards]; no freeze path -> False; Evergreen close reason lost -> False [debit_cards via issue_reason]"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced both issues. Req. 5 is the specific rule for pending refunds and would be meaningless if req. 4 also covered them, so an agent can resolve the overlap, and the customer script supplies the acknowledgment. That fits the 'inconsistency the agent can resolve' reading of Minor. The freeze-path dependence is the same as in task_078. Shipping and design are scripted (quickest = RUSH $35, metallic if free = PREMIUM $0 at PREMIUM tier; Green standard)."
+    },
+    "task_080": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "task notes: \"txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit (eligible_for_provisional_credit: false)\"",
+        "gold[29]/[30]/[31] file_credit_card_transaction_dispute_4829 eligible_for_provisional_credit true on all three (txn_dc7e5b05300c, txn_754027c485bf, txn_39c2ddb4e1d2)",
+        "tools.py file_credit_card_transaction_dispute_4829 stores eligible_for_provisional_credit and provisional_credit_given",
+        "init data credit_card_accounts cc_tm92c4d7e8_gold card_last_4_digits 3829 (opened 05/10/2022), cc_tm92c4d7e8_eco 5147 (opened 09/15/2023): other criteria met",
+        "replay: gold self True; third dispute eligible false -> False [transaction_disputes]"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. Criterion 4 supports two readings: count prior disputes only (all three true, as in the gold) or count the dispute being filed (third false, as in the notes and the customer's prioritization branch). The flag is persisted, so the readings grade differently, which is Major under calibration. The freeze-path Minor matches tasks 078/079. Everything else (Blue EXPEDITED $15 CLASSIC, no Green Fee-Free order under the ENTRY 48-hour wait, both credit cards expedited and stolen, activation with 8292) is derivable and replays."
+    },
+    "task_081": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "gold[33] txn_39c2ddb4e1d2 eligible_for_provisional_credit true (same as task_080)",
+        "policy_header.md rule 6: \"If the user asks for a human agent 4 times, then you may invoke the transfer_to_human_agents tool.\"",
+        "tools.py transfer_to_human_agents returns a string and writes nothing; request_human_agent_transfer writes human_transfer_requests rows transfer_request_N",
+        "replay: gold self True; third dispute false -> False [transaction_disputes]; gold minus gold[36] transfer -> True; early transfer that ends the conversation -> False (many tables, human_transfer_requests included)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced all three issues. The provisional-credit fork is identical to task_080 (Major). The ungraded transfer is a 'rule the grader cannot see' (Minor): refusing on the fourth request still passes. The freeze-path Minor matches. The review's rule number (6) is correct; the task notes say rule 7."
+    },
+    "task_082": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_not_present_fraud' → 'close_and_reissue'\" and \"when performing the actual card action after filing all disputes, use the MOST SEVERE action across all disputes\"",
+        "script step 7: \"Green Fee-Free card: 'I'd like to keep using this card but maybe with a new number? Can you reissue it?'\"",
+        "gold[15] btxn_d74e8a798f95 card_id dbc_mc47a2b9e1_gff card_action close_and_reissue; gold[17]/[19] close and reorder only dbc_mc47a2b9e1_blue",
+        "doc_bank_accounts_bank_accounts_(general)_029 ENTRY TIER: \"48-hour waiting period after card closure before a replacement can be ordered\" (Green Fee-Free is ENTRY per doc_005)",
+        "replay: gold + close dbc_mc47a2b9e1_gff reason fraud_suspected (no reorder, per the ENTRY wait) -> False [debit_cards]",
+        "gold[13] FitLife recurring_charge_after_cancellation provisional_credit_eligible true, card_in_possession true; tasks 083/085/086 store false for every discretionary category (083 goods_services_not_received, 085 recurring_charge_after_cancellation, 086 goods_services_not_received/incorrect_amount/atm_deposit_not_credited)",
+        "gold[12] ElectroniX pin_compromised yes_shared, provisional_credit_eligible false; script: \"I had my PIN written on a sticky note in my wallet\"",
+        "replay: FitLife provisional false -> False; FitLife card_in_possession false -> False; ElectroniX pin unknown -> False; FitLife liability 89.99 -> False (all debit_card_disputes); Blue close reason fraud_suspected -> False [debit_cards via issue_reason]; Blue EXPEDITED $15 -> False"
+      ],
+      "citation_problems": [
+        "Issue 1's replay and suggested_fix add order_debit_card_5739 for chk_mc47a2b9e1_gff. Green Fee-Free is ENTRY tier, and doc_029's 48-hour post-closure wait forbids ordering it today. The doc-faithful alternative is to close the card without reordering it, which still fails (replayed), so the verdict stands, but the suggested gold fix should add only the close plus a 'wait 48 hours' message."
+      ],
+      "note": "Reproduced the Blocker. The documents and the customer both require closing the Green Fee-Free card after a card_not_present_fraud dispute, the gold leaves it ACTIVE, and that close changes debit_cards even with closure_reason stripped. The secondary Major forks also reproduce: FitLife discretionary credit true (it disagrees with the 083-086 convention), yes_shared for a written-down PIN, FitLife card_in_possession, the $50 liability with no statement date, and lost vs fraud_suspected surviving through issue_reason. The unscripted Blue shipping is rated Minor, but doc_023 labels a default only for design, not delivery, so by calibration it is Major; task severity is unaffected."
+    },
+    "task_083": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "task_083.json evaluation_criteria.reward_basis = [\"ACTION\"]; every gold action has compare_args = null",
+        "snapshot tools.py file_debit_card_transaction_dispute_6281 signature: \"customer_max_liability_amount: float,\" (no default)",
+        "replay gold[6..9]: \"Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'\" (all four)",
+        "data_model/tasks.py Action.compare_with_tool_call: \"if self.compare_args is None: compare_args = tool_call.arguments.keys()\" ... \"return tool_args == action_args\" -> the inner `arguments` value is compared as a raw string",
+        "gold[6] inner string spells \"disputed_amount\": 150.00 and puts card_action last; any successful call must add customer_max_liability_amount, so it can never equal the gold string",
+        "get_bank_account_transactions_9173(chk_dk83f5c2a1_gff): row 2 btxn_ff7d3926dee0, row 3 btxn_d937eaa1d21d, both 11/11/2025 -67.25; gold[8] uses btxn_d937eaa1d21d (second-listed = earlier under newest-first)",
+        "doc_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"; doc_032 REQUIRED list includes 'duplicate_charge' while NOT REQUIRED item 2 is \"Customer has not contacted merchant first (for non-fraud disputes)\""
+      ],
+      "citation_problems": [],
+      "note": "Reproduced: the four gold dispute calls fail with a TypeError and only a byte-identical, field-omitting (and therefore failing) call could match them, so no correct agent passes. The verified scorer does not apply (ACTION-only grading). Secondary Major issues (duplicate-row inference, provisional-credit precedence) hold as stated."
+    },
+    "task_084": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[12] duplicate $47.5 -> customer_max_liability_amount 50 (uncapped); gold[13] incorrect_amount $100 -> 50; gold[14] TechWorld $412.88 -> 412.88 (= min(500, 412.88), capped)",
+        "doc_031: \"Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"; tool docstring: \"based on Regulation E reporting timing rules and the disputed amount\"",
+        "replay: gold[12] liability 47.5 -> verified False (debit_card_disputes); gold[14] liability 500 -> verified False (debit_card_disputes)",
+        "get_bank_account_transactions_9173(chk_b8d92f4c17): btxn_d7f2a98c1b34 listed before btxn_e8c3b09d2c45 (both 11/06/2025 -47.5); gold picks btxn_e8c3b09d2c45; replay with the first-listed row -> verified False",
+        "replay: gold[12] provisional_credit_eligible false -> verified False",
+        "get_debit_dispute_status_7483: dsp_5a5e134f5b86 OPEN on chk_e5a31c7d82 (Light Blue, ENTRY max 2) -> only one more dispute, TechWorld chosen per script",
+        "replay: Light Blue close reason 'stolen' instead of 'fraud_suspected' -> verified True (no replacement ordered, closure_reason stripped)"
+      ],
+      "citation_problems": [],
+      "note": "Neither 'always cap at the disputed amount' nor 'never cap' reproduces both gold[12] (50 for $47.50) and gold[14] (412.88), and both values are stored exactly in debit_card_disputes, so a consistent agent fails one of them; the gold follows no single doc-supported rule, so Blocker stands under calibration. The review's note that close reason is irrelevant here is correct (replayed)."
+    },
+    "task_085": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "get_bank_account_transactions_9173(chk_b4d92f7c28): btxn_c3d4e5f6g703 listed before btxn_b2c3d4e5f602 (both 11/06/2025 -89.99, CITYFIT GYM MONTHLY DENVER); gold[10] uses btxn_b2c3d4e5f602; first-listed -> verified False",
+        "gold[9], gold[10], gold[12] customer_max_liability_amount 50; gold[12] disputed_amount 14.99 (uncapped); replay with 14.99 -> verified False",
+        "gold[10] duplicate_charge contacted_merchant false, provisional_credit_eligible true (doc_032 precedence conflict)",
+        "user instructions step 6 has no merchant-contact answer; replay gold[12] contacted_merchant true -> verified False; gold[10] transaction_type recurring_payment, signature_purchase -> verified False",
+        "chk_e8a31c9d47 rows: PRIME STREAMING SERVICE -14.99 (11/09), RHO-BANK ATM #5921 WITHDRAWAL -200.0 (11/08)"
+      ],
+      "citation_problems": [],
+      "note": "All four issues reproduce and each changes debit_card_disputes. Unlike task_084, the gold's liability values are internally consistent under one reading (all $50 tier, never capped), so this is the two-readings case and Major is right per calibration."
+    },
+    "task_086": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "chk_cr47f8d2a1_evergreen row btxn_0788d2513c8c: \"RHO-BANK ATM #6172 DEPOSIT\", amount 400.0, type atm_deposit",
+        "get_atm_deposit_images_8473(btxn_0788d2513c8c): \"Status: IMAGES NOT AVAILABLE\"",
+        "user step 5: \"If your records show that, then I'll go with what you have.\"; gold[16] atm_deposit_not_credited 100.0; replay omitting gold[16] -> verified False",
+        "doc_031: \"'yes_observed': Customer believes PIN was observed/skimmed\"; user: \"I think someone skimmed my card at a gas station or something.\"; gold[15] pin_compromised unknown, transaction_type pin_purchase; replay yes_observed / signature_purchase -> verified False",
+        "gold liability: 50 for gold[11],[12],[14],[16]; 500 for gold[15] ($625, consistent with either cap rule)",
+        "user script: \"Just discovered today 01/12\"; replay discovery_date 01/12/2026 -> verified False",
+        "doc_029 PREMIUM TIER: \"Free expedited shipping ... (delivery_fee: $0 for both STANDARD and EXPEDITED)\", \"PREMIUM design ... design_fee $0\" -> gold[20] EXPEDITED/PREMIUM matches \"best free options\"",
+        "replay: close reason 'stolen' -> verified False (debit_cards: new card issue_reason stolen vs fraud); 'fraud' -> rejected by close_debit_card_4721 valid_reasons"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced all four issues; each changes debit_card_disputes. The close reason does matter here because a replacement is ordered, but fraud_suspected is the clear doc_025 reason for a skimmed card the customer still holds, so it is not an additional defect."
+    },
+    "task_087": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_039: \"Escalate to security team when: ... - Customer reports transactions they did not make\"",
+        "doc_checking_accounts_checking_accounts_(general)_003 CODE 05 step 3: \"If they confirm all transactions are legitimate, clear the alert.\" (no branch for a disowned transaction)",
+        "replay: escalate path (gold[0..14] only, no dispute/close/order) -> verified False (missing close_debit_card_4721, file_debit_card_transaction_dispute_6281, order_debit_card_5739; debit_card_disputes/orders/cards differ)",
+        "card dbc_mt35a7c9d2_blue: status FROZEN, velocity_blocked true; replay clearing velocity before unfreezing -> verified True",
+        "gold[15] transaction_date 11/06/2025, discovery 11/06/2025, liability 50; replay liability 499.99 -> verified False"
+      ],
+      "citation_problems": [],
+      "note": "The doc_039 vs dispute-and-reissue conflict reproduces and is a two-readings Major. The review keeps the liability timing risk in notes only; it is the same class it rates Major in 085/086, though here the customer's same-day fraud-alert report makes $50 the stronger reading, so the task severity is unchanged."
+    },
+    "task_088": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_checking_accounts_purple_account_007 CODE 82: \"If suspicious transactions found: Follow stolen card protocol to assist the customer.\" and \"Recommend freezing the card until a replacement arrives.\"",
+        "doc_031 mapping: \"'card_present_fraud' -> 'close_and_reissue'\"",
+        "replay: freeze instead of close then order -> verified False (missing close_debit_card_4721; debit_cards differ)",
+        "replay: close reason 'stolen' -> verified False; new card dbc_fbcd78c9c7aa issue_reason 'stolen' vs gold 'fraud' (tools.py order_debit_card_5739 issue_reason mapping)",
+        "chk_cec8333d41_evergreen row btxn_28eee7145c29 \"ELECTRO MART MIAMI FL\" -347.99 type debit_card_purchase; gold[10] signature_purchase / pin_compromised no; replay pin_purchase -> verified False",
+        "replay: dropping gold[16] transfer_to_human_agents -> verified True (transfer writes nothing)"
+      ],
+      "citation_problems": [],
+      "note": "Both issues reproduce, including the point that the stolen close reason fails even under the verified scorer because it flows into the new card's issue_reason. Unflagged: gold[10] liability 50 for an 11/09 charge reported 11/14 depends on the same timing reading rated Major in 085/086; the task is already Major. The Blue-card security transfer is ungraded (no DB effect), a Minor-class 'rule the grader cannot see' not listed."
+    },
+    "task_090": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"Free expedited shipping on all replacements\", \"Rush shipping available (delivery_fee: $35)\", \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\"",
+        "script step 9: \"Give the fastest option that's free\" (no design preference)",
+        "gold[8] close dbc_er38a7c9d2_evergreen fraud_suspected; gold[10] EXPEDITED 0 CLASSIC 0; gold[14] reset_debit_card_pin_6284 dbc_er38a7c9d2_blue last_4 6183 new_pin 7294",
+        "init data Evergreen declines Newark NJ 02:14:22/02:15:58/02:17:41 for 800/500/300; Green pin_lock_reason security_hold; Blue pin_locks_last_90_days 2, last_successful_pin_transaction_date 10/10/2025, account date_opened 08/15/2025, one OVERDRAFT FEE",
+        "tools.py reset_debit_card_pin_6284 is the only tool that sets pin_locked False",
+        "replay: gold self True; Evergreen card_design PREMIUM -> False [debit_card_orders, debit_cards]; Evergreen close reason stolen -> False [debit_cards]"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. Evergreen scores 13 plus C4 (15 with C4=2) and the customer says she was asleep, so the card is closed as fraud_suspected and reordered EXPEDITED at $0. The design tie is resolved by doc_023's CLASSIC default, which matches the gold, so it is Minor under calibration. Blue scores 9-13 by my count (the review says 8-11) depending on B3 at exactly 2 minutes, A3 with no recent successful transactions, C3 for a POS decline, and E1 at 91 days. The range spans HIGH and VERY HIGH, but both paths lead to the PIN reset the customer accepts (D1=2 or the Step 6 options), so the outcome holds. One residual risk is not counted: an agent that applies 'Single Flag Escalation' (B1=3) as an immediate transfer ends the call early."
+    },
+    "task_091": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "user step 20: \"I want the most premium free option for both.\"; doc_005: \"PREMIUM TIER (Evergreen Account)\"; doc_029 PREMIUM TIER: \"delivery_fee: $0 for both STANDARD and EXPEDITED\", \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "gold[14] STANDARD/CLASSIC; replay EXPEDITED/PREMIUM -> verified False (debit_card_orders, debit_cards)",
+        "doc_005: \"ENTRY TIER (Light Blue Account, ...)\"; doc_029 ENTRY TIER: \"48-hour waiting period after card closure before a replacement can be ordered\"; gold[23] closes then gold[24] orders chk_tw34a7d9e2_lightblue immediately; replay without gold[24] -> verified False",
+        "Light Blue score after location removal: B1 1 (23:02), B2 2 (last PIN 10/08), B3 2 (87s, 115s), C2 1, C3 1 (400 vs avg 100 = 4x), C4 2 (1200 > 700), D1 1, E1 1 (opened 06/01/2025), E2 1 = 12 -> doc_041 \"11-14 | VERY HIGH | Cannot unlock on this call\"; STEP 6 offers closure, transfer, or PIN reset; replay PIN reset instead -> verified False",
+        "user step 22: \"Maybe someone watched me at an ATM? I really don't know.\"; gold[16],[17] pin_compromised yes_observed; replay unknown -> verified False",
+        "reset_debit_card_pin_6284 output: \"Your card has been unlocked and is ready to use.\"; doc_027 PIN reset steps never mention unlocking",
+        "script DOB 09/22/1991 vs initial_state users.tw34a7d9e2.date_of_birth 09/22/2001 = gold[0]",
+        "replay: disputes filed before close -> verified True"
+      ],
+      "citation_problems": [],
+      "note": "Two independent Blockers reproduce: gold[14] contradicts the customer's explicit request under the Premium-tier table, and gold[24] orders an Entry-tier replacement the documents forbid for 48 hours, so the gold follows no doc-supported reading. The Green-card unlock-by-reset gap is rated Minor, but needing an undocumented convention is the Major definition; this does not change the task severity."
+    },
+    "task_093": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "init: sav_sp93k4m7n2_silver current_holdings 144000.00; txn_int_oct_2025_silver amount 480.0 (= 144000 x 4.0% / 12); chk_sp93k4m7n2_green Green Account; no credit_card_accounts for sp93k4m7n2",
+        "doc_savings_accounts_silver_account_002: \"your Silver APY receives an additional [[linked_checking_apy_bonus]]\" and \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+        "doc_checking_accounts_green_account_(checking)_001: \"Boost a linked savings account's APY: Gold +0.75% or Silver +0.25%\"",
+        "doc_bank_accounts_bank_accounts_(general)_044: \"3. Missing Relationship Bonus: Customer maintains multiple Rho-Bank products but the relationship bonus was not applied.\" and example \"expected_apy (number): ... (e.g., 2.775 for 2.775%)\" / \"actual_apy ... (e.g., 2.5 for 2.5%)\" (2.5 + 0.25 + 0.025 = 2.775)",
+        "computation: 4.0 + 0.25 + 0.025 = 4.275%; 144000 x 0.275% / 12 = 33.00 = gold[6].amount",
+        "replay (verified scorer): credit 30.00 (no relationship bonus) -> False (accounts, bank_account_transaction_history); credit 33 int -> True; report expected_apy 4.25 -> True; skipping gold[4] get_bank_account_transactions_9173 or gold[8] report -> False (missing required discoverable call)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the $33.00 credit from the docs; the placeholder hides the checking-boost value (a deciding fact) but green_001 supplies it, so Minor per calibration. The relationship bonus is gold-applied with two products, which is the reading doc_044 and its own 2.775 worked example support; the 'may also qualify' hedge is a soft spot but not a second defensible state here. The cross-task conflict with task_097 is correctly attributed to 097."
+    },
+    "task_094": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "init: sav_wl94k7m3p8_gold 96000.00; btxn_8765c2cc9c02 interest 408.0 (= 5.10%); cards Platinum Rewards, Gold Rewards, EcoCard; checking Green",
+        "doc_savings_accounts_gold_account_013: \"As a Gold Rewards Card holder, you receive an additional 0.025% relationship bonus APY on top of the base rate.\" and \"Total APY with the bonus: 6.0%\"",
+        "doc_savings_accounts_gold_account_014: \"| Gold Rewards Card | +0.025% |\"",
+        "doc_bank_accounts_bank_accounts_(general)_045 example lists \"Gold Rewards Card: +0.025% APY bonus\", \"Platinum Rewards Card: +0.15%\", \"EcoCard: +0.6%\" -> \"receives only the EcoCard bonus\"; and \"credit card APY bonuses DO stack with other types of bonuses, such as: ... Relationship bonuses for holding multiple Rho-Bank products\"",
+        "computation: 5.5 + 0.75 + 0.6 = 6.85% -> 96000 x 1.75% / 12 = 140.00 (gold[6]); with +0.025 -> 6.875% -> 142.00",
+        "replay: credit 142.0 -> False (accounts, bank_account_transaction_history); report expected_apy 6.875 alone -> True"
+      ],
+      "citation_problems": [],
+      "note": "All quotes and arithmetic reproduce. doc_045's worked example (the customer's exact card trio) favours gold, but doc_013 explicitly labels the 0.025% a relationship bonus on top of base and doc_045 says relationship bonuses stack, so two document-supported readings give different credits: Major per calibration."
+    },
+    "task_095": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "init: sav_lm83h7k2p5_gold 96000.00; btxn_9a76d3ee8b01 interest 450.0 (= 5.625%); checking Green 8500 and Purple 2100; cards Platinum Rewards, Gold Rewards, EcoCard",
+        "doc_checking_accounts_purple_account_001: \"| APY boost with Gold Savings | +0.1% |\"; doc_046: only highest checking boost applies (example Green +0.75 vs Purple +0.1)",
+        "doc_savings_accounts_gold_account_013 / _014 / doc_045 as in task_094",
+        "computation: 6.85 - 5.625 = 1.225% -> 96000 x 1.225% / 12 = 98.00 (gold[6]); 6.875 -> 100.00",
+        "replay: credit 100.0 -> False"
+      ],
+      "citation_problems": [],
+      "note": "Same doc_013 vs doc_014/045 ambiguity as task_094, reproduced; Major is consistent across the pair. Customer's Silver/Gold card mix-up self-corrects and does not matter."
+    },
+    "task_097": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "init: sav_mc80w7k3x9_silver 100000.00, btxn_silver_interest_oct 333.33; platinum 70000/379.17; diamond 120000/750.0; silverplus 18000/67.5; 4 checking (Bluest, Blue, Light Green, Evergreen) + 5 cards (Silver Rewards, EcoCard, Bronze, Crypto-Cash Back, Diamond Elite) = 13 products",
+        "doc_savings_accounts_silver_account_002 (required): \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+        "doc_savings_accounts_silver_account_005: \"Yes. Eligible customers receive a relationship APY bonus of 0.025% added to the base Silver APY.\"",
+        "doc_bank_accounts_bank_accounts_(general)_044 (required): \"Missing Relationship Bonus: Customer maintains multiple Rho-Bank products but the relationship bonus was not applied.\"; its own example expected_apy 2.775 = 2.5 + 0.25 + 0.025",
+        "task_093 gold[8].expected_apy = 4.275 (bonus applied with 2 products) vs task_097 gold[14].expected_apy = 6.65 (4.0 + Bluest 0.45 + EcoCard 2.2, no bonus)",
+        "computation: with bonus 100000 x 6.675% / 12 = 556.25 -> 556.25 - 333.33 = 222.92 (both rounding methods agree); gold 6.65%: round(554.1667)=554.17 - 333.33 = 220.84 (gold[9]) vs 100000 x 2.65% / 12 = 220.8333 -> 220.83",
+        "other three credits reproduce: Platinum 6.5+0.8 (Blue)+0.35 (Diamond card)=7.65 -> 67.08; Diamond 7.5+0.2 (Light Green)+0.5=8.2 -> 70.00; Silver Plus 4.5+0.35 (Blue)+0.45 (EcoCard)=5.3 -> 12.00",
+        "replay: Silver 222.92 -> False; Silver 220.83 -> False; Silver Plus 12.38 -> False (accounts, bank_account_transaction_history)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced every quote and number. No document gives a reason to withhold the multi-product bonus from a 13-product customer; the only text tying the 0.025% to something narrower is silver_009 (Platinum Rewards Card holders), which calls it 'the existing ... 0.025% relationship bonus' and this customer has no Platinum card anyway, so it does not create an exclusion reading. The benchmark's own task_093 gold and doc_044 example apply the rule gold omits here, so gold follows no doc-supported reading: Blocker stands, and the stated reason distinguishes it from the Major in 094/095 (where gold follows doc_045's explicit example). The rounding ambiguity (220.84 vs 220.83) is real and independently Major; it only exists under gold's no-bonus APY."
+    },
+    "task_099": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "init: earliest checking biz_ky83m9p2t6_navyblue opened 11/10/2023; referrals Hunter Green 9 (last 10/30/2025), Navy Blue 2, Cobalt Blue 3",
+        "doc_business_checking_accounts_world_blue_001: \"You must have maintained checking account status with Rho-Bank for at least 90 days\" / \"They must deposit at least $25,000 within 90 days of account opening\"; \"within the $140 supported regions\"",
+        "doc_business_checking_accounts_world_blue_007: \"you can earn rewards by referring other international businesses to World Blue\" / \"Your bonus**: $300\"",
+        "referrer bonuses at $30,000 deposit: World Blue $300, Lime Green $200 ($15k), Hunter Green $175 (9/10 used), Cobalt Blue $150, Sky Blue $150, Navy Blue $100; True Blue needs $50,000, Beige $100,000",
+        "doc_bank_accounts_bank_accounts_(general)_048: \"Someone with a Navy Blue account can refer others for World Blue, True Blue, or any other checking product\"",
+        "replay: gold -> True; Lime Green -> False (referrals); skipping gold[2] get_all_user_accounts_by_user_id_3847 -> False (missing required discoverable call); skipping non-discoverable get_referrals_by_user -> True"
+      ],
+      "citation_problems": [],
+      "note": "World Blue at $300 is the unique referrer-bonus maximum and matches gold[4]. Under calibration the '$140 supported regions' corruption is a note (not deciding); the 'international businesses' wording is the only text that could steer a careful agent off World Blue, and the qualification list has no such condition, so Minor is right. The gold-required discoverable accounts read is reasonable (tenure is measured from the earliest checking account; doc_009 points to the tool for eligibility checks)."
+    },
+    "task_101": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window.\" / \"If you attempt to receive more than 2 referrals in a single 9-day period, the third referral (and any subsequent referrals in that window) will be automatically denied.\" / \"the count is evaluated based on the exact timestamps of your most recent referral bonuses\" / \"Track the timing of your last two successful referral bonuses before sending additional referrals.\"",
+        "doc_bank_accounts_bank_accounts_(general)_048: \"You can have multiple referrals in progress, but you can only receive a maximum of 2 referral bonuses in any rolling 9-day window.\" and rejection reason \"You already received 2 referral bonuses in the past 9 days\"",
+        "init referrals: most recent 10/25/2025 (Gold Years) and 10/10/2025 (Sky Blue), none within 9 days of 11/14/2025",
+        "user instruction 17: \"If agent recommends all 4 referrals without mentioning rolling window: ... Then submit ALL 4 referrals\"",
+        "eligibility reproduced: Maya ($300) -> Green Fee-Free $20+$35 only (Light Green 3/3, Light Blue needs $500, Dark Green needs $1,000); Vikram ($1,200) -> Purple $45+$35=$80 (Gold Years 6/6); Ember (5 yrs, $18k) -> Lime Green $350 (sky_blue_001: \"Confirm your company is within 4 years of formation\"); TechFlow ($12k) -> Sky Blue $150+$250=$400 (7/8 used)",
+        "replay: gold order reversed -> True (referral_id = hash(user, account_type)); four referrals -> False (referrals differs)",
+        "doc_bank_accounts_bank_accounts_(general)_047: \"If you attempt to receive more than 2 referrals in a single 9-day period, the third referral (and any subsequent referrals in that window) will be automatically denied.\""
+      ],
+      "citation_problems": [],
+      "note": "Reproduced: Purple ($80) + Sky Blue ($400) is the best one-personal/one-business pair after the annual caps and Sky Blue's 4-year formation limit; replay confirms order does not matter and four submissions fail (referrals table). A sub-check argued for Major because doc_048 says 'You can have multiple referrals in progress' and frames rejection by bonuses already received (none in the window). I keep Minor: doc_047 states the third referral attempted in a 9-day period is denied, so submitting four new referrals at once knowingly forfeits two bonuses and is not a competing reading a careful agent would adopt; the doc_048 wording is the loose-wording soft spot the review named."
+    },
+    "task_102": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "user instruction 12: \"Okay, so if I can only do one right now, which one should I prioritize? I want to maximize the bonus.\" (no 'combined'; task_101 instruction 1 says \"best possible combined bonus\")",
+        "init: ref_recent_purple_001 COMPLETE 11/10/2025 (4 days before 11/14) -> one slot; Gold Years 6/6; Sky Blue 7/8",
+        "doc_business_checking_accounts_sky_blue_001: \"Your bonus: $150 ... Their bonus: $250\" and \"Confirm your company is within 4 years of formation\"; lime_green_003: \"Your bonus**: $200\", \"Their bonus**: $150\", \"$15,000 within 90 days\"; hunter_green_001: \"Referrer reward**: $175\"",
+        "combined: TechFlow -> Sky Blue $400 (gold) vs Ember -> Lime Green $350; referrer-only: Ember -> Lime Green $200 > Hunter Green $175 > Sky Blue $150",
+        "NL assertion: \"The agent should recommend TechFlow Labs (not Ember Analytics) for the Sky Blue Account referral, recognizing that Ember Analytics exceeds the 4-year company age limit\"",
+        "replay: Lime Green instead of Sky Blue -> False (referrals); no referral -> False"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced: the gold is the unique answer only under the combined-bonus reading, which the script never states; the referrer-only reading picks Lime Green and fails the DB check. The NL assertion is satisfiable by an agent that also names TechFlow as the Sky Blue candidate, so it does not rescue or worsen the DB failure. The 101 rolling-window ambiguity also touches this task but does not change the one-slot count (one bonus received on 11/10 under either reading)."
+    }
+  },
+  "calibration_notes": [
+    "Freeze/unfreeze timestamp path dependence is rated Minor in tasks 078, 079, 080 and 081. That is consistent, and justified because each customer explicitly asks for an immediate freeze.",
+    "The unscripted card design is Major in task_077, where the documented default CLASSIC differs from the gold's PREMIUM, and Minor in task_090, where it matches the gold's CLASSIC. This follows calibration, but the task_077 review argued it from the free-design tie rather than doc_023's explicit default.",
+    "task_082 rates the unscripted Blue delivery option Minor, but doc_023 labels a default only for card design ('CLASSIC ... (default, no fee)'), not for delivery. Under calibration ('no default -> Major') it should be Major. Task severity is unaffected because the task is already a Blocker.",
+    "Debit provisional credit for discretionary categories is false in tasks 083/085/086 but true for FitLife in task_082. The review flagged this outlier correctly as Major.",
+    "Close reason surviving through issue_reason is Major in task_082 (lost vs fraud_suspected both defensible), and the review correctly raises no issue in 077/079/090, where the reason is scripted or unambiguous. In task_077 the Light Green close reason has no graded effect because no replacement is ordered (replayed).",
+    "Debit-dispute liability (customer_max_liability_amount): 084 Blocker (gold internally inconsistent on capping: 47.5->50 but 412.88->412.88), 085 and 086 Major (timing reference and cap readings). 087 and 088 store 50 under the same contestable timing reading (087: 11/06 charge, filed 11/14 but reported via fraud alert 11/06; 088: 11/09 charge, discovered and filed 11/14) but list it only in notes or not at all. 087 has a stated reason (same-day report); 088 does not, and it should carry the same Major-class issue. Neither task's severity changes.",
+    "Duplicate-row tie-break (083/084/085) is consistently Major. That is right: doc_031 documents a tie-breaker ('earliest') and doc_018 documents newest-first order, so it is the two-readings case, not an undocumented tie.",
+    "doc_032 REQUIRED vs NOT REQUIRED precedence for duplicate_charge without merchant contact (083/084/085) is consistently Major.",
+    "Unscripted stored dispute fields (pin_compromised, transaction_type, contacted_merchant) are consistently Major in 085/086/088/091.",
+    "task_091 Green-card 'reset is the unlock' gap is rated Minor, but by the review.md definition (reachable only through an undocumented convention) it is Major. No task-level change because 091 is already Blocker.",
+    "task_093 vs task_097: the same 0.025% Silver multi-product relationship bonus is applied by gold in 093 (2 products) and omitted in 097 (13 products). Attributing the defect to 097 (Blocker) and leaving 093 at Minor is justified because 093's gold follows doc_044/silver_002/005 and 097's does not.",
+    "task_094/095 (Major) vs task_097 (Blocker): different severities for 0.025% bonus questions are justified; in 094/095 the gold follows doc_045's explicit worked example, a document-supported reading, while in 097 no document supports withholding the bonus.",
+    "task_101 (review Minor) vs task_102 (Major): both have two document-supported readings that change the referrals table (101: rolling-window cap counts new submissions vs past bonuses received, with doc_048 'multiple referrals in progress'; 102: combined vs referrer-only bonus). Calibration puts both at Major; the review's 'better-supported reading' rationale for Minor in 101 is not a calibration ground.",
+    "task_101 vs task_102: a sub-check proposed raising task_101 to Major to match task_102. I keep them different: task_102's 'maximize the bonus' genuinely has two readings (combined vs referrer-only) with no document tie-breaker, while task_101's alternative (submit all four) contradicts doc_047's explicit 'the third referral ... will be automatically denied'."
+  ],
+  "methodology_note": "The review's grading model matches the snapshot and the working-repo verified scorer in every point I checked, and the reviewers consistently re-asked whether each divergence touches a compared table (e.g., closure reasons that only matter through issue_reason when a replacement is ordered, interest-report arguments that persist nothing because TransactionalDB has no interest_discrepancy_reports table). Every Blocker and Major in 077-102 reproduced by replaying gold versus the doc-faithful alternative with a copy of _verified_db_match; no claimed divergence was an artifact of a relaxed table. Blind spots: (1) secondary issues sometimes carry severities off-calibration (task_082 unscripted Blue delivery and task_091 'PIN reset unlocks' gap rated Minor where calibration says Major) without changing task severity; (2) task_082's suggested fix would add a reorder that doc_029's 48-hour ENTRY wait forbids; (3) the review leans on 'free tie' arguments where an explicit documented default (doc_023 CLASSIC) is the stronger basis (task_077, task_090); (4) the liability-timing class is rated Major in 085/086 but not raised in 088 although the same reading decides its stored $50.",
+  "fact_observations_from_replay": [
+    "Confirmed in the snapshot: call_discoverable_agent_tool parses JSON with parse_int=float, and it logs a call when the underlying tool mutates or appears in _read_log_allowlist. A TypeError on bad arguments returns before logging.",
+    "generate_agent_discoverable_tool_id uses only the tool name, so repeated calls collapse to one agent_discoverable_tools row.",
+    "order_debit_card_5739 sets issue_reason from the FIRST CLOSED card it finds on the account (next(...) over debit_cards in insertion order): lost/stolen kept, fraud_suspected->fraud, any other closure_reason (or a missing one)->first_card. On an account that already holds an older closed card, issue_reason can come from that old card rather than the one just closed. None of the replacement orders in tasks 077-082/090 hit this case.",
+    "freeze_debit_card_3892 writes frozen_date and unfreeze_debit_card_3893 writes unfrozen_date. Both persist on cards that end CLOSED, and the verified scorer compares them exactly.",
+    "transfer_to_human_agents writes nothing to the DB. request_human_agent_transfer (user tool) writes human_transfer_requests rows, which the scorer compares exactly.",
+    "order_replacement_credit_card_7291 accepts only (credit_card_account_id, user_id, shipping_address, reason, expedited_shipping). doc_credit_cards_credit_card_replacements_001 tells agents to pass Shipping_speed / Expedited_fee_acknowledgement / Notes, which raise TypeError and return before logging. That costs a retry but changes no table.",
+    "Action.compare_with_tool_call (snapshot src/tau2/data_model/tasks.py:178): with compare_args None it uses the predicted call's argument keys and compares values by equality, so the call_discoverable_agent_tool `arguments` JSON string is compared verbatim; requestor is not compared. Confirmed.",
+    "call_discoverable_agent_tool returns 'Error: Invalid arguments' on TypeError before the logging block, so an arg-missing discoverable write logs nothing to agent_discoverable_tools.",
+    "order_debit_card_5739 (snapshot tools.py ~3266-3286) sets the new card's issue_reason from the CLOSED card's closure_reason: lost/stolen kept, fraud_suspected->fraud, anything else->first_card. Replays: 088 and 086 close as 'stolen' -> verified False; 084 (no reorder) 'stolen' -> verified True.",
+    "close_debit_card_4721 valid reasons are lost, stolen, fraud_suspected, damaged, no_longer_needed, account_closing; 'fraud' is rejected with an error, so the card stays open.",
+    "transfer_to_human_agents writes nothing to the DB (088 replay without the transfer passes the verified match).",
+    "The verified scorer (_verified_db_match) treats agent_discoverable_tools as a tool-name subset check and strips closure_reason. Every other table (debit_card_disputes, debit_card_orders, debit_cards, verification_history) is compared exactly. Confirmed by the replays above.",
+    "Confirmed: submit_interest_discrepancy_report_7294 calls add_to_db('interest_discrepancy_reports', ...); TransactionalDB has no such attribute (hasattr False; table absent from model_dump), so add_to_db returns False and nothing persists. Only the tool name in agent_discoverable_tools matters, and under the verified scorer (name-subset check) one report call is as good as four in task_097; report argument values never affect grading.",
+    "Confirmed: apply_savings_account_credit_6831 casts amount to float and hashes it into transaction_id, so 33 vs 33.0 is identical but any cent difference changes accounts and bank_account_transaction_history.",
+    "Confirmed: submit_referral (user tool) ids are hash(user_id, account_type) via generate_referral_id, so submission order does not matter but the exact account_type string does.",
+    "Confirmed: get_referrals_by_user is a non-discoverable read and never affects the DB; gold-required discoverable reads (get_all_user_accounts_by_user_id_3847, get_bank_account_transactions_9173) still fail the verified scorer when skipped.",
+    "All posted interest credits in 093-097 equal balance x APY / 12 rounded to the cent, despite the docs' 'compounded daily' language; this monthly convention is what gold uses."
+  ]
+}

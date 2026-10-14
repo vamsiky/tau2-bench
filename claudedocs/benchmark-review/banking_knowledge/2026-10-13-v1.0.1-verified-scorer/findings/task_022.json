@@ -1,0 +1,31 @@
+{
+  "task_id": "task_022",
+  "severity": "Minor",
+  "headline": "Across 77 transactions on four cards, the documented rates, exclusions, and round-down rule reproduce the ten gold disputes exactly; the only defect is that the rounding doc is missing from required_documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding policy doc that decides which transactions are discrepant (doc_credit_cards_credit_cards_(general)_007) is not listed in required_documents, so the golden_retrieval config, which inlines only required_documents and exposes no search tool, never shows it to the agent.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_022.required_documents = [general_003, general_006, diamond_elite_001/002/003, business_platinum_001/002, business_silver_001/002/005, ecocard_001/002/004] (no general_007)",
+        "src/tau2/domains/banking_knowledge/retrieval_toolkits.py: KnowledgeToolsPlain 'Used by: no_knowledge, full_kb, golden_retrieval' (no retrieval tools)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "In the golden_retrieval config, half-up rounding flags 26 extra transactions (for example txn_1c63bf5307a1, Delta $487.50 x 5% = 2437.5, stored 2437) and fails.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 77 transactions for f9bf8de0be with Diamond 5% flat, Business Platinum 4% Travel/Software/Media else 1.5%, Business Silver 10% Travel/Software else 1% with business_silver_005 exclusions (Dell), and EcoCard 5x Green else 1x with Target/Amazon/ThredUp excluded. No promos apply: Business Silver opened 06/10/2024, before the 2024-11-14 promo start; EcoCard opened 08/01/2024. Flooring per doc_007, exactly the ten gold transactions mismatch (Patagonia, Southwest, Google Ads, Marriott Bonvoy 10684 vs 5342, REI, Facebook Ads, Dell 18499 vs 1849, Datadog, ThredUp 391 vs 78, 'Target - Eco Collection' 728 vs 145). Half-up gives 36 mismatches.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round down') is overturned: doc_007 documents floor rounding. What remains is a Minor required_documents omission.",
+  "notes": "The task note says 75 transactions; the DB has 77 for this user. Recognizing that the Marriott Bonvoy 20% credit is a misapplied promo requires business_silver_012, which is not in required_documents, but without it an agent computes 10% anyway and reaches the same dispute. The persona explicitly asks for errors 'whether the error is in your favor or against you', which makes the over-credit disputes well-posed here. No discoverable agent tools are involved."
+}

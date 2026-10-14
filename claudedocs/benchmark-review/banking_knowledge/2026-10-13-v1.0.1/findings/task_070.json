@@ -1,0 +1,34 @@
+{
+  "task_id": "task_070",
+  "severity": "Major",
+  "headline": "Picking Sky Blue through the active November promotion is derivable, but Sky Blue is a startup account and the customer's company age is never given.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The gold account Sky Blue is a startup account, and its documents tell the agent to confirm the company is within 4 years of formation. The customer script (Yuki Nakamura / Brightwave Digital) never gives the company's formation date or age, so the outcome depends on whether the agent checks and on what the user simulator makes up.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"## Verify Eligibility - Confirm your company is within 4 years of formation.\"",
+        "doc_business_checking_accounts_sky_blue_008: \"Eligibility criteria tied to company age are evaluated when you open the account; the threshold is 4.\"",
+        "gold[4].arguments.arguments account_class = \"Sky Blue\"",
+        "user_scenario.instructions: no formation date or company age for the business"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "A diligent agent asks the customer's company age before opening a startup account. If the simulated customer improvises an age over 4 years or says they don't know, the agent correctly falls back to Lime Green (second in the active promotion) and fails the gold. The gold is reached reliably only by skipping a documented eligibility check.",
+      "suggested_fix": "Add the business's formation date (under 4 years) to the user instructions, or replace the account's startup eligibility rule with one the given facts settle."
+    }
+  ],
+  "solution_check": "Requirements: at least $15/month in ATM rebates, $0 overdraft fee, minimum balance under $10k, APY of at least 1%. Sky Blue (1.25%, $0 OD, rebates up to 15, no funding requirement), Lime Green (1.5%, $0, $25, $5k minimum) and Hunter Green (1.0%, $0, $20) qualify. Navy Blue (0.5%), Cobalt Blue (0.5%), True Blue ($25 OD, $25k minimum), World Blue ($30 OD, $10k minimum) and Beige ($250k minimum) do not. The active promotion (doc_..._(general)_013, 11/01-11/30/2025) ranks Sky Blue first; the October promotion (doc_014) expired 11/12. Sky Blue matches the gold. doc_003's eligibility rules (open personal checking with balance >= $500, no CLOSED accounts) are met: account 05 is OPEN with $2,850.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. It did not consider Sky Blue's documented company-age eligibility rule, which the customer script leaves unanswered.",
+  "notes": "account_class 'Sky Blue' (no 'Account' suffix) matches doc_003's examples ('Navy Blue, Cobalt Blue, True Blue') and the DB's stored level 'Cobalt Blue', so I did not raise an issue. v1.0.1 fixed 'free period of 6' -> '6 months' in the sky_blue_001/002/009 docs (cosmetic). The gold's get_all_user_accounts read is allowlisted and justified by doc_009."
+}

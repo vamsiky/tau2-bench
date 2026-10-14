@@ -1,0 +1,41 @@
+{
+  "task_id": "task_078",
+  "severity": "Minor",
+  "headline": "Lost-wallet task is solvable from the documents, but the graded database records the freeze-then-unfreeze history, so closing the lost cards directly (as one document recommends) fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The gold freezes all three cards, then unfreezes Light Blue and Green only so they can be closed. The freeze/unfreeze dates stay on the closed card records, so an agent that follows doc_026 and closes the confirmed-lost cards without freezing them ends with the same CLOSED cards but a different debit_cards table.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "doc_bank_accounts_bank_accounts_(general)_026: \"CLOSE: Permanent deactivation - cannot be reversed. Use when card is confirmed lost/stolen\"",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\" (a FROZEN card must be unfrozen first)",
+        "freeze_debit_card_3892 writes card[\"frozen_date\"]; unfreeze_debit_card_3893 writes card[\"unfrozen_date\"]; both fields stay on the closed card in the gold DB",
+        "gold[4..6] freeze lb/green/lg; gold[13..14] unfreeze lb/green; gold[16..17] close lb/green reason \"lost\"",
+        "Replay: gold minus freeze/unfreeze for lb/green -> debit_cards differs only in frozen_date/unfrozen_date on dbc_mc78a5b9d2_lb and dbc_mc78a5b9d2_green; also missing unfreeze_debit_card_3893 in agent_discoverable_tools"
+      ],
+      "gold_action_refs": [
+        4,
+        5,
+        13,
+        14,
+        16,
+        17
+      ],
+      "why_it_matters": "The customer asks for an immediate freeze, so most agents will freeze. An agent that instead recommends closing confirmed-lost cards (doc_026) gets the substantive outcome right and still scores 0.",
+      "suggested_fix": "Do not persist frozen_date/unfrozen_date on cards that end CLOSED, or exclude those timestamp fields from the DB comparison."
+    }
+  ],
+  "solution_check": "Reconstructed: verify, list accounts, read cards (Light Blue has two lost-replacements dated 03/15/2025 and 07/25/2025, so a third exceeds the ENTRY 2-per-12-months limit; customer declines the $25 fee), read transactions (Light Green has two pending rows, so doc_025 requirement 4 blocks closing it), freeze all three as asked, unfreeze and close Light Blue and Green as lost, order Green replacement EXPEDITED $15 (MID tier) with CLASSIC $0 to the address on file. This matches the gold, and the gold replays cleanly; Light Green stays FROZEN.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the gold actions only gained the accounts read in v1.0.1, and the freeze-path sensitivity was not reported before.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. Ordering the Green replacement before closing the old card succeeds (the frozen card is not ACTIVE) but stamps issue_reason=first_card instead of lost (replayed); doc_029 (\"can order immediately after closure\") implies close-first, so this is noted, not counted. get_credit_card_accounts_by_user (gold[7]) is a non-discoverable read and does not touch the DB. Tier mapping comes only from doc_005 (Light Blue/Light Green ENTRY, Green MID). doc_005 changed in v1.0.1 only by removing a stray \"$\" in the ELITE fee line."
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "task_100",
+  "severity": "Minor",
+  "headline": "Hunter Green ($175) is correct once tenure is measured from the on-file account date; the customer's claim of \"mid-July\" is a resolvable red herring.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The customer says she opened her first account in mid-July (about 4 months, which would clear World Blue's 90-day tenure), but the DB shows her earliest checking account opened 09/10/2025, 65 days ago. The documents say tenure comes from the earliest checking account, so the DB settles it.",
+      "evidence": [
+        "user instruction 5: \"I opened my first account with Rho-Bank back in mid-July this year. So it's been... about four months now?\"",
+        "db accounts.biz_ti87k4x9m2_worldblue.date_opened = \"09/10/2025\"; biz_ti87k4x9m2_cobaltblue = \"10/01/2025\"",
+        "doc_bank_accounts_bank_accounts_(general)_047: \"calculated from when you first became a Rho-Bank checking customer—specifically, the date your earliest checking account was opened\"",
+        "doc_business_checking_accounts_world_blue_001: \"at least 90 days\"; hunter_green_001: \"A minimum relationship duration of 60 days\""
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "An agent that trusts the customer recommends World Blue ($300) and fails. A careful agent reads date_opened, so the correct final state is unambiguous.",
+      "suggested_fix": "None required; optionally have the customer say \"a couple of months\" so the trap tests verification without a factual contradiction."
+    }
+  ],
+  "solution_check": "Tenure 65 days. Eligible with $31,000: Hunter Green $175 (60-day tenure), Sky Blue $150 (45 days; LLC just formed), Cobalt Blue $150 (60 days), Navy Blue $100 (60 days). World Blue, Lime Green, True Blue, and Beige need 90+ days. No referrals on file. Hunter Green is the unique maximum and matches gold[3].",
+  "prior_status": "persists",
+  "prior_note": "Same Minor as before: the customer's tenure misstatement is resolvable from the DB.",
+  "notes": "gold[1]-[2] get_all_user_accounts_by_user_id_3847 is a required read (allowlisted); replay shows skipping it fails even under the verified scorer."
+}

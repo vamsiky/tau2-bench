@@ -1,0 +1,17 @@
+{
+  "task_id": "task_055",
+  "severity": "None",
+  "headline": "Clean: the checking and savings criteria each single out one product, and the check-deposit funding step is fully determined.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Checking: Purple Account is the only personal checking product with a multi-currency wallet (grep finds 'multi-currency' only in purple_account_001/005/011 and the business World Blue). It also has 0% foreign transaction fee, global ATM rebates up to $30, and a $3,750 waiver that fits the customer's $3-5k. Savings: with 12-16 withdrawals a month, a balance of at most $7k, daily compounding, ATM rebates, a relationship bonus and at least 3% APY, Bronze (6 withdrawals), Green savings (8) and Gold/Gold Plus and above (minimum $10k or more) drop out. That leaves Silver Plus (15 withdrawals, $2,500 minimum, 3.0%/4.5% tiers, $25 ATM rebates, 0.025% relationship bonus). She already holds a Green checking account opened 11/10/2022, so savings eligibility is met. Funding: the customer declines a transfer, so the agent gives deposit_check_3847 and the user deposits 1500 into the new Silver Plus id (7e48bf3b0589cfad). The gold replays cleanly and matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; that still holds.",
+  "notes": "Possible tie checked and rejected: the customer holds a Platinum Rewards Card (cc_224959b99e_plat), which raises Silver Account withdrawals to 15 (silver_account_009). That makes Silver Account meet the withdrawal criterion too. At her $5-7k balance, though, Silver Plus still wins: 3.0% + 0.15% Platinum bonus versus Silver's 2.5% + 0.2%, plus $25 versus $15 ATM rebates. So Silver Plus remains the single best fit. The instructions say the Green checking is about 6 months old, but db.json accounts['05'].date_opened = 11/10/2022. That does not affect eligibility. give_discoverable_user_tool arguments are not stored (user_discoverable_tools rows are keyed by tool name), so whether the agent pre-fills them does not matter. The account_class strings 'Purple Account' and 'Silver Plus Account' follow the 'ending with Account' rule in general_001/002. get_all_user_accounts_by_user_id_3847 is a gold read; general_009 directs agents to use it for eligibility checks, so a competent agent makes it."
+}

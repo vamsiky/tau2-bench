@@ -1,0 +1,17 @@
+{
+  "task_id": "task_005",
+  "severity": "None",
+  "headline": "Clean: a KB doc spells out exactly how to accept the Account Recovery Bypass Code (log verification with the code in every field), after which the email change follows.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Normal verification fails (only the phone matches users[6680a37184]), so the agent transfers when the customer demands it. When the customer returns with code 9K2X7M4P1N8Q3R5T6A, doc_customer_support_special_support_codes_001 says: 'Verify the code exactly matches 9K2X7M4P1N8Q3R5T6A', then enter it in name/user_id/address/email/phone_number/date_of_birth, with 'time_verified | Actual verification timestamp' (get_current_time -> '2025-11-14 03:40:00 EST'), then 'continue with the account recovery workflow'. That gives gold[1] log_verification and gold[2] change_user_email(6680a37184, kenji.tanaka@gmail.com). gold[0] (transfer) is GENERIC and does not affect the DB hash.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and nothing in the task or doc changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). Simulator risk (not a task-data defect): the global user guideline data/tau2/user_simulator/simulation_guidelines_tools.md says 'If you have been transferred to another agent, generate the '###TRANSFER###' token', while this task scripts 'Okay, I'll hold' followed by a return with the bypass code. If the simulator emits ###TRANSFER### at the first transfer, the run ends before the gold writes and scores 0 regardless of the agent. Verifiers may want to inspect trajectories for this. A security-minded agent could also question whether changing an email counts as 'account recovery' (the doc says 'Use the bypass code only for account recovery'), but regaining access after failed verification is a reasonable reading and the doc is clearly written for this scenario."
+}

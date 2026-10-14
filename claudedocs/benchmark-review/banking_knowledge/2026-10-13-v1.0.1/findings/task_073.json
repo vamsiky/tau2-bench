@@ -1,0 +1,35 @@
+{
+  "task_id": "task_073",
+  "severity": "Minor",
+  "headline": "All three refunds follow from the fee schedules and the documented 'net correction' rule. The one blemish is that some errors sit on fee rows dated after 'today'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The seeded transaction history includes 'posted' ATM fees dated after the fixed clock (2025-11-14 03:40), and the gold credit includes discrepancies on those future-dated rows. Including them, as the gold does, is the natural reading of 'review my November fees', but an agent that excludes transactions dated after today gets a different amount.",
+      "evidence": [
+        "utils.py get_now() = datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"2025-11-14 03:40:00 EST\"",
+        "db.json btxn_kj18k9l0m1n3 and btxn_kj18k9l0m1n4 (chk_kj93a7b2e1_2) both 11/15/2025 -3.00 \"NON-RHO ATM FEE\" for one $250 withdrawal (gold counts the duplicate, +$3.00)",
+        "db.json btxn_kj28y9z0a1b3 (chk_kj93a7b2e1_3) 11/15/2025 -5.00 on a $150 foreign withdrawal (+$1.50); btxn_kj29c3d4e5f6 11/17/2025 $65 TD Bank withdrawal with no fee (7th domestic, -$1.50)",
+        "Excluding post-clock rows: Green $6.00 instead of gold $9.00 (Blue and Light Green unchanged at $9.50 / $1.50)"
+      ],
+      "gold_action_refs": [
+        9,
+        10
+      ],
+      "why_it_matters": "Most agents take posted rows at face value and match the gold. A careful agent that notices the dates are in the future, or scopes the review to 'through today', credits a different amount and fails the exact-hash match.",
+      "suggested_fix": "Re-date the post-clock rows to on or before 11/14/2025, or move the fixed clock past the last seeded transaction."
+    }
+  ],
+  "solution_check": "Blue (OON 1% max $3.00; foreign 3% min $5.00): 11/05 $300 charged $4.50 vs $3.00 (+1.50); 11/09 $500 Seoul $20.00 vs $15.00 (+5.00); 11/13 RHO-BANK in-network ATM charged $3.00 (+3.00). Total $9.50. Green (OON flat $3.00; foreign 3% min $5): 11/07 RHO-BANK fee (+3.00); 11/09 $400 Seoul $15.00 vs $12.00 (+3.00); 11/15 duplicate fee (+3.00). Total $9.00. Light Green: 2nd domestic (11/03) charged (+1.50); 7th domestic (11/17) not charged (-1.50); 11/15 $150 foreign $5.00 vs $3.50 (+1.50). Net $1.50. All match the gold. The 'in-network fee is an error' step is supported: the line reads 'NON-RHO ATM FEE' on a 'RHO-BANK' ATM, and the fee schedules apply only to out-of-network ATMs. Netting the undercharge is mandated by doc_017 ('the net correction across all identified fee discrepancies').",
+  "prior_status": "changed",
+  "prior_note": "The prior Major treated the in-network-fee inference and the undercharge netting as fragile. Both are documented, so they are hard reasoning rather than defects. What remains is the Minor post-clock-row issue.",
+  "notes": "The customer's DOB is 09/14/1994 (age 31), but Light Green is restricted to ages 13-24 (doc_checking_accounts_light_green_account_002). This is a cosmetic eligibility inconsistency with no grading impact. v1.0.1 scrubbed two 'AFTER FREE ALLOWANCE' annotations on this Light Green account (description only)."
+}

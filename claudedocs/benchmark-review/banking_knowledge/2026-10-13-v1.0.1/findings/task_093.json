@@ -1,0 +1,17 @@
+{
+  "task_id": "task_093",
+  "severity": "None",
+  "headline": "Clean: the missing Green-checking boost and the multi-product relationship bonus are both documented, and the $33.00 correction follows directly.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Silver $144,000 is in the >= $10,000 tier at 4.0% (silver_account_003). Green checking + Silver is pairing 11 (doc_012) with a boost of +0.25% (green_account_(checking)_001). The customer holds two products, which earns the 0.025% relationship bonus (silver_account_002/005), and has no credit cards. Expected APY is 4.275%. Actual is 480 x 12 / 144000 = 4.0%. Difference: 144000 x 0.275% / 12 = $33.00. This matches gold[6] (credit 33.00) and gold[8] (expected 4.275, actual 4.0).",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. Both apply_savings_account_credit_6831 and submit_interest_discrepancy_report_7294 cast amounts with float(), and record ids embed f'{amount}' / f'{expected_apy}', so 33 and 33.0 hash identically, but any difference in value (even one cent) changes the hash. Gold read get_bank_account_transactions_9173 and get_all_user_accounts_by_user_id_3847 are allowlisted, so skipping either changes the hash. Monthly interest convention: the posted credits equal balance x APY / 12 exactly (simple, not daily-compounded), so the agent can infer the convention from the data. silver_account_002 says the customer 'may also qualify' for the relationship bonus. The FAQ (silver_account_005) and docs 043/044 ('Missing Relationship Bonus: Customer maintains multiple Rho-Bank products') make inclusion the clear reading. This task's gold includes the bonus, which is the opposite of task_097's Silver gold (see that finding). Replay: dropping the gold get_bank_account_transactions_9173 read changes the hash, but the read is natural (doc_043/044 require it)."
+}

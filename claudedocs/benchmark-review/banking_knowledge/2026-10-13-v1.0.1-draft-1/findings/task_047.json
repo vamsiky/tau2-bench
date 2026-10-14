@@ -1,0 +1,17 @@
+{
+  "task_id": "task_047",
+  "severity": "None",
+  "headline": "Clean: Business Platinum is the only business card that beats the competitor, and the under-2-year Platinum holder correctly gets a downgrade offer and then a $50 credit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Silver Zoom ($0 balance, no disputes or orders, empty closure history) is logged as found_better_card. Business Platinum (4% travel/software/media, 0% FX, first-year fee 0 per business_platinum_011) is the only business card above 3.5% on travel and advertising, and the user applies. For the Platinum Rewards card, the closure reason is annual_fee. The customer's earliest account is checking 03/10/2024 and the card opened 06/20/2024, both under 2 years, so per logistics_008 she gets a Bronze downgrade offer, which she declines. Step 5 for 'Premium and above' (replacements_002 lists Platinum as premium-tier and above) gives $50 with reason retention_offer. This matches gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found it clean; the task and docs are unchanged and it is still clean.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. The customer already holds the personal Platinum Rewards Card (10% on all), so it is not a competing recommendation. Instruction step 5 names the Business Platinum application explicitly."
+}

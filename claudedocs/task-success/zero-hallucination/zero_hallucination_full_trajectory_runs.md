@@ -35,7 +35,7 @@ uv run python examples/agents/claude_sdk_loop_eval.py \
 ```
 
 Runner (tree-kills a stuck episode by save-to name):
-`claudedocs/zero_hallucination/full_trajectory_run.sh`.
+`claudedocs/task-success/zero-hallucination/scripts/full_trajectory_run.sh`.
 
 ---
 
@@ -85,7 +85,7 @@ blocker the baseline doc assumed — more fixable than expected.
 ### Fix for iteration 2
 
 Both failures are agent behavior the retrieved policy doesn't force. Add a generic
-agent-extra-instruction (`claudedocs/zero_hallucination/policy_ftraj.txt`) with
+agent-extra-instruction (`claudedocs/task-success/zero-hallucination/scripts/policy_ftraj.txt`) with
 three task-agnostic rules: (1) run eligibility/history reads before finalizing
 account changes; (2) look up identifiers via tools, never ask the customer for a
 card number/last-4; (3) classify closures from denied/unauthorized activity as
@@ -330,6 +330,6 @@ estimate true per-task pass rates. But the direction is clear — no ZH edge.
 - `src/tau2/domains/banking_knowledge/tools.py`: `_scripted_attack_velocity()`
   helper; velocity guard in `close_debit_card_4721`; `fraud_velocity_alert` surfaced
   in `get_debit_cards_by_account_id_7823`.
-- `claudedocs/zero_hallucination/policy_ftraj.txt`: targeted agent-extra-instruction
+- `claudedocs/task-success/zero-hallucination/scripts/policy_ftraj.txt`: targeted agent-extra-instruction
   (use per-task, not globally).
-- Runner: `claudedocs/zero_hallucination/full_trajectory_run.sh`.
+- Runner: `claudedocs/task-success/zero-hallucination/scripts/full_trajectory_run.sh`.

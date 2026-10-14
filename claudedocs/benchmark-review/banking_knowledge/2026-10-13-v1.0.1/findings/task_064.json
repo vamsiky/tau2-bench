@@ -1,0 +1,17 @@
+{
+  "task_id": "task_064",
+  "severity": "None",
+  "headline": "With Rho-Bank+, frequent withdrawals, no crypto and fees under $100, Gold Rewards Card plus Gold Plus savings is the unique best net return on $30,000, so the task is clean.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "At $30,000 with 10-12 withdrawals: Bronze (6) and Green (8, or 15 only with EcoCard) are limited, and Silver allows 10. Platinum savings needs $50k and Diamond Elite $250k. Gold Plus (6.0%, $25k minimum met, 25 withdrawals) + Gold Rewards +0.35% (gold_plus_009, $0 fee, Rho-Bank+ held per db users.jl72b4e9d1.rho_bank_plus_subscription=true) = 6.35% = $1,905. Alternatives: Silver 4.0% + EcoCard 2.2% gives $1,860 - 50 = $1,810. Gold 5.5% + EcoCard 0.6% gives $1,780. Gold Plus + Bronze 0.15% gives $1,845. Crypto is excluded by the user, and Platinum ($200) by the user's fee cap. Gold's choice is the unique maximum.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior and current verdicts agree: clean.",
+  "notes": "Even if an agent believes the corrupted 'Total APY with the bonus: 6.0%' in gold_account_013, Gold + Gold Rewards gives about $1,800, still below Gold Plus. The Gold Rewards Card's 'Minimum credit score required: $720' is written as dollars (cosmetic; the user's score is never at issue)."
+}

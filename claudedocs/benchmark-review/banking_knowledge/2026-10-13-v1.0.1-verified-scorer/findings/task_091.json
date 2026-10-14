@@ -1,0 +1,105 @@
+{
+  "task_id": "task_091",
+  "severity": "Blocker",
+  "headline": "The official answer orders the cheapest replacement card although the customer asked for the most premium free one, and it orders a Light Blue replacement that the rules say must wait 48 hours.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The customer asks for \"the most premium free option for both\" shipping and card type on the Evergreen replacement. Evergreen is Premium tier, where EXPEDITED shipping and the PREMIUM design both cost $0, yet gold orders STANDARD shipping with a CLASSIC design.",
+      "evidence": [
+        "user instruction 20: \"If agent asks about replacement card preferences for shipping or card type: \\\"I want the most premium free option for both.\\\"\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"PREMIUM TIER (Evergreen Account)\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"Free expedited shipping on all replacements (delivery_fee: $0 for both STANDARD and EXPEDITED)\" and \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "gold[14].arguments: delivery_option \"STANDARD\", card_design \"CLASSIC\" for chk_tw34a7d9e2_evergreen",
+        "replay: gold with EXPEDITED + PREMIUM on gold[14] -> verified match False (debit_card_orders, debit_cards differ)"
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "An agent that follows the customer and the tier table orders EXPEDITED/PREMIUM. The order_id hash and the stored card_design both change, so correct work fails.",
+      "suggested_fix": "Change gold[14] to delivery_option \"EXPEDITED\", card_design \"PREMIUM\" (fees 0), or change the customer line to ask for the standard free option."
+    },
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "The Light Blue card scores in the 11-14 band even after the customer confirms the Bellevue attempts. At that score doc_041 offers three options (closure, transfer, PIN reset), and the simulator accepts whichever is offered. Gold also orders an Entry-tier replacement right away, against the documented 48-hour wait.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"11-14 | VERY HIGH | Cannot unlock on this call. Require callback verification OR enhanced verification (last 4 SSN + security question).\"",
+        "doc_041 STEP 6: \"If no unauthorized transactions: Explain the security concern and offer options: Card closure and replacement (recommended if fraud suspected); Transfer to security team for investigation; PIN reset (issues new PIN, invalidates potential compromise)\"",
+        "user instructions 41/44/45/47: confirms \"that was definitely me\"; accepts closure (\"Fine, close it and send me a new one\"), transfer (\"Ugh, okay\"), or PIN reset (\"Sure, set it to 4121\")",
+        "doc_bank_accounts_bank_accounts_(general)_029 ENTRY TIER: \"48-hour waiting period after card closure before a replacement can be ordered\"; doc_005: \"ENTRY TIER (Light Blue Account, ...)\"",
+        "gold[23] close_debit_card_4721 dbc_tw34a7d9e2_lightblue fraud_suspected; gold[24] order_debit_card_5739 chk_tw34a7d9e2_lightblue immediately after",
+        "Light Blue flags after location removal: B1 1 (23:02), B2 2 (last PIN 10/08), B3 2 (87s/115s), C2 1 (all $400), C3 1-2, C4 2 (3x$400 > $700 limit), D1 1, E1 1, E2 1 (10/25 overdraft) = 12-13",
+        "replay: Light Blue PIN reset instead of close, transfer only, or close without the immediate order -> all verified match False"
+      ],
+      "gold_action_refs": [
+        23,
+        24
+      ],
+      "why_it_matters": "The customer insists the attempts were his, so fraud is not suspected and closure is not the recommended option. A reset or a transfer writes a different final state. An agent that does close the card must still not order an Entry-tier replacement for 48 hours, so it cannot match gold[24].",
+      "suggested_fix": "Script the customer to pick closure explicitly and drop gold[24] (or make the account a tier without a waiting period). Alternatively, raise the score into the 15+ CRITICAL band so closure is mandated."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The customer's answer about PIN compromise (\"Maybe someone watched me at an ATM? I really don't know.\") fits pin_compromised \"unknown\" at least as well as gold's \"yes_observed\", and the value is stored in both dispute records.",
+      "evidence": [
+        "user instruction 22: \"I never shared it with anyone. Maybe someone watched me at an ATM? I really don't know.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'yes_observed': Customer believes PIN was observed/skimmed\" vs \"'unknown': Customer unsure\"",
+        "gold[16].arguments / gold[17].arguments: \"pin_compromised\": \"yes_observed\"",
+        "tools.py file_debit_card_transaction_dispute_6281 stores \"pin_compromised\" in the debit_card_disputes record",
+        "replay: pin_compromised \"unknown\" -> verified match False (debit_card_disputes differs)"
+      ],
+      "gold_action_refs": [
+        16,
+        17
+      ],
+      "why_it_matters": "A careful agent that records \"Customer unsure\" as \"unknown\" writes different dispute records and fails.",
+      "suggested_fix": "Have the customer state a belief (\"I think someone must have watched me enter it\"), or accept either value."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The Green card is LOW risk with no prior locks, so the protocol says \"unlock\". No unlock tool exists, and no document says that reset_debit_card_pin_6284 unlocks a card. The customer also says he knows his PIN, which doc_027 routes to change_debit_card_pin_6285, a tool that does not clear the lock.",
+      "evidence": [
+        "tools.py reset_debit_card_pin_6284 docstring: \"Reset a debit card PIN when the customer has forgotten it.\" (the code also sets pin_locked=False, but only the tool output after the call says \"Your card has been unlocked\")",
+        "doc_bank_accounts_bank_accounts_(general)_027 PIN Reset/PIN Change steps never mention unlocking a locked card",
+        "doc_bank_accounts_bank_accounts_(general)_041 STEP 3: \"0-4 | LOW | Unlock after standard identity verification\"; no unlock tool exists in tools.py (no discoverable method other than reset_debit_card_pin_6284 clears pin_locked)",
+        "user instruction 8: \"Yeah, I know my PIN. I must have just fat-fingered it a few times.\"",
+        "gold[8] reset_debit_card_pin_6284 dbc_tw34a7d9e2_green new_pin 2589"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "The gold is reachable only by inferring that reset is the unlock mechanism. An agent that uses change-PIN, or tells the customer it cannot unlock, leaves pin_locked=True and fails.",
+      "suggested_fix": "State in doc_041 or doc_027 that reset_debit_card_pin_6284 also clears pin_locked and is the unlock path."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The customer script gives DOB 09/22/1991, but the DB and gold[0] use 09/22/2001. Verification still succeeds on phone, email, and address, so the agent can resolve it by logging the on-file values.",
+      "evidence": [
+        "user instructions: \"DOB: 09/22/1991\"",
+        "task initial_state users.tw34a7d9e2.date_of_birth = \"09/22/2001\"",
+        "gold[0].arguments.date_of_birth = \"09/22/2001\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that logs the DOB the customer stated, or that refuses verification over the mismatch, diverges in verification_history.",
+      "suggested_fix": "Make the script DOB 09/22/2001."
+    }
+  ],
+  "solution_check": "Green: score 2 (B3 2 only), so unlock via reset, matching gold[8] if reset is read as unlock. Evergreen: $700 in successful Las Vegas withdrawals at 2 AM while the customer was in Seattle, so file two card_present_fraud disputes, close, and replace. My Premium-tier replacement (EXPEDITED/PREMIUM) does not match gold[14] (STANDARD/CLASSIC), and the pin_compromised value is ambiguous. Blue: D1=4 prior locks, so a reset is mandatory; 9876 is rejected by _validate_pin and 5739 matches gold[20]. Light Blue: VERY HIGH, which gives no unique action, and the immediate Entry-tier reorder contradicts the 48-hour rule. The gold is not reproducible.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean. The replacement-option, Entry-tier wait, Light Blue option, and pin_compromised defects are newly reported and do not depend on the scorer.",
+  "notes": "Disputes filed before or after the close give the same DB (replayed). customer_max_liability_amount 50 matches doc_031 (\"within 2 business days ... $50\"). written_statement_provided=true needs the simulator to agree to a written statement, which the script never covers. The author note calls the Light Blue score \"exactly 11\"; my count is 12-13 after location removal, still VERY HIGH. D1=3 on Blue and B1=3 on Evergreen also trigger \"Single Flag Escalation\" to supervisor; a transfer writes nothing but ends the call. doc_005 (the tier mapping) is not in this task's required_documents but can be retrieved from the KB."
+}

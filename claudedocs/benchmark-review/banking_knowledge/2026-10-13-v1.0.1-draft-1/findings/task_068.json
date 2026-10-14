@@ -1,0 +1,62 @@
+{
+  "task_id": "task_068",
+  "severity": "Major",
+  "headline": "The best combination (Green checking, Gold savings, Silver Rewards card) follows from the documents, but the checking-account name the procedure document tells agents to use differs from the gold's, and the closure stores a hidden default reason.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The gold opens the checking account as account_class \"Green Account\", but the personal-checking procedure document gives 'Green Account (checking)' as its example of the required full official name, and every Green checking document uses that title.",
+      "evidence": [
+        "gold[3].arguments.arguments: \"account_type\": \"checking\", \"account_class\": \"Green Account\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"1. Green Account (checking) + Gold Account (savings)\"",
+        "tools.py open_bank_account_4821: account_id = _deterministic_id(f\"account:{user_id}:{account_type}:{account_class}\"); account_class is stored unvalidated"
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "An agent following doc_001's explicit example opens 'Green Account (checking)', which produces a different account_id and account_class than the gold and fails the DB hash even though the product choice is correct. The doc's sentence contradicts itself ('ending with Account' vs. its own example), so which string an agent uses is close to a coin flip.",
+      "suggested_fix": "Change doc_001's example to 'Green Account' (matching seeded accounts and all golds), or normalize account_class in open_bank_account_4821."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The gold closes the Light Blue account with only account_id, so the persisted closure_reason is the hidden default \"Customer requested closure\". The agent sees 'reason' only as an optional string with no default shown, and no document says what reason text to use or to omit it.",
+      "evidence": [
+        "gold[6].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+        "tools.py format_discoverable_tool_for_agent prints only \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on reason)"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "accounts[chk_rp65a7b3c4].closure_reason is part of the hashed DB. An agent that passes any reason text (e.g. \"Customer upgrading to a new checking account\" or even \"Customer requested account closure\") produces a different DB hash and scores 0 despite doing the right thing.",
+      "suggested_fix": "Stop persisting the free-text reason in the hashed record (or normalize it), or document in doc_005 that reason must be omitted / set to exactly \"Customer requested closure\"."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Required credit-card docs write minimum credit scores as dollar amounts. The values are still readable and no credit score is needed to solve the task.",
+      "evidence": [
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Cosmetic corruption only; the customer's credit score is never at issue, so the correct final state is unchanged.",
+      "suggested_fix": "Remove the '$' from credit-score fields in the credit-card documents."
+    }
+  ],
+  "solution_check": "With $25,000, age 34, travel insurance on the card and early direct deposit on checking: only the Silver Rewards Card documents travel insurance (silver_rewards_card_005); Gold Years needs age 62+ (gold_years_002); Green Fee-Free has '0 day(s)' early deposit (green_fee-free_003). Gold savings 5.5% + Green checking +0.75% (green_(checking)_001, 1 day early DD) + Silver Rewards +0.2% (gold_account_014) = 6.45%. Gold Plus 6.0% has no usable checking boost, so 6.0 + 0.1 = 6.1%; Purple+Gold = 5.8%; Silver Plus tier 2 4.5 + Blue 0.35 + 0.15 = 5.0%; Platinum needs $50k. This matches the gold's products and ordering.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; the optimisation still reproduces, but the checking account_class contradiction and the hidden closure reason are new Major issues under exact DB-hash grading.",
+  "notes": "Unlike 066/067, this gold does not call get_all_user_accounts_by_user_id_3847, so the read is not allowlisted and an agent's eligibility read is harmlessly unlogged. All golds in the snapshot use the stripped form ('Green Account' for both checking and savings), and seeded DB checking accounts use level 'Green Account', but the agent never sees another user's records. EcoCard, Platinum Rewards and Green Rewards card docs neither confirm nor deny travel insurance; an agent cannot confirm coverage, so Silver Rewards is the defensible choice (EcoCard would otherwise give Gold +0.6%). Task notes say Gold Years requires 'age 60-65+'; the doc says 62. log_verification arguments match the DB."
+}

@@ -8,7 +8,7 @@
 ---
 
 You are an independent verifier. A prior audit produced
-`claudedocs/banking_benchmark_review.md`, which judges whether each of the 97 tasks in the
+`claudedocs/benchmark-review/banking_knowledge/2026-06-25-v1.0.0/review.md`, which judges whether each of the 97 tasks in the
 tau2-bench `banking_knowledge` domain is well-posed and deterministically solvable. **Your job is to
 audit that audit** — confirm or refute its findings, catch errors in *both* directions
 (false positives = a defect claimed that isn't real; false negatives = a real defect it missed or
@@ -19,7 +19,7 @@ its evidence from primary sources.
 
 ## Materials
 
-- The review under test: `claudedocs/banking_benchmark_review.md` (summary, systemic issues,
+- The review under test: `claudedocs/benchmark-review/banking_knowledge/2026-06-25-v1.0.0/review.md` (summary, systemic issues,
   methodology + "verifier corrections", a 97-row table, and detailed findings for every task rated
   ≥ Major).
 - Tasks: `data/tau2/domains/banking_knowledge/tasks.json` (each task: `user_scenario.instructions`,
@@ -139,7 +139,7 @@ upgraded, with evidence.
 
 ## Output
 
-Write `claudedocs/banking_benchmark_review_verification.md` containing:
+Write `claudedocs/benchmark-review/banking_knowledge/2026-06-25-v1.0.0/verification.md` containing:
 
 1. **Verdict summary** — counts of findings Confirmed / Overturned / Severity-adjusted / Unverifiable;
    the net corrected severity tally if you change anything; and your overall confidence in the review.

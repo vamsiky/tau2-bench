@@ -1,0 +1,59 @@
+{
+  "task_id": "task_028",
+  "severity": "Major",
+  "headline": "The agent is expected to update the customer's rewards because she says her disputes were approved, but it has no way to check that, and task_029 shows it the same conversation and expects it to refuse.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Phase 2 gold (update_transaction_rewards_3847 x6) depends on the disputes being RESOLVED, but the documented verification step reads a table no agent tool can access, so the agent must act on the customer's unverifiable claim. task_029 gives the agent the same Phase 2 message and expects the opposite outcome (no updates).",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: no KnowledgeTools (agent) method reads cash_back_disputes; only KnowledgeUserTools.submit_cash_back_dispute_0589 writes it, and its 'Status: RESOLVED' output goes only to the user (orchestrator routes ENV->USER for user tool calls).",
+        "task_028 user_scenario Phase 2: \"I just got a notification that they've all been approved and resolved!\" (identical text in task_029, where gold has no updates and auto_resolve_disputes=false)",
+        "Replay: dropping gold[8..14] (refusing agent) -> verified match False: missing update_transaction_rewards_3847, credit_card_transaction_history differs"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "A cautious agent that follows doc_004 and declines to update without confirming resolution fails this task; a trusting agent passes it but fails task_029. Agent-visible input in Phase 2 is the same in both tasks, so no single competent policy passes both.",
+      "suggested_fix": "Give the agent a read tool for cash_back_disputes (e.g., a discoverable get_cash_back_disputes tool documented in doc_004), or show the dispute status in an agent-visible tool output, so 028 vs 029 is decided by data the agent can check."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Rate and rounding docs the agent needs have cosmetic corruptions, but the stored seed values resolve them: EcoCard rates are written as dollar amounts, and the rounding example's arithmetic does not follow.",
+      "evidence": [
+        "doc_credit_cards_ecocard_002: \"Green purchases: Earn $5.00 sustainability points per dollar spent\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar, giving 126 points\"",
+        "db.json credit_card_transaction_history[txn_e83813b6528a] (EcoCard Green $147.63) rewards_earned = \"738 points\" = floor(147.63*5)"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "Does not change the correct values: both doc_007 examples conclude floor(amount x rate-in-percent), and the 41 correctly-stored transactions confirm the convention.",
+      "suggested_fix": "Write EcoCard rates as \"5 points per dollar\" / \"1 point per dollar\" and fix doc_007's first example to \"126.77 x 1 = 126.77 points, rounded down to 126\"."
+    }
+  ],
+  "solution_check": "Recomputed all 47 transactions for user 890389b165 with Silver 4% travel/software else 1%, Business Platinum 4% travel/software/media else 1.5%, Crypto 2%, EcoCard 5/1 points per dollar, floored per doc_007: exactly the 6 gold transactions mismatch, with corrected values 95, 1390, 642, 669, 2049, 750, all matching the gold (round-half-up would give 96 and 2050 for two of them and flag 28 transactions). Phase 1 matches the gold. Phase 2 matches only if the agent trusts the customer's resolution claim.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this task clean. The rounding analysis still holds (doc_007 documents floor), but the prior missed that the agent cannot verify dispute resolution, which makes the Phase 2 updates depend on how much the agent trusts the customer.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. Overpaid txn_e647e242ce96 (1875 stored vs 750 correct) is in the gold dispute set; the user is scripted to insist on disputing it, and doc_003 covers any discrepancy, so including it is derivable. Under the verified scorer the extra-read relaxation is irrelevant here: the defect is about writes."
+}

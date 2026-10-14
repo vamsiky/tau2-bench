@@ -57,11 +57,11 @@ Only `--agent-extra-instruction-file` and `--save-to` vary between iterations:
 
 | Iter | instruction file                              | `--save-to` | task-ids                          |
 |------|-----------------------------------------------|-------------|-----------------------------------|
-| fix1 | `claudedocs/i1_fixes/fix1_act_on_behalf.txt`  | `i1_fix1`   | 047 058 063 064 067               |
-| fix2 | `claudedocs/i1_fixes/fix2_minimality.txt`     | `i1_fix2`   | 047 058 063 064 067               |
-| fix3 | `claudedocs/i1_fixes/fix3_policy_calibrated.txt` | `i1_fix3` | 047 058 063 064                   |
-| fix4 | `claudedocs/i1_fixes/fix4_pointed.txt`        | `i1_fix4`   | 047 058 063 064                   |
-| fix5 | `claudedocs/i1_fixes/fix5_premutation_reflection.txt` | `i1_fix5` | 047 058 063 064            |
+| fix1 | `claudedocs/task-success/i1-fixes/i1_fixes/fix1_act_on_behalf.txt`  | `i1_fix1`   | 047 058 063 064 067               |
+| fix2 | `claudedocs/task-success/i1-fixes/i1_fixes/fix2_minimality.txt`     | `i1_fix2`   | 047 058 063 064 067               |
+| fix3 | `claudedocs/task-success/i1-fixes/i1_fixes/fix3_policy_calibrated.txt` | `i1_fix3` | 047 058 063 064                   |
+| fix4 | `claudedocs/task-success/i1-fixes/i1_fixes/fix4_pointed.txt`        | `i1_fix4`   | 047 058 063 064                   |
+| fix5 | `claudedocs/task-success/i1-fixes/i1_fixes/fix5_premutation_reflection.txt` | `i1_fix5` | 047 058 063 064            |
 
 Template:
 
@@ -69,7 +69,7 @@ Template:
 nohup uv run python examples/agents/claude_sdk_loop_eval.py \
   --domain banking_knowledge --task-ids task_047 task_058 task_063 task_064 task_067 --num-trials 1 \
   --agent-model claude-opus-4-8 --sdk-nl-judge \
-  --agent-extra-instruction-file claudedocs/i1_fixes/fix1_act_on_behalf.txt \
+  --agent-extra-instruction-file claudedocs/task-success/i1-fixes/i1_fixes/fix1_act_on_behalf.txt \
   --save-to i1_fix1 --auto-resume --log-level INFO \
   > data/simulations/i1_fix1_stdout.log 2>&1 &
 ```
@@ -82,7 +82,7 @@ for t in task_047 task_058 task_063 task_064 task_067; do
   nohup uv run python examples/agents/claude_sdk_loop_eval.py \
     --domain banking_knowledge --task-ids $t --num-trials 1 \
     --agent-model claude-opus-4-8 --sdk-nl-judge \
-    --agent-extra-instruction-file claudedocs/i1_fixes/fix6_preclosure_checklist.txt \
+    --agent-extra-instruction-file claudedocs/task-success/i1-fixes/i1_fixes/fix6_preclosure_checklist.txt \
     --save-to i1_g3i2_$t --auto-resume --log-level INFO \
     > data/simulations/i1_g3i2_${t}_stdout.log 2>&1 &
   sleep 3
@@ -93,7 +93,7 @@ for t in task_047 task_058 task_063 task_064 task_067; do
   nohup uv run python examples/agents/claude_sdk_loop_eval.py \
     --domain banking_knowledge --task-ids $t --num-trials 2 \
     --agent-model claude-opus-4-8 --sdk-nl-judge \
-    --agent-extra-instruction-file claudedocs/i1_fixes/fix4_pointed.txt \
+    --agent-extra-instruction-file claudedocs/task-success/i1-fixes/i1_fixes/fix4_pointed.txt \
     --save-to i1_g3i3_$t --auto-resume --log-level INFO \
     > data/simulations/i1_g3i3_${t}_stdout.log 2>&1 &
   sleep 3
@@ -104,7 +104,7 @@ done
 
 The strict score is produced inside the driver run above. The **verified scorer**,
 DB-diff, and best-of-N analysis are now permanent scripts under
-[`scripts/i1_eval/`](../scripts/i1_eval/) (see its README). Run from the repo root:
+[`scripts/i1_eval/`](../scripts/i1_eval) (see its README). Run from the repo root:
 
 ```bash
 # Verified score one task against its results.json
@@ -130,10 +130,14 @@ uv run python scripts/i1_eval/bestof.py "data/simulations/i1_g3i2_{task}/results
 > under `/private/tmp/.../scratchpad/`) into permanent, verified-working scripts.
 
 **Verified-scorer logic:** the discoverable-tool audit is compared as a *superset*
-(gold's required calls must be present; extra reads are forgiven), and free-text
-fields like `closure_reason` are excluded from the DB comparison. A *missing required*
-call still fails (e.g. task_047). Everything else (accounts, applications, ...) is
-compared exactly.
+(gold's required calls must be present). An extra discoverable call is forgiven only
+if every call to that tool was rejected for bad input (missing or invalid arguments,
+unknown ID); a status, eligibility, or balance rejection still fails. Bank-account
+`closure_reason` (free text with a hidden default) is excluded from the DB
+comparison; debit-card and credit-card closure reasons are fixed categories and are
+compared. A *missing required* call still fails (e.g. task_047). Everything else
+(accounts, applications, ...) is compared exactly. The driver passes the gold-derived
+read-log allowlist, as `tau2 run` does, so required discoverable reads are checked.
 
 ## Flag reference
 

@@ -64,7 +64,7 @@ replay. The unexercised `close_credit_card_account_7834` was intentionally **not
 closes a card) to avoid an unvalidated regression; extending the same guard to it is a recommended
 follow-up.
 
-### Policy — `claudedocs/a1a4_fixes/`
+### Policy — `claudedocs/task-success/policy-reasoning/a1a4_fixes/`
 - `policy_a1a4.txt` — A1 (authorization), A2 (apply/referral handoff), A4 (CLI-before-dispute order +
   PIN procedure), A3 (eligibility reads). Passed via `--agent-extra-instruction-file`.
 - `policy_noA3.txt` — same minus the A3 section, used to isolate the deterministic A3 guard.
@@ -91,7 +91,7 @@ Reward = strict DB match (1.0 pass / 0.0 fail), verified scorer.
 | 064 | A2 | 1.0 | — | 1.0 | — | — | Passes at baseline (application succeeds) |
 | **092** | A4 PIN | 0.0 | — | 0.0 | 0.0 | — | Binding signal (Green) is computed, not stored — unfixable deterministically |
 
-**Guard unit checks: 7/7 PASS** (`uv run python claudedocs/a1a4_fixes/guard_unit_check.py`):
+**Guard unit checks: 7/7 PASS** (`uv run python claudedocs/task-success/policy-reasoning/a1a4_fixes/guard_unit_check.py`):
 A3 blocks the flag and the retention credit before the reads, passes after, leaves non-retention credits
 ungated; A4 blocks PIN reset on fraud-alert and security-hold cards, allows it on normal cards.
 
@@ -158,20 +158,20 @@ proven, and the residual failures are either orthogonal to A1–A4 (053 user-too
 
 ```bash
 # Deterministic guard checks (fast, no LLM)
-uv run python claudedocs/a1a4_fixes/guard_unit_check.py
+uv run python claudedocs/task-success/policy-reasoning/a1a4_fixes/guard_unit_check.py
 
 # A3 guard, isolated from prompt (expect: guard fires, reward 1.0)
 uv run python examples/agents/claude_sdk_loop_eval.py \
   --domain banking_knowledge --task-ids task_043 --num-trials 1 \
   --agent-model claude-sonnet-4-6 --sdk-nl-judge \
-  --agent-extra-instruction-file claudedocs/a1a4_fixes/policy_noA3.txt \
+  --agent-extra-instruction-file claudedocs/task-success/policy-reasoning/a1a4_fixes/policy_noA3.txt \
   --save-to guardonly_task_043
 
 # Full fixed condition
 uv run python examples/agents/claude_sdk_loop_eval.py \
   --domain banking_knowledge --task-ids task_043 task_053 task_092 --num-trials 1 \
   --agent-model claude-sonnet-4-6 --sdk-nl-judge \
-  --agent-extra-instruction-file claudedocs/a1a4_fixes/policy_a1a4.txt --save-to fix1
+  --agent-extra-instruction-file claudedocs/task-success/policy-reasoning/a1a4_fixes/policy_a1a4.txt --save-to fix1
 
 # Score
 uv run python scripts/i1_eval/verified_score.py task_043 data/simulations/guardonly_task_043/results.json
@@ -179,4 +179,4 @@ uv run python scripts/i1_eval/verified_score.py task_043 data/simulations/guardo
 
 Run artifacts: `data/simulations/{base_,base2_,fix1_,fix2_,guardonly_}task_*/`.
 Code change: `src/tau2/domains/banking_knowledge/tools.py` (+55). Policy/unit files:
-`claudedocs/a1a4_fixes/`.
+`claudedocs/task-success/policy-reasoning/a1a4_fixes/`.

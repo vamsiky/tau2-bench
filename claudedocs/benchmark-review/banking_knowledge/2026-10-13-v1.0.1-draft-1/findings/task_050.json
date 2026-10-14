@@ -1,0 +1,17 @@
+{
+  "task_id": "task_050",
+  "severity": "None",
+  "headline": "Clean: a premium-tier Gold card with a 50% ($2,500) increase request passes every check and is approved to $7,500.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Gold Rewards is Premium-tier (general_015; replacements_002 'Premium-tier and above'), so the maximum increase is 50% of $5,000 = $2,500, which is allowed. Submit 2500, then check: account age (03/20/2023), empty CLI history, no disputes, no orders, utilization 0%, 3 on-time months. Approve new_credit_limit 7500. This matches gold, and the gold replay runs without errors.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found it clean. Required doc logistics_005 changed only by removing '$' corruption from day counts ('$120' to '120'), and the task is still clean.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. The card-to-CLI-tier mapping is not in the CLI docs; it has to be retrieved from general_015 or replacements_002, which are not on required_documents but are in the KB. logistics_007 'Step 3: Verify Payment History and Requested Amount' has an empty body ('.'); logistics_006 supplies the content. Because reads are logged by name only, check order does not affect the hash for an approval."
+}

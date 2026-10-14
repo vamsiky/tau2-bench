@@ -1,0 +1,37 @@
+{
+  "task_id": "task_061",
+  "severity": "Major",
+  "headline": "The ordering and the $25 early-closure fee are derivable, but the closure tool saves free-text and fee-waiver arguments the KB never constrains, so equally valid agents can fail.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 saves its optional free-text reason argument as closure_reason in the accounts table, and gold omits it (default 'Customer requested closure'). The KB gives no guidance on the reason, so any agent that passes one (for example the customer's stated motive) persists a different string. The same call also persists early_closure_fee_waived, and the KB is silent on waivers, so an agent that waives the $25 fee instead of having it covered also diverges.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\", waive_early_closure_fee: bool = False",
+        "tools.py close_bank_account_7392 docstring: \"reason (string, optional): The reason for closing the account\"",
+        "tools.py close_bank_account_7392 body: account[\"closure_reason\"] = reason; account[\"early_closure_fee_waived\"] = waive_early_closure_fee",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on the reason argument anywhere in the KB)",
+        "gold[8].arguments: \"{\\\"account_id\\\": \\\"61d4e5f6a7b8c901\\\"}\" (no reason, no waive flag)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"The fee is deducted directly from the account balance and there is no alternative payment method.\" (waivers neither allowed nor forbidden)",
+        "Snapshot probe: closing 58d57780cc15e32d with reason 'Customer wants to simplify accounts' stores closure_reason='Customer wants to simplify accounts' (differs from the gold-replay value 'Customer requested closure')"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "Under v1.0.1 exact-hash grading, an otherwise perfect trajectory that supplies a reason string for the closure fails the DB match. Supplying a reason is a natural, policy-compliant choice when the unlocked tool lists it as a parameter.",
+      "suggested_fix": "Either stop persisting the free-text reason (or exclude closure_reason from the hash), or add KB text such as 'Call close_bank_account_7392 with account_id only; do not pass reason or waive_early_closure_fee.'"
+    }
+  ],
+  "solution_check": "Savings selection (12-15 withdrawals/month, relationship bonus, $2.5-4k balance, daily compounding, ATM rebates, built-in goals): Bronze (6 free withdrawals), Silver (10), and Green (8) fail on withdrawals; Gold/Gold Plus/Platinum/Platinum Plus/Diamond Elite minimums ($10k-$250k) fail. Silver Plus has 15 free withdrawals, a 0.025% relationship bonus, $2,500 minimum, daily compounding, $25 ATM rebates, and 'Built-in savings goals tracking | Yes' (silver_plus_account_004). Silver Plus is unique. Ordering: the second checking ('Silver Account' class checking, 11/04/2025) is 10 days old, so savings must be opened while Green (10/01/2025, 44 days) is open. Green is mid tier inside the 60-day window: $25 fee, and the $0.00 balance must reach $25 (doc 005). Per the script, the user deposits the $25 check into 61d4e5f6a7b8c901 via deposit_check_3847 (KB doc (general)_011), then the agent closes. Gold replay matches, including tool-side fee validation (remaining balance 25 - 25 = 0).",
+  "prior_status": "new",
+  "prior_note": "Prior v1.0.0 review rated this clean using a scorer that ignored closure_reason; under v1.0.1 exact-hash grading the free-text reason and waive flag count.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. Data oddity: the user's second checking has level 'Silver Account', a savings product name, under class 'checking'; open_bank_account_4821 keys eligibility on class, so this works. An agent could cover the fee with transfer_funds_between_bank_accounts_7291 from the Silver checking ($1,500), which the KB also allows (doc (general)_010 'Consolidating balances before account closure'); the user script steers to the check once a fee is mentioned, so this is low risk. The tool validates the fee but does not deduct it from current_holdings; this is deterministic either way."
+}

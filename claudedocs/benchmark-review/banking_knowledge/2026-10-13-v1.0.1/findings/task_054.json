@@ -1,0 +1,35 @@
+{
+  "task_id": "task_054",
+  "severity": "Minor",
+  "headline": "The fraud-plus-credit-limit task is solvable from the documents, but the gold expects expedited shipping on the replacement card, and the customer's script never says whether she wants it.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Gold action 14 sets expedited_shipping=true, which is persisted in the credit_card_orders record. The KB tells the agent to ask the customer and strongly recommend expedited shipping for fraud, but the user script never says what she chooses, so the persisted value depends on how the simulator improvises.",
+      "evidence": [
+        "gold[14].arguments.arguments: \"expedited_shipping\": true",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier; see Shipping selection).\" and \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\"",
+        "doc_credit_cards_credit_card_replacements_001: \"Premium-tier and above (Gold, Platinum, Diamond Elite): $0.00 (complimentary).\"",
+        "user_scenario step 9: \"Yes, please send me a new card with a new number... Just send it to my address on file.\" (no mention of shipping speed)",
+        "tools.py order_replacement_credit_card_7291 stores \"expedited_shipping\": expedited_shipping in the order record; replay with expedited_shipping=false gives a different DB hash"
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "An agent that follows the KB asks the question. If the simulated user says standard shipping is fine, or the agent orders standard by default, the order record differs and DB grading fails. The risk is small because the option is free on a Gold card and the KB tells the agent to push it, and this persona is anxious about card security.",
+      "suggested_fix": "Add one line to the user script, for example 'If offered expedited shipping, accept it.'"
+    }
+  ],
+  "solution_check": "Rebuilt from logistics_004-007, general_014-016 and replacements_001/005. The $4,000 request exceeds the 50% premium-tier cap ($2,500 maximum on a $5,000 limit), so the agent must have the customer adjust before submitting. The account passes every CLI check: opened 03/20/2023, utilization 487.50/5000 = 9.75%, past_due $0.00, no prior CLI, 3 of 3 on-time payments. Pending disputes and replacements block a CLI (logistics_007 step 2.3-2.4), so the CLI goes first. Provisional credit is true (account older than 60 days, fraud reason, $487.50 between $25 and $10,000, no prior disputes), and card_action is cancel_and_reissue (general_014). Replaying the gold gives the expected state; dispute and replacement order relative to each other does not change the hash.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The expedited-shipping dependency on an unscripted user choice was not reported then; the rest of the task still checks out.",
+  "notes": "All four gold reads (get_user_dispute_history_7291, get_pending_replacement_orders_5765, get_credit_limit_increase_history_4829, get_payment_history_6183) are in the read-log allowlist, so skipping any of them changes the hash (verified for the dispute-history read). Only the tool name is logged, not the arguments, so months=6 instead of 3 does not change the hash (verified). Possible trap: right after submission, get_credit_limit_increase_history_4829 returns the just-submitted PENDING request, and logistics_007 says 'If a request exists within this period, deny', but logistics_005 says cooldown applies only after an approved request, so a careful agent resolves it. logistics_007 'Step 3: Verify Payment History and Requested Amount' has an empty body; logistics_006 supplies the content. In the code, approve_credit_limit_increase_5847 blocks on SUBMITTED disputes but not on replacement orders (status ORDERED, field 'status' rather than 'account_status'). That matches the documented ordering, so it is not a defect."
+}

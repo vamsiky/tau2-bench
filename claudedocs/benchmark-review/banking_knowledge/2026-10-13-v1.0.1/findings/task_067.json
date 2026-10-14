@@ -1,0 +1,34 @@
+{
+  "task_id": "task_067",
+  "severity": "Major",
+  "headline": "The best account-and-card combination is clearly derivable, but the grade also depends on leaving the optional closing-reason text empty.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 writes its free-text `reason` argument into the account record as `closure_reason`, and the gold closes the account without passing a reason, so only the tool default \"Customer requested closure\" matches. No document says what reason to record, or to leave it out.",
+      "evidence": [
+        "tools.py close_bank_account_7392: signature `reason: str = \"Customer requested closure\"`; on success `account[\"closure_reason\"] = reason`",
+        "gold[8].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"## Closure Procedure 1. Verify pre-closure requirements are met. 2. Determine the account tier and applicable fees/notice period. 3. Use close_bank_account_7392 to close the account.\" (no reason guidance)",
+        "Replay in snapshot: gold with the close call given reason \"Customer upgrading to a new checking account\" -> agent DB hash != gold DB hash"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "The customer gives an explicit reason (swapping the basic Light Blue for a better account), and the unlocked tool schema shows an optional `reason` parameter. An agent that records that reason closes the right account with the right fee handling but fails the exact DB-hash match.",
+      "suggested_fix": "Exclude `closure_reason` from the hashed state, or make the KB prescribe a fixed reason string (or remove the parameter) so the persisted value is derivable."
+    }
+  ],
+  "solution_check": "At $100,000: Platinum Plus 7.0% (minimum balance $100,000) + Purple (+0.3%) + Platinum Rewards (+0.4%, $200 fee) = 7.70%, about $7,500 net. The closest rivals are Crypto-Cash Back on Platinum Plus (+0.25%, $75 fee: $7,475 net) and Platinum 6.5% + Blue +0.8% + Platinum Rewards +0.25% = 7.55%. Diamond Elite savings needs $250k, the Dark Green boost (+0.45%) has a maximum age of 26 (customer born 1991), Gold Rewards needs Rho-Bank+, the Diamond Elite card is invitation-only, and the Platinum Rewards first-year fee waiver ended 2024-12-31. This matches the gold on both gross APY and net-of-fee readings. The gold replays cleanly; reordering the opens and adding extra reads are hash-neutral.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean because its scorer ignored closure_reason. The product selection is still correct; the only defect comes from upstream exact-hash grading of the free-text reason.",
+  "notes": "The Purple account's $15/month fee (waived at a $3,750 daily balance) costs less than the $300/yr boost, so it does not change the choice. Platinum Rewards needs a 750 credit score, which the customer never states, but the customer applies through their own tool. The v1.0.1 doc change to doc_credit_cards_gold_rewards_card_001 does not touch any APY value used here. Platinum Plus account_class 'Platinum Plus Account' is unambiguous."
+}

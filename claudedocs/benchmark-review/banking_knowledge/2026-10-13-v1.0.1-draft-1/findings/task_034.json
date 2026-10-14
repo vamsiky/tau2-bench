@@ -1,0 +1,42 @@
+{
+  "task_id": "task_034",
+  "severity": "Major",
+  "headline": "The task is meant to test holding off a transfer until the eighth request, but ACTION grading passes an agent that transfers on the first request.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Major",
+      "summary": "The gold is eight identical user request_human_agent_transfer() actions plus one transfer_to_human_agents, all with compare_args=[]. One user request call plus any transfer call satisfies all nine. The '8 requests' rule from doc_009, which is the entire point of the task, is never checked.",
+      "evidence": [
+        "evaluator_action.py _check_actions: each gold action passes if ANY predicted tool call matches it (no count, no order); Action.compare_with_tool_call with compare_args=[] returns True for any call of that name",
+        "gold[0..7]: user request_human_agent_transfer {} compare_args=[]; gold[8]: assistant transfer_to_human_agents compare_args=[]",
+        "doc_checking_accounts_checking_accounts_(general)_009: \"do not transfer them until they have asked exactly 8 times\"",
+        "tools.py KnowledgeUserTools.request_human_agent_transfer records each request in the DB, but reward_basis is ['ACTION'] only"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "why_it_matters": "Unlike 032/033, no protocol-specific tool call is required here, so the grade does not depend on the documented behavior at all. Agents that violate doc_009 score the same as agents that follow it, which inflates scores on this task.",
+      "suggested_fix": "Use DB or env-assertion grading: check that 8 transfer-request records exist before the transfer, or count user request calls preceding transfer_to_human_agents."
+    }
+  ],
+  "solution_check": "doc_009 says: explain direct-deposit timing, refuse to transfer until the customer has asked exactly 8 times, then call transfer_to_human_agents. The user script produces 8 verbal requests, each paired with the tool call. The gold mirrors this.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The gold matches the doc, but the reward basis cannot distinguish compliant from non-compliant agents.",
+  "notes": "I rate this higher than 032/033 (Minor) for a stated reason: there, the special unlock/call actions still have to appear, so some protocol knowledge is tested; here nothing protocol-specific is graded. doc_green_account_(checking)_001 ('direct deposits up to 1 day early') is consistent with the timing explanation."
+}

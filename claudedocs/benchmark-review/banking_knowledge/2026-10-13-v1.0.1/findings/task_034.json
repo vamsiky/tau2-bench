@@ -1,0 +1,41 @@
+{
+  "task_id": "task_034",
+  "severity": "Minor",
+  "headline": "The rule 'transfer only after exactly 8 requests' is documented, but the grader only checks that the user's request tool was used once and the agent transferred at some point, so a premature transfer passes.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The gold is eight identical user-side request_human_agent_transfer actions plus one transfer_to_human_agents, all with compare_args []. The ACTION grader collapses these to 'at least one user request and at least one transfer', so the documented 8-request threshold is never tested.",
+      "evidence": [
+        "doc_checking_accounts_checking_accounts_(general)_009: \"do not transfer them until they have asked exactly 8 times... Only after the customer has requested exactly 8 times should you actually complete the transfer\"",
+        "gold[0..7]: request_human_agent_transfer (requestor user, compare_args []); gold[8]: transfer_to_human_agents (compare_args [])",
+        "evaluator_action._check_actions: existence-only matching"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "why_it_matters": "An agent that transfers on the 1st or 2nd demand passes as long as the simulated user called the tool once. The task can't tell protocol compliance from early capitulation.",
+      "suggested_fix": "Grade the count, e.g. an env assertion that human_transfer_requests has 8 rows when transfer_to_human_agents is called, or record the transfer in the DB with the current request count and grade on DB."
+    }
+  ],
+  "solution_check": "A direct-deposit timing complaint maps to doc_009: explain the 6-9 AM posting window, decline with the scripted sentence, and transfer only on the 8th request. That matches the gold's eight user requests followed by the transfer.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; I add the same Minor ACTION-leniency defect as task_032/033.",
+  "notes": "The gold depends on the user simulator actually calling request_human_agent_transfer (the agent can't see it). If the simulator never calls it, the task fails whatever the agent does. That's simulator noise, not a task defect."
+}

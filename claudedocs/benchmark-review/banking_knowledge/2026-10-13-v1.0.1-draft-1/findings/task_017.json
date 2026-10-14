@@ -1,0 +1,51 @@
+{
+  "task_id": "task_017",
+  "severity": "Major",
+  "headline": "One transaction is over-credited by exactly 1 point with no rounding involved, but the gold does not dispute it, so an agent that disputes every discrepancy fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Under the documented rates and floor rounding, three of Kenji's five transactions mismatch: the two gold disputes (under-credited) and txn_31fd03682992, which is over-credited by 1 point (289.50 x 4% = 1158.00 exactly, stored 1159). The gold leaves the over-credit undisputed; nothing in the KB says to skip overpayments or tiny discrepancies.",
+      "evidence": [
+        "db.json credit_card_transaction_history[txn_31fd03682992]: Hilton Seattle, Travel, $289.50, rewards_earned \"1159 points\"",
+        "doc_credit_cards_silver_rewards_card_002: \"Pay with your card for eligible travel and software transactions to earn 4.0% back\"",
+        "Computation: 289.50 x 4.0 = 1158.00 points (no fractional part, so floor and round-half-up both give 1158) vs stored 1159",
+        "doc_credit_cards_credit_cards_(general)_003: \"Use this process when a customer believes there is a discrepancy between the cash back they received for a particular transaction and the cash back they should have received.\"",
+        "gold[2..3] dispute only txn_cfabb609133d (87.25 x 1% = 87, stored 47) and txn_913d14a20dc5 (156.78 x 1% = 156.78 -> 156, stored 15)",
+        "Instructions: \"help me fix any errors\""
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "An agent that treats any discrepancy as an error (the reading task_018/022 explicitly reward for over-credits) hands the user a third dispute; the extra cash_back_disputes and user_discoverable_tool_calls rows break the DB hash. Only an agent that chooses to ignore a 1-point over-credit in the customer's favour matches.",
+      "suggested_fix": "Set txn_31fd03682992.rewards_earned to \"1158 points\" in db.json, or add it to the gold dispute set."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding rule that makes the gold dispute set exact (doc_credit_cards_credit_cards_(general)_007) is not in this task's required_documents, so the golden_retrieval variant never shows it.",
+      "evidence": [
+        "task_017.required_documents does not include doc_credit_cards_credit_cards_(general)_007 (grep: only task_028 lists it)",
+        "src/tau2/domains/banking_knowledge/retrieval.py golden_prompt: replaces {{required_documents}} with task.required_documents only",
+        "src/tau2/domains/banking_knowledge/retrieval.py build_tools: \"# No retrieval tools (no_knowledge, full_kb, golden_retrieval)\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under golden_retrieval the agent cannot search the KB, so it must guess the rounding convention; round-half-up also flags txn_cedd88ce1f65 (54.99 x 4% = 219.96 -> 220 vs stored 219) on top of the txn_31fd03682992 problem. Search-based configs (default alltools, bm25, etc.) can retrieve doc_007, so headline scores are unaffected.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Computed all 5 Silver Rewards transactions with 4% Travel/Software, 1% otherwise, floored per doc_..._(general)_007: e4ed366 1800=1800, 913d14 156 vs 15, 31fd03 1158 vs 1159, cfabb6 87 vs 47, cedd88 219 (219.96) = 219. Floor gives {913d14, cfabb6, 31fd03}; round-half-up gives those plus cedd88. Gold is {913d14, cfabb6}: it matches only if the agent drops the 1-point over-credit.",
+  "prior_status": "changed",
+  "prior_note": "Prior (Major) blamed undocumented rounding; rounding is documented (doc_007 is unchanged since v1.0.0) and resolves cedd88, but the 31fd03 off-by-one is independent of rounding and keeps the task Major.",
+  "notes": "txn_913d14a20dc5 also has an unrelated transaction_disputes row (duplicate_charge, UNDER_REVIEW); it does not affect cash-back grading. A prior verification_history row for Kenji (11/10/2025) exists; the new log uses a different id (time-based)."
+}

@@ -1,0 +1,119 @@
+{
+  "task_id": "task_082",
+  "severity": "Blocker",
+  "headline": "The gold records a close-and-reissue for the online fraud on the Green Fee-Free card, and the customer asks for a reissue, but the gold never closes that card, so an agent that follows the policy fails.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "Two cards each get a card_present_fraud or card_not_present_fraud dispute mapped to close_and_reissue. The gold carries out that action for the Blue card only and leaves dbc_mc47a2b9e1_gff ACTIVE.",
+      "evidence": [
+        "gold[15].arguments: btxn_d74e8a798f95, card_id dbc_mc47a2b9e1_gff, \"dispute_category\": \"card_not_present_fraud\", \"card_action\": \"close_and_reissue\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"This parameter records metadata only; the agent must separately perform the indicated card action after filing the dispute.\" and \"use the MOST SEVERE action across all disputes\"",
+        "user_scenario step 7: \"Green Fee-Free card: I'd like to keep using this card but maybe with a new number? Can you reissue it?\"",
+        "gold[17] close_debit_card_4721 and gold[19] order_debit_card_5739 target only dbc_mc47a2b9e1_blue / chk_mc47a2b9e1_blue",
+        "Replay: gold + close_debit_card_4721(dbc_mc47a2b9e1_gff, fraud_suspected) succeeds (card ACTIVE, no pending txns) and the hash no longer matches (status/closed_date/closure_reason on dbc_mc47a2b9e1_gff)"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "Closing the GFF card is what both the policy and the customer call for. Doing it writes CLOSED/closed_date/closure_reason on dbc_mc47a2b9e1_gff, which the gold DB lacks, so correct work scores 0.",
+      "suggested_fix": "Add close_debit_card_4721(card_id='dbc_mc47a2b9e1_gff', reason='fraud_suspected') to the gold. GFF is ENTRY tier (doc_..._005), so doc_..._029's 48-hour wait means no reorder today; tell the user simulator to accept that."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "The gold marks the FitLife recurring_charge_after_cancellation dispute provisional_credit_eligible=true, although doc_..._032 lists that category as not required. Tasks 083-086 set every other discretionary category to false.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: 1. The dispute category is: ... 'recurring_charge_after_cancellation'\"",
+        "gold[13].arguments: \"dispute_category\": \"recurring_charge_after_cancellation\", \"provisional_credit_eligible\": true",
+        "task_083 gold[7] goods_services_not_received -> false; task_084 gold[13] incorrect_amount -> false; task_085 gold[12] recurring_charge_after_cancellation -> false"
+      ],
+      "gold_action_refs": [
+        13
+      ],
+      "why_it_matters": "The flag is stored as provisional_credit_eligible/issued/amount in debit_card_disputes. An agent that applies the guidelines the way the sibling tasks do writes false and fails.",
+      "suggested_fix": "Set gold[13] provisional_credit_eligible to false to match doc_032 and tasks 083-086."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Several dispute fields for the lost Blue card have more than one defensible value. The PIN was written on a note in the lost wallet, which is neither 'shared with someone' nor clearly 'observed'. FitLife's card_in_possession=true reflects possession at charge time, while doc_031's question is in the present tense and the card is now lost. The gold's choices on these fields also decide the ElectroniX provisional-credit flag.",
+      "evidence": [
+        "doc_..._031: \"'yes_shared': Customer shared PIN with someone\"; \"'yes_observed': Customer believes PIN was observed/skimmed\"; \"'unknown': Customer unsure\"",
+        "user_scenario: \"I had my PIN written on a sticky note in my wallet. So whoever has the card probably has the PIN too.\"",
+        "gold[12]: \"pin_compromised\": \"yes_shared\", \"provisional_credit_eligible\": false (doc_032 NOT REQUIRED item 3 keys on yes_shared)",
+        "doc_..._031: \"card_in_possession (boolean) - Ask: \\\"Do you still have your physical debit card in your possession?\\\"\"; gold[13] FitLife \"card_in_possession\": true while gold[12] (same card) is false"
+      ],
+      "gold_action_refs": [
+        12,
+        13
+      ],
+      "why_it_matters": "Choosing 'unknown' or 'yes_observed' for ElectroniX, which also makes provisional credit required, or card_in_possession=false for FitLife, gives different stored dispute records and fails the hash.",
+      "suggested_fix": "Have the customer say outright that they shared the PIN, or change the gold to 'unknown'. Make FitLife's card_in_possession false, or have the customer state possession explicitly in the present tense."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Closing the lost Blue card that was used fraudulently can be recorded as 'lost' or 'fraud_suspected'. The choice also sets the new card's issue_reason ('lost' vs 'fraud'). The Blue replacement's shipping and design are never specified for the customer, while MID tier offers expedited for $15.",
+      "evidence": [
+        "gold[17]: close_debit_card_4721 reason \"lost\"; the close_and_reissue action comes from gold[12] dispute_category card_present_fraud",
+        "doc_..._025 lists 'lost' and 'fraud_suspected' as separate reasons with no precedence rule",
+        "order_debit_card_5739 maps closure_reason 'fraud_suspected' -> issue_reason 'fraud', 'lost' -> 'lost'",
+        "doc_..._029 MID TIER: \"Standard (delivery_fee: $0) or expedited shipping available (delivery_fee: $15)\"; the user_scenario has no shipping or design preference; gold[19] STANDARD/CLASSIC"
+      ],
+      "gold_action_refs": [
+        17,
+        19
+      ],
+      "why_it_matters": "A 'fraud_suspected' closure, or an EXPEDITED order improvised by the user simulator, changes debit_cards and debit_card_orders, so the result depends on reasoning or simulator choices the materials do not fix.",
+      "suggested_fix": "Script the customer's shipping and design choice (e.g. 'standard, classic is fine'), and state in doc_025 which reason to use when a lost card was used fraudulently."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "customer_max_liability_amount is 50 for every dispute, but the docs anchor the tiers to an unknown statement date and give no rule for non-fraud categories. A business-day count from the customer's stated discovery dates puts FitLife and the ATM dispute in the $500 tier.",
+      "evidence": [
+        "doc_..._031: \"Reported within 2 business days of statement: Maximum liability $50 / Reported within 60 days of statement: Maximum liability $500\"",
+        "Discovery dates: FitLife 11/11/2025 (Tue, Veterans Day), ATM 11/09/2025 (Sun); filing date 11/14/2025 (Fri) -> 3 and 4 business days",
+        "gold[13] and gold[14]: \"customer_max_liability_amount\": 50",
+        "tool docstring: \"based on Regulation E reporting timing rules and the disputed amount\""
+      ],
+      "gold_action_refs": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "why_it_matters": "The value is stored in debit_card_disputes. An agent that counts business days from discovery writes 89.99 / 100 (min of $500 and the amount) instead of 50 and fails.",
+      "suggested_fix": "Document one liability rule: the anchor date, whether it applies to non-fraud categories, and whether it is capped at the disputed amount. Then regenerate all 082-088 liability values from that rule."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The CryptoGems discovery date in the script is 'today, January 9th', which contradicts 'today' = 11/14/2025 and the gold.",
+      "evidence": [
+        "user_scenario step 8: \"I discovered this one today, January 9th.\"",
+        "gold[15]: \"discovery_date\": \"11/14/2025\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "An agent can resolve this from the fixed clock, but a literal agent might record 01/09.",
+      "suggested_fix": "Change the script to 'today, November 14th'."
+    }
+  ],
+  "solution_check": "Reconstructed: four disputes with categories card_present_fraud, recurring_charge_after_cancellation, atm_cash_discrepancy and card_not_present_fraud, and card actions mapped per doc_031. Then the most severe action per card: close and reissue Blue; close GFF with the ENTRY 48-hour wait before reissue. The gold matches the dispute categories and Blue handling but omits the GFF closure. Several per-dispute fields (pin_compromised, card_in_possession, provisional credit, liability) and the Blue replacement options are not uniquely fixed by the materials.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker (GFF close_and_reissue never performed) is unchanged in v1.0.1, which only added reads, so it is not resolved. Additional field-level ambiguities are reported here.",
+  "notes": "The v1.0.1 gold adds reads 082_1a/2a/2b/3a/3b, all needed anyway. The dispute-count limits are not hit (Blue MID max 3, GFF ENTRY max 2, no prior disputes). dbc_mc47a2b9e1_blue has expiration_date 06/30/2025 (already expired); the tools ignore this. The ElectroniX charge is dated 11/07 while the customer says the card was lost about 11/11, an internal story inconsistency that does not change the gold category. transaction_type pin_purchase for ElectroniX is inferred (the customer never says PIN vs signature)."
+}

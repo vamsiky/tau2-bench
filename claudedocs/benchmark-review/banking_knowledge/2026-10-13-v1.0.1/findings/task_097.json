@@ -1,0 +1,69 @@
+{
+  "task_id": "task_097",
+  "severity": "Blocker",
+  "headline": "The gold leaves out the documented 0.025% multi-product relationship bonus on the Silver account, the same bonus task_093's gold requires, so a doc-following agent's Silver credit and report fail.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The Silver expected APY in the gold is 4.0 + 0.45 + 2.2 = 6.65%, which omits the 0.025% relationship bonus. A required doc grants that bonus for holding multiple products, and this customer holds 13. task_093's gold adds the same bonus for a two-product customer.",
+      "evidence": [
+        "doc_savings_accounts_silver_account_002 (required): \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+        "doc_savings_accounts_silver_account_005: \"Eligible customers receive a relationship APY bonus of 0.025% added to the base Silver APY.\"",
+        "doc_bank_accounts_bank_accounts_(general)_044: \"Missing Relationship Bonus: Customer maintains multiple Rho-Bank products but the relationship bonus was not applied.\"",
+        "task_093 gold expected_apy = 4.275 (4.0 + 0.25 + 0.025)",
+        "gold[9].arguments.amount = 220.84; gold[14].arguments.expected_apy = 6.65"
+      ],
+      "gold_action_refs": [
+        9,
+        14
+      ],
+      "why_it_matters": "A doc-following agent computes 6.675%: 100000 x 6.675% / 12 = 556.25, minus the 333.33 credited = $222.92. Both the credit row and the report row differ from the gold (replayed: hash differs). No consistent reading of the docs passes both task_093 and task_097.",
+      "suggested_fix": "Change gold[9] to 222.92 and gold[14] to expected_apy 6.675 / amount_difference 222.92."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "Silver Plus documents two add-ons the gold silently excludes: a 0.025% relationship bonus whose 'relationship criteria' are never defined, and a 0.25% direct-deposit bonus that does not say which account must receive the deposit. The customer has payroll direct deposit into his Blue checking account.",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_002: \"Earn an additional relationship APY bonus of 0.025% when you qualify under the relationship criteria.\"",
+        "doc_savings_accounts_silver_plus_account_004: \"Set up direct deposit to receive an additional APY boost of 0.25%.\"",
+        "initial_state bank_account_transaction_history.btxn_blue_dd: \"DIRECT DEPOSIT - PAYROLL\" on chk_mc80w7k3x9_blue",
+        "gold[12].arguments.amount = 12.00; gold[17].arguments.expected_apy = 5.3"
+      ],
+      "gold_action_refs": [
+        12,
+        17
+      ],
+      "why_it_matters": "An agent that applies the Silver multi-product criteria to Silver Plus gets 5.325% and $12.38 (18000 x 5.325% / 12 = 79.875, minus 67.50). Adding the direct-deposit bonus gives a different figure again. Either changes the hash.",
+      "suggested_fix": "Define the Silver Plus relationship criteria and the direct-deposit target, or state that neither applies to this customer."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Because the actual Silver credit is the rounded 333.33, two reasonable calculation methods differ by one cent. Expected interest minus interest credited gives 554.17 - 333.33 = $220.84 (gold). The APY difference times balance / 12 gives 2.65% x 100000 / 12 = $220.83.",
+      "evidence": [
+        "initial_state btxn_silver_interest_oct.amount = 333.33",
+        "doc_bank_accounts_bank_accounts_(general)_044: \"amount_difference ... The dollar amount difference between expected and actual interest credited\"",
+        "gold[9].arguments.amount = 220.84"
+      ],
+      "gold_action_refs": [
+        9,
+        14
+      ],
+      "why_it_matters": "The docs prescribe the subtraction method, so the gold value is derivable, but a one-cent rounding difference fails the hash (replayed 220.83: differs).",
+      "suggested_fix": "Seed a Silver balance whose monthly interest is a whole number of cents at 4.0% (for example $99,000 gives $330.00), or state the rounding rule in doc_044."
+    }
+  ],
+  "solution_check": "Silver $100k: 4.0% + Bluest 0.45 (bluest_account_003; Evergreen, Blue and Light Green have no Silver pairing) + EcoCard 2.2 (silver_account_006) + relationship 0.025 = 6.675%, giving $222.92; the gold uses 6.65% and $220.84. Platinum $70k: 6.5 + Blue 0.8 + Diamond Elite card 0.35 = 7.65%, 446.25 - 379.17 = $67.08, matches. Diamond Elite $120k: 7.5 + Light Green 0.2 + Diamond Elite card 0.5 = 8.2%, $70.00, matches. Silver Plus $18k (tier 2, 4.5%) + Blue 0.35 + EcoCard 0.45 = 5.3%, $12.00, matches only if the undefined relationship and direct-deposit add-ons are excluded.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated the Silver relationship-bonus omission Major. It is unchanged in v1.0.1. I rate it Blocker because the gold contradicts a required doc and task_093's gold, and I add the Silver Plus add-ons and the one-cent rounding fragility.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. Both apply_savings_account_credit_6831 and submit_interest_discrepancy_report_7294 cast amounts with float(), and record ids embed f'{amount}' / f'{expected_apy}', so 33 and 33.0 hash identically, but any difference in value (even one cent) changes the hash. Gold read get_bank_account_transactions_9173 and get_all_user_accounts_by_user_id_3847 are allowlisted, so skipping either changes the hash. Monthly interest convention: the posted credits equal balance x APY / 12 exactly (simple, not daily-compounded), so the agent can infer the convention from the data. silver_account_009 lists a 0.025% relationship bonus specifically for Platinum Rewards Card holders. This customer has no Platinum Rewards Card, so only the generic multi-product bonus applies. The customer's stated balances are wrong by design; the agent must use the DB."
+}

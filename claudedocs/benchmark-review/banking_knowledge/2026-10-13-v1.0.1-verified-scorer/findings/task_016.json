@@ -1,0 +1,17 @@
+{
+  "task_id": "task_016",
+  "severity": "None",
+  "headline": "Clean: the only in-progress referral is a Silver Rewards Card referral, and the Silver referral doc states the $750 spend requirement the friend's transaction must match.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Looked up 86e92f639e by name: 15 referrals, exactly one IN_PROGRESS (f2a3b4c5d6789012, Silver Rewards Card, 11/13/2025), consistent with 'most recent'. doc_credit_cards_silver_rewards_card_011 says 'The referred person must be approved and spend at least $750 within 60 days of account opening', so the user submits Silver Rewards Card / Best Buy / 750 / Shopping. Replaying the gold in the snapshot environment matched itself, and a replay with amount 750.0 also matched (submit_transaction formats the amount as $750.00 and the transaction id uses f\"{amount:.2f}\").",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review rated this Minor but described it as 'No real issue; uniquely determined'; I also find no defect.",
+  "notes": "friend_user_5839 has no records in db.json, so the agent cannot see the friend's existing spend; the user is told to submit 'an amount exactly the same as the requirement that the agent specified', so an agent that states the $750 requirement produces the gold. Annual cap: silver_rewards_card_011 says 'You can earn up to 7 referral bonuses per calendar year'; the user has 8 COMPLETE referrals in 2025 across all card types but only 1 Silver (10/26/2025). general_002 says each card type has its own requirements and the weekly limit 'applies across all credit card types', so the per-card reading is the natural one. An agent that applies the cap across card types might tell the user no bonus is possible, and then no transaction is submitted. Rolling 7-day window: the only COMPLETE referral in 11/08-11/14 is 11/11, so the cap of 2 is not hit. Cosmetic: silver_rewards_card_011 says 'Receive 75 for each successful referral' with no currency unit."
+}

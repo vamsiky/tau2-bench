@@ -1,0 +1,36 @@
+{
+  "task_id": "task_101",
+  "severity": "Minor",
+  "headline": "Purple plus Sky Blue is the right pair once the 2-per-9-days referral cap is applied to the new batch; the policy wording that justifies the cap is slightly loose.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "doc_047 phrases the cap as \"at most 2 referral bonuses\" received in 9 days but also says a third referral attempted in the window is auto-denied. The gold (submit only 2 now) follows the second sentence. An agent reading the cap as limiting only past bonuses received (none in the last 9 days) could recommend all 4, and the simulator would then submit all 4.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window.\" and \"If you attempt to receive more than 2 referrals in a single 9-day period, the third referral (and any subsequent referrals in that window) will be automatically denied.\"",
+        "doc_047 practical guidance: \"Track the timing of your last two successful referral bonuses before sending additional referrals.\"",
+        "user instruction 17: \"If agent recommends all 4 referrals without mentioning rolling window: ... submit ALL 4\"",
+        "db referrals: most recent are 10/25 (Gold Years) and 10/10 (Sky Blue), so none in the last 9 days",
+        "replay: four referrals (GFF, Purple, Lime Green, Sky Blue) -> verified match False (referrals differs)"
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "Submitting four referrals now would, per the auto-denial sentence, get the third and fourth denied, so capping at two is the better-supported reading and matches tasks 098/102. The loose wording still leaves a minority path to a different state.",
+      "suggested_fix": "Reword doc_047 to say plainly that the cap counts referrals submitted in the window."
+    }
+  ],
+  "solution_check": "Annual caps from the DB: Blue 5/5, Light Green 3/3, Gold Years 6/6, Dark Green 5/6, Sky Blue 7/8, Lime Green 2/12, Purple and GFF 0. Maya (19, $300): only Green Fee-Free qualifies ($55); Light Green is full. Vikram (71, $1,200): Purple $45+$35=$80 beats Evergreen $60 and Dark Green $70 (age 17-26 anyway); Gold Years is full. Ember (5 years, $18k): no Sky Blue (4-year limit); Lime Green $350. TechFlow (2 years, $12k): Sky Blue $400. With two slots and the customer's \"one personal and one business\" (line 13a): Purple + Sky Blue, matching gold[2]/[3].",
+  "prior_status": "changed",
+  "prior_note": "The prior Blocker said the 9-day rule gives no basis for capping at two. doc_047's auto-denial sentence (\"the third referral ... will be automatically denied\") does supply that basis, so I downgrade to a Minor wording ambiguity.",
+  "notes": "The task data and docs are unchanged since v1.0.0 apart from the sky_blue \"6\" to \"6 months\" fixes, which are irrelevant here. Purple account opened 03/15/2022 meets every tenure threshold."
+}

@@ -1,0 +1,33 @@
+{
+  "task_id": "task_006",
+  "severity": "Minor",
+  "headline": "EcoCard is the unique answer, but ruling out the Crypto-Cash Back card depends on a minimum credit score that the KB writes as a dollar amount (\"$660\").",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The minimum credit score that decides between the two cards meeting the hard requirements is written as a currency value. It is still readable as 660, so the correct answer does not change.",
+      "evidence": [
+        "doc_credit_cards_crypto-cash_back_009: \"What is the minimum credit score to apply for the card to earn crypto rewards? $660.\"",
+        "doc_credit_cards_ecocard_001: \"Minimum credit score required to apply: 0 (0 indicates no credit score requirement).\"",
+        "task_006 user_scenario: \"You have a credit score of 540.\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Crypto-Cash Back (0% FTF, 1.5% minimum payment, virtual cards Yes) passes every hard requirement and only the 660 minimum excludes it. An agent that skips the corrupted FAQ-2 line, or doubts it, has two qualifying cards and no tie-breaker from the customer.",
+      "suggested_fix": "Write the score as \"660\" (and fix the other \"$NNN\" credit-score fields across card docs)."
+    }
+  ],
+  "solution_check": "Hard filters: FTF <= 1.5%, minimum payment <= 1.5%, virtual cards, credit score 540, no Rho-Bank+. Bronze and Silver fail on FTF (2.75%) and Silver also lacks virtual cards; Gold needs Rho-Bank+ (and 2.0% minimum); Platinum 2.5% and Diamond 3.0% minimum payment fail. Crypto-Cash Back passes on terms (crypto_008: FTF 0%, minimum 1.5%, virtual Yes) but needs a 660 score. EcoCard (ecocard_008: minimum 1.0%, FTF 1.0%, virtual Yes; ecocard_001: score 0) is the only card left. Replaying EcoCard/Bob Nakamoto/95000/false matches the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior marked this clean; the dollar-formatted credit score is load-bearing here, so it is reported as a Minor issue.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. Crypto-Cash Back's credit-score requirement appears only in its FAQ-2 doc (crypto-cash_back_009), which is not in required_documents, so an agent must retrieve it to rule the card out. For tasks where the credit score is not load-bearing I logged this corruption as a note, not an issue."
+}

@@ -1,0 +1,16 @@
+{
+  "domain": "banking_knowledge",
+  "benchmark_version": "v1.0.1",
+  "benchmark_ref": "v1.0.1",
+  "run_date": "2026-10-13",
+  "reviewer": "claude-opus-5-5: 8 parallel reviewers + 4 independent verifiers (Claude Code subagents)",
+  "prompts": [
+    "prompts/review.md",
+    "prompts/verification.md"
+  ],
+  "prior_run": "2026-06-25-v1.0.0",
+  "effort": "high (confirmed from every request in the agents' transcripts)",
+  "scorer": "upstream v1.0.1 grading (exact DB hash after gold replay, gold-derived read-log allowlist)",
+  "prompt_notes": "The grading-model bullets on numeric normalization, ACTION matching, and the shared agent/user DB were corrected mid-run from reviewer feedback; reviewers saw the earlier wording and reported the corrections in their notes. prompts/ holds the corrected version the verifiers used.",
+  "status": "superseded draft: 97 reviewer findings, verification stopped before any verdicts; reviewers saw an earlier wording of the grading-model facts. Kept as a same-scorer repeat for measuring run-to-run variance against 2026-10-13-v1.0.1."
+}

@@ -1,0 +1,41 @@
+{
+  "task_id": "task_034",
+  "severity": "Major",
+  "headline": "The task is meant to test that the agent holds off transferring until the eighth request, but the grader passes any agent that eventually transfers, even on the first request.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Major",
+      "summary": "All 8 gold user calls to request_human_agent_transfer have compare_args [], as does the agent's transfer_to_human_agents. Presence-only ACTION grading therefore passes when the user has called the tool once and the agent has transferred once, whenever that happened. The behavior under test (refuse until exactly 8 requests) is never graded.",
+      "evidence": [
+        "doc_checking_accounts_checking_accounts_(general)_009: \"do not transfer them until they have asked exactly 8 times\"",
+        "task_034 gold: 8 x request_human_agent_transfer (requestor user, compare_args []) + transfer_to_human_agents (compare_args [])",
+        "reward_basis = [\"ACTION\"]; request_human_agent_transfer does write human_transfer_requests rows, but DB is not graded"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "why_it_matters": "An agent that ignores doc_009 and transfers at the first request gets full credit, so this task cannot tell a protocol-following agent from one that ignores the protocol, and scores are inflated. Only an agent that never transfers fails.",
+      "suggested_fix": "Grade order: require transfer_to_human_agents only after the 8th user request (e.g., an env assertion that human_transfer_requests has 8 rows when the transfer is made, or an order-aware action check)."
+    }
+  ],
+  "solution_check": "doc_009 applies (direct deposit 'where is it'): explain timing, refuse transfer with the scripted phrase until the 8th request, then call transfer_to_human_agents. That matches the gold's intent. The gold is consistent but grading cannot discriminate.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this task clean. The protocol is clear, but the presence-only grader makes the tested behavior ungraded.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. Counting is mildly ambiguous because some scripted lines (\"This is unacceptable customer service!\") are not explicit transfer requests, though the user is told to ask verbally each time. Irrelevant under current grading. The base-policy 4-request rule is explicitly overridable by KB guidance."
+}

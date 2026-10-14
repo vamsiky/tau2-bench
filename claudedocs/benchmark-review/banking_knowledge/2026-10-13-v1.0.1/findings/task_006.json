@@ -1,0 +1,35 @@
+{
+  "task_id": "task_006",
+  "severity": "Minor",
+  "headline": "Valid: EcoCard is the only card that meets all three requirements. The Crypto-Cash Back lure is excluded only by a minimum credit score that the docs write as a dollar amount ('$660').",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The minimum credit score is the one criterion that separates Crypto-Cash Back from EcoCard for this customer, and the docs state it as a dollar amount. Reading '$660' as score 660 is unambiguous, so the correct outcome does not change.",
+      "evidence": [
+        "doc_credit_cards_crypto-cash_back_009: \"What is the minimum credit score to apply for the card to earn crypto rewards? $660.\"",
+        "doc_credit_cards_crypto-cash_back_008: \"What is the foreign transaction fee if I use the card abroad? 0%.\" / \"What is the minimum monthly payment? 1.5% of the outstanding balance.\"",
+        "doc_credit_cards_crypto-cash_back_001: \"Virtual card management availability: Yes.\"",
+        "task_006 instructions: \"You have a credit score of 540.\"",
+        "doc_credit_cards_ecocard_001: \"Minimum credit score required to apply: 0 (0 indicates no credit score requirement).\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Crypto-Cash Back passes every stated hard requirement (FTF 0% <= 1.5%, minimum payment 1.5% <= 1.5%, virtual cards Yes), so only the credit-score floor rules it out. The '$' corruption is cosmetic, but it sits on the deciding value.",
+      "suggested_fix": "Write credit-score minimums as plain integers ('660', '720', '750', '640', '680', '780') across the card documents, as v1.0.1 already did for the '$105 days' style values."
+    }
+  ],
+  "solution_check": "Requirements: FTF <= 1.5%, minimum payment <= 1.5%, virtual card management, score 540, no Rho-Bank+. Bronze (FTF 2.75%, virtual No), Silver (FTF 2.75% without premium, virtual No), Gold (needs Rho-Bank+, min payment 2.0%), Platinum (min payment 2.5%) and Diamond Elite (min payment 3.0%, invitation-only) fail. Crypto-Cash Back fails only on its $660 score floor. EcoCard passes (FTF 1.0%, 'minimum monthly payment is 1.0%', 'Virtual card management features are available: Yes', no score floor). Gold application EcoCard / Bob Nakamoto / 95000 / false matches.",
+  "prior_status": "new",
+  "prior_note": "Prior verdict was None; the decisive credit score's dollar-sign formatting is newly reported as a Minor cosmetic defect, and the outcome is unchanged.",
+  "notes": "Crypto-Cash Back is not in required_documents even though it is the intended distractor; the customer is a crypto enthusiast. Credit scores are still written as dollar amounts in the card docs (e.g. gold_001 'Minimum credit score required: $720', bronze_001 '$640', silver_001 '$680', platinum_001 '$750'); v1.0.1 removed the '$105 days'/'$135 days' corruptions but not these. Reporting rule used across this batch: the corruption is an issue (Minor) only where the credit score decides the task; otherwise it is a note. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

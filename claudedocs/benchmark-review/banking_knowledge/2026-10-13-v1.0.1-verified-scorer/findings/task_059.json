@@ -1,0 +1,37 @@
+{
+  "task_id": "task_059",
+  "severity": "Major",
+  "headline": "The right products are clear (Silver Rewards Card plus Green savings), but the KB calls the savings account 'Green Account (savings)' while the official answer only accepts the account name 'Green Account'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The gold opens the savings product as account_class 'Green Account'. The KB names this product 'Green Account (savings)' in every title and in the pairing list, and the checking-opening procedure gives 'Green Account (checking)' as an example of a full official name. Only the savings procedure's rule ('ending with Account') points to the bare 'Green Account'. Because the account id is a hash of account_class, the two spellings produce different account records.",
+      "evidence": [
+        "doc_savings_accounts_green_account_(savings)_001 title: \"Green Account (savings) specifications and requirements\" (all nine Green savings docs use \"Green Account (savings)\")",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"3. Evergreen Account (checking) + Green Account (savings)\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"",
+        "gold[5].arguments.arguments account_class = \"Green Account\"",
+        "Replay: gold with account_class 'Green Account (savings)' -> verified=(False, ['table accounts differs'])"
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "An agent that copies the product's official name from the KB ('Green Account (savings)'), or follows general_001's example where the parenthetical is part of the name, opens a correctly chosen account under a different id. The accounts table then differs and the task fails, although the product choice was right.",
+      "suggested_fix": "Make the open tool normalize account_class (strip a trailing ' (savings)'/' (checking)'), or state in general_002 that the Green savings account_class is exactly 'Green Account'."
+    }
+  ],
+  "solution_check": "Same table method, at $5,000 with no Rho-Bank+ (Gold Rewards unavailable, so Gold's $10k minimum stands). Green savings (4.0%, $500 minimum) + Silver Rewards (+0.45%, green_(savings)_003, $0 fee) = 4.45% -> $222.50. Runners-up: Green + Bronze Rewards $200; Silver Account (2.5% tier below $10k) + EcoCard 4.7% -> $235 - $50 = $185; Green + EcoCard $175. Gold below its minimum with the $10/month fee nets at most $165 (with Silver Rewards). The product choice is unique and matches the gold. The only divergence risk is the account_class spelling.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The naming contradiction exists in v1.0.0 and v1.0.1 alike and was not reported.",
+  "notes": "initialization_data is malformed in the same way as task_058 (top-level 'users'/'accounts', ignored on load). Harmless because db.json already contains cr59b4d8e3 and chk_cr59b4d8e3. green_(savings)_005 says EcoCard *or Green Rewards Card* pairing gives +0.5%, while green_(savings)_003 lists Green Rewards at +0.4%. That conflict does not affect this task (Green Rewards is a $100-fee business card). The gold read get_all_user_accounts_by_user_id_3847 is required under the verified subset rule; general_009 says to use it when checking eligibility to open accounts. The credit card is applied for by the user tool with fixed arguments, so the agent only has to name the card correctly."
+}

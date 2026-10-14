@@ -1,0 +1,32 @@
+{
+  "task_id": "task_018",
+  "severity": "Minor",
+  "headline": "Applying the documented rates and the documented round-down rule gives exactly the six gold disputes; the only gap is that the rounding doc is not in the task's required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding rule that makes the gold dispute set exact (doc_credit_cards_credit_cards_(general)_007) is not in this task's required_documents, so the golden_retrieval variant never shows it.",
+      "evidence": [
+        "task_018.required_documents does not include doc_credit_cards_credit_cards_(general)_007 (grep: only task_028 lists it)",
+        "src/tau2/domains/banking_knowledge/retrieval.py golden_prompt: replaces {{required_documents}} with task.required_documents only",
+        "src/tau2/domains/banking_knowledge/retrieval.py build_tools: \"# No retrieval tools (no_knowledge, full_kb, golden_retrieval)\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under golden_retrieval the agent cannot search the KB, so it must guess the rounding convention; round-half-up flags 22 extra transactions (all +1 noise, e.g. txn_e45e7acb56a0 Amazon $89.99 -> 90 vs stored 89). Search-based configs (default alltools, bm25, etc.) can retrieve doc_007, so headline scores are unaffected.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Pulled all 47 transactions for 890389b165 and applied Silver 4% Travel/Software else 1%, Crypto-Cash Back 2%, Business Platinum 4% Travel/Software/Media else 1.5%, EcoCard 5 pts/$ on Green (minus Target/Walmart/Amazon/ThredUp) else 1, floored per doc_007. Mismatches are exactly the gold six: 57ecc6 (Trader Joe's 47.83x2=95 vs 47), d80aef (United 347.62x4=1390 vs 521), 896ac6 (Patagonia Green 128.47x5=642 vs 128), adea68 (Marriott 167.34x4=669 vs 167), 0be1cc (LinkedIn Ads 512.47x4=2049 vs 768), e647e2 (Google Ads 187.56x4=750 vs 1875, over-credited, which instruction 4 says to dispute anyway). Zero false positives under floor; round-half-up gives 28 (22 extra).",
+  "prior_status": "resolved",
+  "prior_note": "Prior (Major) said the rounding convention was undocumented; doc_credit_cards_credit_cards_(general)_007 states floor rounding, is unchanged since v1.0.0, and reproduces the gold exactly, so that defect never applied to search-based configs. Only the required_documents omission remains.",
+  "notes": "doc_..._ecocard_004 (exclusions) is not in required_documents, but no EcoCard Green-category row here hits an excluded merchant (Target is Shopping), so it is not needed. The agent gives the dispute tool and the user submits by transaction_id; the hash is order-independent (get_dict_hash uses sort_keys=True) and resubmissions are idempotent (deterministic ids, add_to_db rejects duplicates)."
+}

@@ -1,0 +1,36 @@
+{
+  "task_id": "task_046",
+  "severity": "Major",
+  "headline": "The gold expects the agent to stop at the pending dispute and leave the $125 balance unpaid, but if the agent mentions the balance, the customer is scripted to ask for it to be paid.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The account has an unpaid $125 balance as well as the blocking dispute. The customer's instructions say to agree to pay any balance the agent mentions, and the policy says to 'explain what must be resolved'. The gold contains no payment.",
+      "evidence": [
+        "db.json credit_card_accounts.cc_224959b99e_bsilver.current_balance = \"$125.00\"",
+        "user instructions: \"If the agent mentions you have an outstanding balance, agree to pay it off.\" and step 3: \"Yes, please pay that off from my checking account.\"",
+        "doc_credit_cards_credit_card_account_logistics_003: \"Check these in order: 1. Pending disputes ... 4. Outstanding balance ... If any requirement is not met, explain what must be resolved and do not proceed with retention offers.\"",
+        "required_documents includes doc_credit_cards_credit_card_account_logistics_009 (pay balance from checking)",
+        "task notes (not agent-visible): \"requirements 1-3 should be checked first since they cannot be resolved during the call\"",
+        "Replay: gold + pay_credit_card_from_checking_9182($125 from 05) -> verified match False (accounts and credit_card_accounts differ)"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "A competent agent sees the $125 balance when it looks up the card and may list it among the things that 'must be resolved'. The customer then asks for it to be paid, and paying it is a legitimate service. The resulting state fails. The gold passes only if the agent stops at the first failed check and never mentions the balance, a rule that appears only in the author notes.",
+      "suggested_fix": "Set the bsilver balance to $0.00 in this task's initial_state, or add a gold payment of $125.00 and script the customer to request it."
+    }
+  ],
+  "solution_check": "The agent verifies the customer and checks dispute history (gold[1-2]). It finds dsp_yuki_bsilver_001 with status UNDER_REVIEW, so closure is blocked. This part matches the gold. The open question is the balance step: the gold's final state needs the $125 to stay unpaid, which the materials do not require.",
+  "prior_status": "new",
+  "prior_note": "The prior review found it clean. The balance/payment ambiguity was not reported.",
+  "notes": "Extra reads (pending replacements, account listing) are not in the allowlist and are not logged, so they are harmless under both scorers. Under the verified scorer, a failed or extra discoverable write that changes no other table would also be tolerated."
+}

@@ -1,0 +1,36 @@
+{
+  "task_id": "task_024",
+  "severity": "Major",
+  "headline": "The gold card (Business Bronze, $900 back) beats every card except the Silver Zoom Card, whose triple-cash-back promo pays at least $1,200 on the truck; the docs never say whether a landscaping company can get that card.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The Silver Zoom Card's live triple-cash-back promo pays 3 x 1.0% = 3% on a non-category purchase: $1,200 on the $40,000 truck, or 9% if a work vehicle counts as transportation spend. Minus the $74.50 annual fee, that still beats Business Bronze's 1% + $500 = $900. Whether a landscaping company is eligible is implied by 'designed for transportation and logistics businesses' but never stated as a restriction.",
+      "evidence": [
+        "doc_business_credit_cards_silver_zoom_card_012: \"You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31\" and \"All other eligible purchases earn 3 × 1.0% during the promo period\"",
+        "doc_business_credit_cards_silver_zoom_card_001: \"Established transportation and logistics operators that can meet both personal and business credit criteria\" and \"Annual membership is $74.50\"",
+        "doc_business_credit_cards_silver_zoom_card_008 title: \"Silver Zoom Card: Eligibility Requirements for Logistics Businesses\"",
+        "doc_business_credit_cards_business_bronze_rewards_card_010: \"This offer is available from 2025-10-01 through 2026-03-31.\" / \"After qualification, a $500 statement credit will be applied to your account.\"",
+        "task_024 persona: \"You run a landscaping company ... and are looking to expand your fleet.\"",
+        "gold[0].arguments.card_type = \"Business Bronze Rewards Card\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that treats Silver Zoom as open to any business recommends it, the customer applies for 'Silver Zoom Card', and credit_card_applications differs from the gold (replay confirmed). The gold is reachable only if the agent reads the card as limited to transportation/logistics operators. The documents frame it that way but never say other businesses are ineligible, and the persona's 'expand your fleet' points toward the fleet card.",
+      "suggested_fix": "State in silver_zoom_card_001/008 that only transportation/logistics businesses are eligible, or end the triple-cash-back claim window before 2025-11-14."
+    }
+  ],
+  "solution_check": "Totals on $40,000. Business Bronze: 1% = $400 + $500 promo (window open, $10k in 2 months met) = $900, $0 fee. Business Silver: truck is not travel/software, so 1% (2% only if the 2024-11-14..2025-11-14 double promo still applies on 11/14) = $400-$800. Business Platinum: 1.5% = $600, first-year fee waived. Business Gold: a truck is not in business_gold_003's operations list, so 1% less a $200 fee; even at 2.5% the net is $800. Green Rewards: 1% less a $100 fee. Excluding Silver Zoom, Bronze wins uniquely, matching the gold; including it, Silver Zoom wins.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean and did not consider the Silver Zoom triple-cash-back promo.",
+  "notes": "This verdict rests on an eligibility reading: a careful agent may well exclude Silver Zoom for a landscaping business, and a verifier may reasonably downgrade it. Fee netting does not change the winner except for Business Gold if the truck were treated as operations spend ($1,000 gross > $900, $800 net < $900). required_documents lists only Bronze and Business Silver docs, which suggests the author compared only those two."
+}

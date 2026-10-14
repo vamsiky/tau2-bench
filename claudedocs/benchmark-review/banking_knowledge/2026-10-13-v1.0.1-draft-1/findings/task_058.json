@@ -1,0 +1,17 @@
+{
+  "task_id": "task_058",
+  "severity": "None",
+  "headline": "Clean: EcoCard plus Silver Account is the unique best net return on $20,000 ($1,190), $20 ahead of the next combination.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Enumerated savings x personal cards at $20,000, net = interest - card annual fee. Silver tier 2 is 4.0% (silver_account_003), and EcoCard adds +2.2% (silver_account_006): 6.2% x 20,000 = 1,240 - 50 = 1,190. Next best: Gold 5.5% + EcoCard 0.6% = 1,220 - 50 = 1,170; Gold + Silver Rewards 5.7% = 1,140; Gold + Bronze or Platinum 5.65% = 1,130 (-$200 fee for Platinum); Silver Plus tier 2 4.5% + EcoCard 0.45% = 990 - 50 = 940; Green 4.0% + EcoCard 0.5% = 900 - 50. Gold Rewards Card needs a Rho-Bank+ subscription (user has none); Diamond Elite is invitation-only at $495. Gold Plus (6.0%) requires a $25,000 maintained balance (with its $15/month fee it nets at most 1,230 - 180 = 1,050), and Platinum requires a $25,000 opening deposit. EcoCard has no credit-score requirement, so the unstated score does not matter. Gold replay: user applies EcoCard (income 85000, subscription false), agent opens 'Silver Account'. Matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior v1.0.0 review also rated this clean; task and required docs are unchanged.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. initial_state.initialization_data uses top-level 'users'/'accounts' keys instead of agent_data/user_data, so InitializationData ignores it; harmless because db.json already contains user tb58a3c9d2 and chk_tb58a3c9d2 with the same values. The user script names the gold answer ('When the agent recommends the EcoCard and Silver Account combination...'); that text is not agent-visible but could leak through the simulator. KB arithmetic slips (green_account_(savings)_009 '4.0% + 0.5% = 4.75%', gold_account_013 'Total APY with the bonus: 6.0%') do not change the optimum. Gold does not include get_all_user_accounts, so calling it is harmless (not logged)."
+}

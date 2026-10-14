@@ -1,0 +1,17 @@
+{
+  "task_id": "task_047",
+  "severity": "None",
+  "headline": "Clean: Business Platinum is the only business card that beats the competitor, and the under-2-year tenure leads to a downgrade offer followed by the $50 premium retention credit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Silver Zoom (opened 03/15/2024, $0.00 balance) passes step 1, and the reason is found_better_card. Business Platinum (4% travel/software/media, 0% FX) is the only business card that beats 3.5% with no FX fee. The user applies (gold[9]). For the Platinum Rewards card (opened 06/20/2024, $0.00 balance) the reason is annual_fee. The oldest relationship is checking 06 opened 03/10/2024, under 2 years, so the agent offers the downgrade (logistics_008), the customer declines, and Step 5 'Premium and above' gives a $50 statement credit (replacements_002 lists Platinum as premium-and-above). This matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also found it clean, and the task files are unchanged.",
+  "notes": "logistics_008 names downgrade_credit_card_3847, which does not exist in tools.py. The customer declines the downgrade, so it is never called. Business Platinum's first-year waiver window (2025-11-01 to 2026-02-28, business_platinum_rewards_card_011) covers the fixed date. The verified scorer strips closure_reason values, and exact grading would also accept these, since the customer's reasons are explicit."
+}

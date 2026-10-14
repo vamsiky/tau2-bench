@@ -1,0 +1,100 @@
+{
+ "summary": "97 tasks reviewed against v1.0.1: 11 Blocker, 40 Major, 25 Minor, 21 clean (v1.0.0 review: 10 / 11 / 14 / 62). v1.0.1's fixes hold where checked: task_074's corrected $14.50 Light Blue refund reproduces, bank transactions now sort newest-first, and the rewards rounding rule turns out to be documented, which clears the old Majors on 018, 019, 021 and 022. Four v1.0.0 Blockers persist (063, 082, 083, 084); five drop to Major because the documents support the gold's reading (039, 040, 041, 075, 101). The rise in flagged tasks comes mostly from defects the v1.0.0 review did not report: 43 tasks it rated clean have a defect now, found by replaying gold and alternative actions. Under upstream scoring, four more tasks (060, 061, 062, 067) are Major only because the free-text closure reason is graded exactly. Severities are reviewer verdicts checked by independent verifiers and reconciled with the companion run.",
+ "systemic_issues": [
+  {
+   "title": "Gold depends on information the agent cannot observe",
+   "tasks": [
+    "task_026",
+    "task_027",
+    "task_028",
+    "task_029",
+    "task_049",
+    "task_053",
+    "task_102"
+   ],
+   "description": "No agent tool reads cash_back_disputes and the customer's own tool results never reach the agent, so 026\u2013029 grade the same customer claim in opposite ways. task_053's gold uses card digits only the customer's omitted lookup returns, task_049 needs the customer to call a transfer tool unprompted, and task_102's NL assertion needs a company age that exists only in author notes."
+  },
+  {
+   "title": "Gold values contradict the documents or each other",
+   "tasks": [
+    "task_026",
+    "task_069",
+    "task_082",
+    "task_083",
+    "task_084",
+    "task_091",
+    "task_097"
+   ],
+   "description": "task_069 assumes Gold savings has no ATM rebates (gold_account_003 documents $30/month); task_097 omits the 0.025% relationship bonus that task_093's gold applies; task_026 writes 1500 points where the documented round-down rule gives 1499; task_083's ACTION gold omits a required argument so no call can match; 082, 084 and 091 record dispute, liability, and replacement values that no single documented rule produces."
+  },
+  {
+   "title": "Strings the gold stores verbatim differ from what the documents tell the agent to write",
+   "tasks": [
+    "task_056",
+    "task_059",
+    "task_065",
+    "task_066",
+    "task_068",
+    "task_071"
+   ],
+   "description": "doc_001's own example spells products 'Green Account (checking)' while the gold stores 'Green Account', and general_004 says to open business savings with account_type 'savings' while the gold uses 'business_savings'. Following the documents opens a different account id and fails the DB match."
+  },
+  {
+   "title": "Ties and multiple defensible products with no tie-breaker",
+   "tasks": [
+    "task_063",
+    "task_024",
+    "task_025",
+    "task_048",
+    "task_075",
+    "task_076"
+   ],
+   "description": "task_063 is an exact tie (Bronze and Silver Rewards both add +0.15% at $0); in the others a second product is as good or better under one supported reading (Silver Zoom's promo in 024, Apple Music's category in 025, Platinum Rewards in 048, ATM-fee stacking in 075, Bluest's unstated deposit in 076)."
+  },
+  {
+   "title": "Customer choices the gold records but the script never states",
+   "tasks": [
+    "task_041",
+    "task_070",
+    "task_077",
+    "task_079",
+    "task_092"
+   ],
+   "description": "Refund types, a company's formation date, card design, freezing before closing, and how to unlock a card are fixed in the gold but never given to the simulated customer or settled by a documented default."
+  },
+  {
+   "title": "Fee, rebate, and rounding rules applied inconsistently across sibling tasks",
+   "tasks": [
+    "task_017",
+    "task_020",
+    "task_072",
+    "task_073",
+    "task_074",
+    "task_094",
+    "task_095"
+   ],
+   "description": "Refunds in 072\u2013074 count fees dated after the fixed clock; 072\u2013074 assume out-of-network and foreign ATM fees do not stack while 075 assumes they do; seed rewards in 020/026/027 use round-half-up against the documented floor rule; 094/095 hinge on whether a 0.025% card bonus stacks."
+  },
+  {
+   "title": "Dispute fields with no single documented rule",
+   "tasks": [
+    "task_039",
+    "task_040",
+    "task_085",
+    "task_086",
+    "task_088"
+   ],
+   "description": "Whether disputes filed earlier in the same call count toward the provisional-credit limit, how customer_max_liability_amount is derived, and how pin_compromised and transaction type are chosen all have two defensible readings; the gold picks one."
+  },
+  {
+   "title": "Free-text closure reasons are graded exactly",
+   "tasks": [
+    "task_060",
+    "task_061",
+    "task_062",
+    "task_067"
+   ],
+   "description": "close_bank_account_7392 stores its optional free-text reason; the gold relies on a hidden default and any reason the agent writes fails the DB match. These four tasks are clean under the verified scorer, which strips closure_reason. (065, 066 and 068 share this defect but are Major for their naming issue anyway.)"
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "task_045",
+  "severity": "Minor",
+  "headline": "Closure retention with a balance payoff, a Business Platinum recommendation the customer declines, and a $20 retention credit; sound apart from cosmetic doc issues.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Business Platinum application doc states the minimum personal credit score as a dollar amount, and its title calls the card \"Platinum Rewards Card\", which is the name of the separate personal card. Both are cosmetic for this task.",
+      "evidence": [
+        "doc_business_credit_cards_business_platinum_rewards_card_001 title: \"Platinum Rewards Card: Elite Business Credit Card Application\"",
+        "doc_business_credit_cards_business_platinum_rewards_card_001: \"Minimum personal credit score required: $765\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "No change to the correct final state. The title could make an agent confuse the business and personal Platinum cards when it recommends one.",
+      "suggested_fix": "Change \"$765\" to \"765\" and retitle the doc \"Business Platinum Rewards Card: ...\"."
+    }
+  ],
+  "solution_check": "Eligibility on cc_224959b99e_bsilver: no disputes, no replacement, balance $125.00, paid from checking 05. No closure history. The reason is found_better_card. The KB's business card with travel and advertising rewards and 0% foreign fee is Business Platinum (bp_002: \"Travel, software, and media advertising purchases earn 4.0%\"; bp_008: FTF 0%). The customer declines it, so Step 5 applies: Business Silver is mid-tier (replacements_002, doc_015), so the offer is 2,000 points or a $20 statement credit. The customer takes the credit: apply_statement_credit_8472 amount 20, reason retention_offer. This matches the gold and the replay is clean.",
+  "prior_status": "new",
+  "prior_note": "Prior clean; still clean in substance under exact closure_reason grading, with a newly reported Minor doc issue.",
+  "notes": "closure_reason is graded under v1.0.1, and the customer says \"I found a better card at another bank and I don't really use this one much anymore\" (and mentions simplifying finances), so not_using_card is a literal alternative. Replay confirms not_using_card changes the hash. A careful agent leading with the first-stated reason and the competitor discussion picks found_better_card, so I recorded this as residual risk, not a defect. No tool awards bonus points, so the $20 statement credit is the only option the tools can carry out. The personal Platinum Rewards Card (10% all, 0% FTF) also beats the competitor, but Yuki already holds one (cc_224959b99e_plat), so recommending it as a new card is unlikely."
+}

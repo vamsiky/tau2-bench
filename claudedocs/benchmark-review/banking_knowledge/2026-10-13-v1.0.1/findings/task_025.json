@@ -1,0 +1,35 @@
+{
+  "task_id": "task_025",
+  "severity": "Major",
+  "headline": "Whether the Business Platinum card is best for a $100,000 Apple Music purchase depends on treating Apple Music as a 4% 'software/media' purchase on that card. If it is ordinary spend, a different card pays more.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Gold = Business Platinum at $4,000 (4%), which requires Apple Music to count as 'software' or 'media' under doc_..._business_platinum_rewards_card_002. Apple Music is a consumer music-streaming licence, and the doc's examples are SaaS, cloud hosting, and digital ad placements. Read as ordinary spend, Platinum pays 1.5% = $1,500 and loses.",
+      "evidence": [
+        "doc_business_credit_cards_business_platinum_rewards_card_002: \"Travel, software, and media advertising purchases earn 4.0%.\" / \"Typical qualifying transactions include airfare, hotels, car rentals, rideshare, SaaS subscriptions, cloud hosting, and digital ad placements\" / \"Purchases outside those categories earn 1.5%.\"",
+        "doc_business_credit_cards_business_silver_rewards_card_005: \"Hardware/Electronics Merchants (Software Exclusion): - Apple\"",
+        "doc_business_credit_cards_business_silver_rewards_card_012: double promo \"End date: 2025-11-14\" (today per get_now())",
+        "doc_business_credit_cards_silver_zoom_card_012: \"All other eligible purchases earn 3 × 1.0% during the promo period\" (claim window to 2025-12-31)",
+        "gold[0].arguments.card_type = 'Business Platinum Rewards Card'"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Under the 'not software' reading: Business Platinum $1,500; Business Bronze $1,000 + $500 = $1,500; Business Silver (Apple excluded) 1% doubled by a promo still open on 11/14 = $2,000; Silver Zoom 3% = $3,000 - $74.50 if the agent treats it as open to a software company. The agent then recommends a non-Platinum card and the user's application row differs from gold. The Silver exclusion list labels Apple a 'Software Exclusion', which hints that Apple purchases count as software, but nothing says so for Platinum.",
+      "suggested_fix": "Make the purchase an unambiguous SaaS licence (e.g. an enterprise software platform), or state in doc_..._business_platinum_rewards_card_002/003 that streaming-media subscriptions qualify for 4%."
+    }
+  ],
+  "solution_check": "Under the intended reading (Apple Music = software/media; Business Silver's 'Apple' exclusion drops it to 1%, or 2% with the same-day promo): Business Platinum 4% x $100,000 = $4,000 with the first-year fee waived (promo 2025-11-01 to 2026-02-28). That beats Silver Zoom ($2,925.50), Business Silver ($2,000), and Bronze ($1,500), and matches gold[0]. The result flips if Apple Music is not a 4% category at Platinum.",
+  "prior_status": "persists",
+  "prior_note": "Same Major ambiguity the prior review found (Apple Music category). I add the Business Silver double-promo end date that equals today and the Silver Zoom triple promo as the alternatives that win under the other reading.",
+  "notes": "Replay with annual_income 250000.0 matches gold. The Business Platinum minimum credit limit ($75,000) fits the purchase; customer credit scores are unknown for every card. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

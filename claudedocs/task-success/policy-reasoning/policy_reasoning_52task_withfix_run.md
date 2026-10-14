@@ -5,7 +5,7 @@
 **Agent:** `claude-sonnet-4-6` · **User-sim & NL-judge:** `claude-opus-4-8/high` (SDK, subscription)
 **Trials:** 1 · **Retrieval:** `alltools` · **Verified scorer:** on
 **Fixes applied:** A3 closure-eligibility guard (compiled into `tools.py`) + A1/A2/A4 policy text
-(`claudedocs/a1a4_fixes/policy_a1a4.txt`, passed via `--agent-extra-instruction-file`)
+(`claudedocs/task-success/policy-reasoning/a1a4_fixes/policy_a1a4.txt`, passed via `--agent-extra-instruction-file`)
 **Run dirs:** `data/simulations/policyfix_b1..b5/`
 
 ## TL;DR
@@ -141,6 +141,6 @@ uv run python examples/agents/claude_sdk_loop_eval.py \
   --domain banking_knowledge \
   --task-ids task_001 task_002 task_003 task_004 task_005 task_008 task_010 task_018 task_020 task_022 task_023 \
   --agent-model claude-sonnet-4-6 --num-trials 1 --sdk-nl-judge \
-  --agent-extra-instruction-file claudedocs/a1a4_fixes/policy_a1a4.txt \
+  --agent-extra-instruction-file claudedocs/task-success/policy-reasoning/a1a4_fixes/policy_a1a4.txt \
   --save-to policyfix_b1 --auto-resume
 ```

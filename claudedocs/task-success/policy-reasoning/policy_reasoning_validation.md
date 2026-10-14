@@ -1,12 +1,12 @@
 # POLICY_REASONING reproduction validation — SDK driver (banking_knowledge)
 
 **Goal:** take the next-largest failure category after INCOMPLETE (already covered in
-[`i1_fix_validation.md`](i1_fix_validation.md)) and confirm the documented errors are
+[`i1_fix_validation.md`](../i1-fixes/i1_fix_validation.md)) and confirm the documented errors are
 *reproducible* on the current SDK driver — i.e. the agent independently re-commits the
 same gold-vs-actual mistake the evidence table records.
 
 **Category:** `POLICY_REASONING` — **121 / 290 failures (42%)**, the dominant bucket in
-[`opus47_banking_failure_evidence_table.md`](opus47_banking_failure_evidence_table.md)
+[`opus47_banking_failure_evidence_table.md`](../failure-analysis/opus47_banking_failure_evidence_table.md)
 ("right tool, wrong decision/value"). Four tasks chosen to span its four documented
 sub-patterns.
 

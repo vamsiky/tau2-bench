@@ -1,0 +1,35 @@
+{
+  "task_id": "task_005",
+  "severity": "Minor",
+  "headline": "The gold is correct per the bypass-code document, but reaching it needs the simulated customer to come back after a transfer, which the simulator's general rules tell it to end the conversation on.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The two DB-relevant gold writes (log_verification with the bypass code, change_user_email) happen only after the customer returns from a confirmed transfer. The global user-simulator guidelines tell the simulator to emit ###TRANSFER###, which ends the episode, as soon as the agent confirms a transfer.",
+      "evidence": [
+        "task_005 instructions: \"Once the agent confirms they are transferring you, say \\\"Okay, I'll hold.\\\" ... Then, after a brief pause, act as if you've spoken to a human agent and are now back.\"",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"If you have been transferred to another agent, generate the '###TRANSFER###' token to indicate the transfer. Only do this after the agent has clearly indicated that you are being transferred.\"",
+        "gold[0] transfer_to_human_agents (compare_args [] and no DB effect), gold[1] log_verification, gold[2] change_user_email(user_id 6680a37184, new_email kenji.tanaka@gmail.com)",
+        "task_005.user_tools = ['apply_for_credit_card'], so the tools variant of the guidelines is the one in force"
+      ],
+      "gold_action_refs": [
+        1,
+        2
+      ],
+      "why_it_matters": "If the simulator follows the global rule, the conversation ends at the transfer the gold itself requires, the bypass code is never presented, and a correct agent scores 0 because users[6680a37184].email and verification_history never change. The scenario text is explicit enough that most simulators will probably continue, so I rate this Minor; I did not measure how often it happens.",
+      "suggested_fix": "Drop the transfer step so the customer presents the bypass code after verification fails, or add an explicit line to the scenario: 'Do not output ###TRANSFER### when transferred; continue the conversation.'"
+    }
+  ],
+  "solution_check": "Verification fails (only phone 206-555-0293 matches users[6680a37184]; the email on file is kenji.tanaka@outlook.com), and the customer demands a human. On return he gives 9K2X7M4P1N8Q3R5T6A, which doc_customer_support_special_support_codes_001 says to confirm ('Verify the code exactly matches 9K2X7M4P1N8Q3R5T6A') and log by entering the code in every field except time_verified ('Actual verification timestamp'). The agent then changes the email to kenji.tanaka@gmail.com. Replaying gold adds verification_history['9K2X7M4P1N8Q3R5T6A_20251114_034000_EST'] and sets users[6680a37184].email = 'kenji.tanaka@gmail.com', which matches this reconstruction.",
+  "prior_status": "new",
+  "prior_note": "Prior verdict was None; the simulator-flow risk is newly reported, and the agent-side reasoning remains clean.",
+  "notes": "time_verified must be the exact string from get_current_time ('2025-11-14 03:40:00 EST'), which the log_verification docstring example also shows. A security-minded agent could invoke the doc's 'If you suspect the code has been exposed or misused, stop the process and escalate', or question whether an email change counts as 'account recovery'. The doc's exact-match rule points to accepting the code, so I count these as notes, not defects. If the agent leaks the on-file email and the customer adopts it, the agent might log a real-data verification. That would be agent error, and grading it as a fail is correct. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

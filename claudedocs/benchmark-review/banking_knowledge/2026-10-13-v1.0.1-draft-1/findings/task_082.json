@@ -1,0 +1,89 @@
+{
+  "task_id": "task_082",
+  "severity": "Blocker",
+  "headline": "The official answer cancels and replaces only one of the two cards with fraud, even though the bank's rule and the customer both call for replacing the second card too.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The Green Fee-Free card has a card_not_present_fraud dispute (mapped to close_and_reissue), and the customer asks for it to be reissued. Gold never closes it: it closes and reorders only the Blue card.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_not_present_fraud' → 'close_and_reissue'\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"when performing the actual card action after filing all disputes, use the MOST SEVERE action across all disputes\"",
+        "gold[15] dispute btxn_d74e8a798f95 card_id dbc_mc47a2b9e1_gff \"card_action\": \"close_and_reissue\"",
+        "instructions step 7: \"Green Fee-Free card: 'I'd like to keep using this card but maybe with a new number? Can you reissue it?'\"",
+        "gold[17] close_debit_card_4721 only dbc_mc47a2b9e1_blue; no close for dbc_mc47a2b9e1_gff anywhere in gold"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "A competent agent closes dbc_mc47a2b9e1_gff (fraud_suspected). Because GFF is ENTRY tier, it must wait 48 hours before reordering, but the close alone sets status CLOSED, closed_date and closure_reason, which the gold DB lacks. Correct work fails.",
+      "suggested_fix": "Add close_debit_card_4721(dbc_mc47a2b9e1_gff, 'fraud_suspected') to gold (with no reorder, because of the ENTRY 48-hour wait), or change the scenario so the GFF card is kept."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "The FitLife recurring_charge_after_cancellation dispute is marked provisional_credit_eligible=true. Doc 032 lists that category as 'NOT REQUIRED', and sibling tasks set false for the same NOT REQUIRED categories (goods_services_not_received, incorrect_amount, atm_deposit_not_credited).",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: 1. The dispute category is: ... 'recurring_charge_after_cancellation'\"",
+        "gold[13] btxn_d1f51e0a0db9 \"provisional_credit_eligible\": true",
+        "task_083 gold[7] goods_services_not_received → false; task_084 gold[13] incorrect_amount → false; task_085 gold[12] recurring_charge_after_cancellation → false"
+      ],
+      "gold_action_refs": [
+        13
+      ],
+      "why_it_matters": "An agent applying the doc as the other tasks do sets false, which changes provisional_credit_eligible, provisional_credit_issued and provisional_credit_amount in the stored dispute.",
+      "suggested_fix": "Set gold[13] provisional_credit_eligible to false, consistent with task_085."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Several stored dispute fields cannot be uniquely derived: pin_compromised for a PIN written on a sticky note (gold 'yes_shared', which also forces provisional=false), card_in_possession for FitLife on a card that is now lost (gold true), the Blue closure reason (gold 'lost', though it carries a fraud dispute), customer_max_liability_amount (gold $50 for every dispute), and the Blue replacement shipping speed (gold STANDARD; the customer never says).",
+      "evidence": [
+        "doc_..._031: \"'yes_shared': Customer shared PIN with someone; 'yes_observed': Customer believes PIN was observed/skimmed; ... 'unknown': Customer unsure\"",
+        "instructions: \"I had my PIN written on a sticky note in my wallet\"; gold[12] \"pin_compromised\": \"yes_shared\", \"provisional_credit_eligible\": false",
+        "doc_..._031: \"card_in_possession (boolean) - Ask: 'Do you still have your physical debit card in your possession?'\"; gold[13] FitLife \"card_in_possession\": true while the Blue card is lost",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount.\"",
+        "gold[13] FitLife discovery 11/11/2025 (Tue) and gold[14] ATM discovery 11/09/2025 (Sun), both reported 11/14/2025 (Fri), more than 2 business days later, yet customer_max_liability_amount=50",
+        "doc_..._029 MID TIER: \"Standard (delivery_fee: $0) or expedited shipping available (delivery_fee: $15)\"; gold[19] STANDARD; the instructions give no shipping preference"
+      ],
+      "gold_action_refs": [
+        12,
+        13,
+        14,
+        17,
+        19
+      ],
+      "why_it_matters": "Each field is persisted in debit_card_disputes, debit_cards or debit_card_orders. A reasonable alternative ('unknown'/'yes_observed', card_in_possession=false, 'fraud_suspected', liability tied to the discovery date, or EXPEDITED if the simulator chooses it) changes the hash.",
+      "suggested_fix": "Script the customer's answers for each field (or remove those fields from the stored record), define the liability anchor and cap explicitly, and give the customer a shipping preference."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The customer script gives the CryptoGems discovery date as 'today, January 9th', but today is 11/14/2025 and gold uses 11/14/2025.",
+      "evidence": [
+        "instructions step 8: \"I discovered this one today, January 9th.\"",
+        "gold[15] \"discovery_date\": \"11/14/2025\""
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "The simulator may say January 9th, and an agent could record 01/09 instead of today's date.",
+      "suggested_fix": "Change the line to 'today, November 14th'."
+    }
+  ],
+  "solution_check": "Independently: verify, read accounts, cards, transactions and dispute status (GFF is ENTRY, max 2 open; Blue is MID, max 3; none open), then file four disputes. Card actions: Blue gets close_and_reissue (the lost card), and GFF also gets close_and_reissue because CryptoGems is card_not_present_fraud and the customer asks for a reissue (no reorder, because of the ENTRY 48-hour wait). Gold omits the GFF close. Several per-dispute fields (PIN status, possession, liability, provisional for FitLife) are judgment calls the gold fixes without support.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker (GFF never closed or reissued) is unchanged in v1.0.1; #402 only added reads. The FitLife provisional value also persists, and the liability, PIN-status and shipping ambiguities are additional.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Gold replays without errors. dbc_mc47a2b9e1_blue has expiration_date 06/30/2025 (already expired) but status ACTIVE, an oddity that does not affect the graded state."
+}

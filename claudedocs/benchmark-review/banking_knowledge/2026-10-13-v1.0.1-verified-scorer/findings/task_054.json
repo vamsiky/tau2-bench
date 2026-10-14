@@ -1,0 +1,36 @@
+{
+  "task_id": "task_054",
+  "severity": "Minor",
+  "headline": "The task is solvable, but the customer is never told whether she wants expedited shipping for the replacement card, and the official answer records expedited shipping.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Gold action 14 orders the replacement card with expedited_shipping=true. The KB tells the agent to ask the customer whether they want expedited shipping and to strongly recommend it for fraud. The user script never says which speed Sofia wants, so the stored order row depends on how the simulator improvises.",
+      "evidence": [
+        "gold[14].arguments.arguments contains \"expedited_shipping\": true",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier; see Shipping selection).\"",
+        "doc_credit_cards_credit_card_replacements_001: \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\" and \"Premium-tier and above (Gold, Platinum, Diamond Elite): $0.00 (complimentary).\"",
+        "user_scenario step 9: \"Yes, please send me a new card with a new number... Just send it to my address on file.\" (no shipping speed)",
+        "tools.py order_replacement_credit_card_7291 stores \"expedited_shipping\": expedited_shipping in the credit_card_orders record (default False)",
+        "Replay: gold with expedited_shipping=false -> verified=(False, ['table credit_card_orders differs'])"
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "If the simulated customer answers 'standard is fine', or the agent asks and gets no clear yes, the agent orders standard shipping and the credit_card_orders table differs from gold even though the agent followed the KB. The KB strongly recommends expedited and it costs nothing on a Gold card, so most runs will match. That is why this is Minor.",
+      "suggested_fix": "Add one line to the user instructions: 'If offered expedited shipping, accept it.'"
+    }
+  ],
+  "solution_check": "I reconstructed the steps from the docs. Verify identity. The requested $4,000 is 80% of the $5,000 limit, over the 50% cap (logistics_006/007 Step 0), so the customer drops to $2,500. A filed dispute or a pending replacement blocks a CLI (logistics_007 Step 2), so the CLI goes first: submit 2500, check dispute history, pending replacement orders, CLI history and payment history (3 months for the tier), then approve a new limit of 7500. After that, order a fraud_suspected replacement to the address on file and file the dispute with card_action cancel_and_reissue, purchase 11/11/2025, noticed 11/12/2025, unauthorized_fraudulent_charge, full_refund, and provisional credit true (account older than 60 days, fraud reason, $487.50 between $25 and $10,000, no prior disputes). This matches the gold except for the shipping-speed point above. Replays: the gold succeeds with no tool errors. Filing the dispute before the CLI makes approve_credit_limit_increase_5847 return an error and fails the credit_card_accounts table, so the strict ordering is enforced by the tool. Skipping get_pending_replacement_orders_5765 fails the verified subset check. Extra reads pass.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The task file is unchanged; the expedited-shipping gap was simply not reported before.",
+  "notes": "The CLI docs (logistics_005/006) never map card names to tiers. Gold appears as Premium tier only in other docs (credits_015, replacements_001). Mid and premium tiers share the 50% cap and 3-month payment requirement, and the account (opened 03/20/2023) passes every age and cooldown threshold, so this does not change the answer. Replay showed a tool quirk: approve_credit_limit_increase_5847 derives its approval record id from the increase amount, which collides with the PENDING submit record (cli_4fe9de112e66), so add_to_db silently fails and only the PENDING row persists. The same happens for any agent, so it does not affect determinism. Ordering the replacement card before the CLI is not blocked by the tool: approve only checks order statuses PENDING/PROCESSING/SHIPPED, while new orders are 'ORDERED', and it reads 'account_status' while the replacement sets 'status'. That path still reaches the gold state, so the grader is lenient on that sub-ordering (it does not cause false failures). After the CLI submit, get_credit_limit_increase_history_4829 returns the request just submitted (PENDING, 11/14/2025). A careless agent could read that as an active cooldown, but logistics_005 says cooldown applies only after an approved request. Under the verified scorer, read arguments (e.g. months=3) do not matter because agent_discoverable_tools rows are keyed by tool name only. The four gold reads are in the upstream allowlist too."
+}

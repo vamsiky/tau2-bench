@@ -1,0 +1,37 @@
+{
+  "task_id": "task_033",
+  "severity": "Minor",
+  "headline": "The gold follows the 11/13 incident protocol (1822, then 0218, then transfer), but ACTION grading ignores the order and the request count.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "doc_011 requires the 1822 call on the first request, the 0218 call on the second, and the transfer on the third, \"in this exact order\". ACTION grading only checks that each gold call appears somewhere, so reversed order or an early transfer still passes.",
+      "evidence": [
+        "evaluator_action.py _check_actions: each gold action passes if ANY predicted tool call matches it (no count, no order); Action.compare_with_tool_call with compare_args=[] returns True for any call of that name",
+        "doc_credit_cards_credit_cards_(general)_011: \"You must unlock and call the following agent discoverable tools in this exact order before completing any transfer\"",
+        "gold[4]: transfer_to_human_agents compare_args=[]"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "Correct trajectories pass, and so do out-of-order ones, so the task does not measure the ordering it was built to test.",
+      "suggested_fix": "Add an order- and count-aware check (an env assertion on logged agent_discoverable_tools plus transfer position) or use an ordered ACTION comparison."
+    }
+  ],
+  "solution_check": "All three symptoms in doc_011 are present (statement paid, funds left checking, balance not updated), and 11/14 falls inside the window that ends 11/15. The three transfer requests map to 1822, then 0218, then transfer_to_human_agents, which matches the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The gold is correct; the new issue is ACTION grading's insensitivity to order and count.",
+  "notes": "The 1822 tool's output (\"Try to help them by asking them about basic scenarios\") conflicts with doc_011's \"Do not troubleshoot beyond confirming the above symptoms\". This only affects conversational behavior, not grading."
+}

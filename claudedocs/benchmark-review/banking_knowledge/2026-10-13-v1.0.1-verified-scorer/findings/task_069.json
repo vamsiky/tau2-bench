@@ -1,0 +1,54 @@
+{
+  "task_id": "task_069",
+  "severity": "Blocker",
+  "headline": "The official answer assumes the Gold savings account has no ATM-fee rebates, but the documents say it does, so the truly best combination (about 5.7% instead of 3.5%) is graded as wrong.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The gold opens Silver Plus Account savings (3.0% tier 1). The task notes justify this by saying 'Gold Account has NO ATM rebates', but the Gold Account docs state a $30/month ATM fee rebate. With the customer's $10,000, Gold also meets its $10,000 minimum. Gold + Blue checking + Silver Rewards gives 5.5% + 0.2% = 5.70%, versus the gold's 3.0% + 0.35% + 0.15% = 3.50%.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_003: \"ATM fee rebate cap per month: $30\"",
+        "doc_savings_accounts_gold_account_013: \"You continue to receive up to $30 in ATM fee rebates each month.\"",
+        "doc_savings_accounts_gold_account_002: \"Minimum balance to maintain the account: $10,000\"",
+        "doc_savings_accounts_gold_account_014: \"| Silver Rewards Card | +0.2% |\"",
+        "task_069 description.notes: \"Gold Account has NO ATM rebates.\"",
+        "gold[2].arguments.arguments account_class = \"Silver Plus Account\"",
+        "doc_savings_accounts_silver_plus_account_001: \"Balances at or above $15,000 qualify for Tier 2 interest; lower balances earn the Tier 1 rate.\"",
+        "Replay: gold with savings account_class 'Gold Account' -> ['table accounts differs']"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that checks the Gold Account's ATM rebate feature, as the customer prompts it to ('Wait, does the Gold Account have ATM fee rebates?'), finds that it does and correctly recommends Gold. That opens a different savings account and fails the accounts table. The gold is reachable only by ignoring two Gold Account documents.",
+      "suggested_fix": "Either remove the ATM rebate from the Gold Account docs (gold_account_003, gold_account_013) and fix the Silver Account issue below, or change the gold to Gold Account savings with Blue checking."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "Even with Gold excluded, the Silver Account beats Silver Plus. Silver rebates ATM fees ($15/month), and at exactly $10,000 it earns its 4.0% upper tier. Silver 4.0% + Silver Rewards +0.1% (+0.025% relationship bonus) = 4.10-4.125%, above the gold's 3.50%. The notes list Silver as blocked for lacking ATM rebates.",
+      "evidence": [
+        "doc_savings_accounts_silver_account_005: \"Yes. You can receive ATM fee rebates up to 15 each month.\"",
+        "doc_savings_accounts_silver_account_003: \"If it is at or above that amount, the applicable APY for that day is 4.0%.\" (threshold $10,000)",
+        "doc_savings_accounts_silver_account_006: \"Silver Rewards Card: +0.1%\"",
+        "task_069 description.notes: \"Needs ATM fee rebates on savings account - blocks Gold Account, Silver Account, Green Account (savings), Bronze Account\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "A second documented option beats the gold, so the gold is not the APY-maximizing answer under any reading of the ATM-rebate requirement.",
+      "suggested_fix": "Remove Silver's ATM rebate from the docs or raise its tier threshold above $10,000, along with the Gold fix above."
+    }
+  ],
+  "solution_check": "Card: only the Silver Rewards Card documents travel insurance. Checking with overdraft protection: only Blue (opt-in, $12.50 per transfer, blue_account_003) among new adult accounts (Green has none; Purple, Evergreen and Bluest docs are silent; Dark Green is age 17-26). Savings with ATM rebates and a minimum at or below $10,000: Gold ($30), Silver ($15), Silver Plus ($25). Blue pairs only with Silver Plus/Platinum (doc_..._(general)_012). APY: Gold 5.5+0.2 = 5.70%, Silver 4.0+0.1 = 4.10%, Silver Plus 3.0+0.35+0.15 = 3.50%. The reconstructed answer (Gold Account savings + Blue checking + Silver Rewards) differs from the gold (Silver Plus).",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean; it accepted the notes' claim that Gold and Silver lack ATM rebates without checking gold_account_003/013 and silver_account_005.",
+  "notes": "The order dependency (open savings while Light Blue still meets the 14-day tenure, then close it) is documented in doc_..._(general)_002. The defect does not depend on the verified scorer, since the accounts table is compared exactly under both scorers. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "task_052",
+  "severity": "Minor",
+  "headline": "Sound adversarial cooldown denial: the entry-tier card had an increase 60 days ago against a 120-day cooldown, with only a minor wording conflict between two CLI documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "logistics_005 says to confirm eligibility before submitting, and logistics_007 says to submit first. Gold requires both the PENDING submit record and the DENIED record.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_005: \"Before submitting a CLI request, confirm all of the following for your card tier\"",
+        "doc_credit_cards_credit_card_account_logistics_007: \"Eligibility checks are internal and not exposed to customers, so the submission must happen first.\"",
+        "gold[2] submit requested_increase_amount 400; gold[12] deny cooldown_period_active"
+      ],
+      "gold_action_refs": [
+        2,
+        12
+      ],
+      "why_it_matters": "The internal doc is explicit, so this is resolvable. An agent that checks the cooldown first and refuses to submit would miss both gold writes.",
+      "suggested_fix": "Add a pointer in logistics_005 to the internal workflow in logistics_007."
+    }
+  ],
+  "solution_check": "Bronze is entry-tier (general_015), and 10% of $4,000 = $400 is under the 25% maximum. Submit 400. The CLI history shows an approval submitted 2025-09-15, 60 days before 11/14/2025 and under the 120-day entry-tier cooldown (logistics_005), so deny with cooldown_period_active. Other criteria pass: utilization 37.5%, 8 on-time payments, account opened 05/10/2023. This matches gold, and the gold replay runs without errors.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. Required doc logistics_005 changed only by removing '$' corruption; the cross-doc ordering conflict was not reported before.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. The initial_state payment_history rows use ISO dates ('2025-10-15') while the seed rows use MM/DD/YYYY, so get_payment_history_6183's string sort mixes formats. All rows are ON_TIME, so the decision is unaffected."
+}

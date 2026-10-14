@@ -1,0 +1,36 @@
+{
+  "task_id": "task_095",
+  "severity": "Minor",
+  "headline": "The $98 correction (6.85% vs 5.625%) is reachable; the same small-bonus labeling problem as task_094 is resolved by a worked example in the stacking-policy document.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Gold Rewards Card's +0.025% is described both as a credit-card APY bonus (doc_014, doc_045) and as a separate 'relationship bonus APY on top of the base rate' (doc_013); doc_045 also says card bonuses stack with relationship bonuses. doc_013's own example total is corrupted (5.5% + 0.025% shown as 6.0%).",
+      "why_it_matters": "An agent that treats the 0.025% as a separate relationship bonus adds it on top. doc_045's worked example uses exactly this customer's card set (Gold Rewards, Platinum, EcoCard) and grants only EcoCard's +0.6%, which resolves it toward the gold, so a careful agent reaches the gold.",
+      "suggested_fix": "Rename doc_013's 0.025% as the Gold Rewards Card credit-card bonus (subject to the highest-only rule) and fix the example total to 5.525%.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"you receive a 0.025% relationship bonus APY on top of the base 5.5% rate\" and \"Total APY with the bonus: 6.0%\"",
+        "doc_savings_accounts_gold_account_014: \"| Gold Rewards Card | +0.025% |\"",
+        "doc_bank_accounts_bank_accounts_(general)_045 example: Gold Rewards +0.025%, Platinum +0.15%, EcoCard +0.6% -> \"The customer receives only the EcoCard bonus of +0.6%\"",
+        "initial_state credit_card_accounts: Platinum Rewards, Gold Rewards, EcoCard (same set as the doc_045 example)",
+        "gold[8].arguments.expected_apy = 6.85, actual_apy = 5.625"
+      ],
+      "gold_action_refs": [
+        6,
+        8
+      ]
+    }
+  ],
+  "solution_check": "Actual = $450 x 12 / $96,000 = 5.625%, which decomposes as 5.5 + 0.1 (Purple -> Gold, purple_account_001) + 0.025 (Gold Rewards Card). Expected = 5.5 + 0.75 (Green, highest checking boost per doc_046) + 0.6 (EcoCard, highest card bonus per doc_045) = 6.85%. 96,000 x 1.225% / 12 = $98.00. Matches the gold.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Major for the same 0.025% ambiguity; I downgrade to Minor (consistent with task_094) because doc_045's worked example uses this exact card set and explicitly grants only the EcoCard bonus.",
+  "notes": "If the 0.025% were stacked separately: 6.875% expected and a $100.00 credit. The Silver-vs-Gold Rewards Card mix-up in the user script is resolved by the DB."
+}

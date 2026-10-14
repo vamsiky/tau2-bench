@@ -1,0 +1,63 @@
+{
+  "task_id": "task_066",
+  "severity": "Major",
+  "headline": "The best account combination is clear from the documents, but the gold's account closure stores a hidden default reason that a careful agent can easily change, and the savings account name has two plausible spellings.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The gold closes the Light Blue account with only account_id, so the persisted closure_reason is the hidden default \"Customer requested closure\". The agent sees 'reason' only as an optional string with no default shown, and no document says what reason text to use or to omit it.",
+      "evidence": [
+        "gold[8].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+        "tools.py format_discoverable_tool_for_agent prints only \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on reason)"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "accounts[chk_rp65a7b3c4].closure_reason is part of the hashed DB. An agent that passes any reason text (e.g. \"Customer upgrading to a new checking account\" or even \"Customer requested account closure\") produces a different DB hash and scores 0 despite doing the right thing.",
+      "suggested_fix": "Stop persisting the free-text reason in the hashed record (or normalize it), or document in doc_005 that reason must be omitted / set to exactly \"Customer requested closure\"."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The gold opens the savings account as account_class \"Green Account\", while every knowledge-base document names the product \"Green Account (savings)\". doc_002's rule (full name ending with 'Account') resolves it, but doc_001's own example uses the parenthesised form for a checking account.",
+      "evidence": [
+        "gold[4].arguments.arguments: \"account_class\": \"Green Account\" (account_type savings)",
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"3. Evergreen Account (checking) + Green Account (savings)\"",
+        "tools.py open_bank_account_4821: account_id = _deterministic_id(f\"account:{user_id}:{account_type}:{account_class}\") (no validation of account_class)"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An agent that copies the product title \"Green Account (savings)\" (as doc_001's example pattern suggests) creates a different account_id and account_class, failing the DB hash. The savings-opening procedure doc_002 does state the 'ending with Account' rule, so a careful agent can resolve it.",
+      "suggested_fix": "Make open_bank_account_4821 validate/normalize account_class against a canonical list, and fix doc_001's example to 'Green Account'."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Required credit-card docs write minimum credit scores as dollar amounts. The values are still readable and no credit score is needed to solve the task.",
+      "evidence": [
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Cosmetic corruption only; the customer's credit score is never at issue, so the correct final state is unchanged.",
+      "suggested_fix": "Remove the '$' from credit-score fields in the credit-card documents."
+    }
+  ],
+  "solution_check": "With $6,000 the savings options at or below that minimum are Bronze (2.0%), Silver tier 1 (2.5%), Silver Plus tier 1 (3.0%) and Green Account savings (4.0%, $500 minimum); Gold ($10k), Gold Plus ($25k), Platinum ($50k), Platinum Plus ($100k), Diamond Elite are excluded by the customer. Green savings + Evergreen checking (+0.55%, evergreen_001) + Silver Rewards Card (+0.45%, $0 fee, green_(savings)_003) = 5.00% = $300/yr. Alternatives are lower net of annual fees: Green+Evergreen+Diamond Elite 5.15% (invitation-only, $495 fee), Green+Evergreen+EcoCard 5.05% ($50 fee, net $253), Silver+Bluest+EcoCard 2.5+0.45+2.2 = 5.15% ($50 fee, net $259), Bronze+Dark Green (age limit 26)+Platinum card. The order (open savings while Light Blue is still open, then close it) follows from doc_002's 14-day tenure rule and is enforced by the tool. The reconstruction matches the gold's products, order and reads.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; under exact DB-hash grading the hidden default closure reason is a new Major issue, and the product optimisation itself still holds.",
+  "notes": "Grading-model facts confirmed against the snapshot: _derive_read_log_allowlist in runner/build.py; json.loads(arguments, parse_int=float) in call_discoverable_agent_tool; get_now() = 2025-11-14 03:40:00; get_dict_hash uses json.dumps(sort_keys=True), so the order of opening savings vs checking does not affect the hash. The gold read get_all_user_accounts_by_user_id_3847 (gold[2]) is allowlisted and so must be made; doc_009 and doc_002 (14-day tenure check) make it a natural step. Seed: accounts[chk_rp65a7b3c4] = Light Blue, opened 11/01/2024, balance 0.00, no transactions, so no early-closure fee. log_verification arguments match users[rp65a7b3c4]. Checking monthly maintenance fees (Evergreen $6/mo unless $500 balance) are ignored: the customer frames the goal as savings APY. doc_savings_accounts_green_account_(savings)_009 has an arithmetic error (\"4.0% + 0.5% = 4.75% APY\"); it is not a required document and does not change the optimum. doc_savings_accounts_silver_account_002 contains an unfilled template token \"[[linked_checking_apy_bonus]]\" (not load-bearing here). v1.0.1 change to doc_005 only removed a stray '$' from day counts in other tiers."
+}

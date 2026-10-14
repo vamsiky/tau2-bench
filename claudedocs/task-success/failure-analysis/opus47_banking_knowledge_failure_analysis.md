@@ -18,7 +18,7 @@ The benchmark is **not** retrieval-bound and **not** harness-bound. Failures are
 
 > **Per-failure evidence:** every one of the 290 failed trials is itemized with exact gold-vs-actual values in
 > [`opus47_banking_failure_evidence_table.md`](opus47_banking_failure_evidence_table.md). The raw trajectories are
-> split into 10 browsable files under [`data/trajectory_data/opus47_banking_split/`](../data/trajectory_data/opus47_banking_split/).
+> split into 10 browsable files under [`data/trajectory_data/opus47_banking_split/`](../../../data/trajectory_data/opus47_banking_split).
 > The evidence table is an independent second labeling pass, so its category counts differ slightly from the
 > first-pass figures below (notably it reclassifies several borderline GRADER cases as INCOMPLETE/POLICY on closer
 > inspection: POLICY 121, INCOMPLETE 59, OVER_ACTION 40, ARG_MECHANICAL 28, GRADER 22, RETRIEVAL 14, USER_SIM 4, VERIFICATION 2).

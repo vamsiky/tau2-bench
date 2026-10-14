@@ -1,0 +1,76 @@
+{
+  "task_id": "task_041",
+  "severity": "Blocker",
+  "headline": "The customer never says what refund she wants on each of 16 disputes, yet the official answer fixes specific values (including a $69.99 partial refund), and which two disputes get provisional credit depends on an unstated counting rule and filing order.",
+  "ratings": {
+    "instructions_sufficient": "Insufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Blocker",
+      "summary": "resolution_requested (and partial_refund_amount) is a persisted field the KB says to ask the customer for, but the user instructions give no resolution for any of the 16 disputes. Gold fixes XFINITY to partial_refund 69.99 from a vague 'around $120', and AT&T to full_refund even though the customer was 'promised a partial refund'.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_014: \"13. resolution_requested (string) - Ask user what resolution they want.\"",
+        "instructions: \"XFINITY $189.99 on 10/28/2025 - INCORRECT AMOUNT. Your usual bill is around $120.\"",
+        "gold[19].arguments.arguments: \"resolution_requested\": \"partial_refund\", \"partial_refund_amount\": 69.99 (189.99 - 120.00)",
+        "instructions: \"AT&T Business $312.50 ... were promised a partial refund weeks ago\" vs gold[24] \"resolution_requested\": \"full_refund\"",
+        "instructions: \"Tesla Supercharger $67.45 ... You were overcharged\" vs gold[22] \"full_refund\"",
+        "tools.py file_credit_card_transaction_dispute_4829 stores resolution_requested and partial_refund_amount in transaction_disputes"
+      ],
+      "gold_action_refs": [
+        19,
+        22,
+        24
+      ],
+      "why_it_matters": "The user simulator has to make up each resolution. If it asks for 'about $70' back on XFINITY, or for the partial refund AT&T promised, the stored dispute record differs from gold and the DB hash fails. Whether the agent matches comes down to how the simulator happens to improvise.",
+      "suggested_fix": "Add the resolution for each dispute to the user instructions (e.g. 'XFINITY: partial refund of $69.99; all others: full refund'), or change gold[24] to match the AT&T partial-refund story."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "doc_015 criterion 4 does not say whether disputes filed earlier in the same session count toward the 'more than 2 disputes in 12 months' limit. Under the running-count reading only the first two new filings qualify, and which two depends on filing order. The customer states her priority (Staples, Coinbase) only if the agent raises provisional credit.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "initial_state transaction_disputes.dsp_dfab0685d198.submitted_at = \"09/20/2025\" (1 prior dispute)",
+        "gold[9] Staples and gold[10] Coinbase eligible_for_provisional_credit=true; gold[11]-gold[18] (Delta, Office Depot, Best Buy, Apple, Patagonia, REI, Amazon, Whole Foods: reason/amount/age/merchant-eligible) =false",
+        "instructions: \"If the agent mentions provisional credit or asks about it, say: ... Please prioritize those if there's any limit.\"",
+        "description.notes cites \"provisional_credit_max_disputes_in_period = 3\", a parameter that appears in no document"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "why_it_matters": "An agent that reads the dispute history once at the start (1 prior dispute) and marks all 10 reason-eligible disputes true gets a different DB. Replaying the gold with those 8 flags set to true gives a different hash. So does a running-count agent that files in card order (Delta and Apple first).",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the current interaction count toward criterion 4 and that the customer chooses which disputes to file first when the limit binds, or have the customer state her priority in the opening message."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_014 lists 'reversal_of_charge' as a valid resolution_requested value, but the tool rejects it.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_014: \"- 'reversal_of_charge': Charge reversal/chargeback\"",
+        "tools.py file_credit_card_transaction_dispute_4829: valid_resolutions = [\"full_refund\", \"partial_refund\"]"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "An agent that picks reversal_of_charge gets an error and has to retry. The failed call adds no record beyond the tool-name log row that the gold already creates, so the final state is unaffected.",
+      "suggested_fix": "Remove 'reversal_of_charge' from doc_014 or accept it in the tool."
+    }
+  ],
+  "solution_check": "Reconstructed: verify, unlock and read dispute history (1 prior APPROVED dispute), give get_card_last_4_digits and have the user call it for all four accounts (last-4 values 0573/3081/3604/0652 match sha256-derived values), then file 16 disputes. Reasons, merchant contact, dates and last-4 all match gold. Provisional credit matches gold only under the running-count reading with Staples and Coinbase filed first, and the resolution fields cannot be derived from the instructions.",
+  "prior_status": "changed",
+  "prior_note": "The prior review called this a Blocker because of an 'unwritten cap'. The task and docs are unchanged, but under a literal running-count reading doc_015 criterion 4 does yield 2 eligible filings, so that issue is downgraded to Major ambiguity. A separate Blocker remains: the resolution_requested values are underspecified.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. Gold replay on the snapshot runs without errors. Computed eligibility: all 4 accounts opened in 2024 (>60 days); amounts $22.99-$1,299.99 are within the tier maxima; Netflix $22.99 < $25 is ineligible regardless. The Amazon (10/05) and Whole Foods (10/02) GNR purchases are >30 days old, so they are reason-eligible. Delta ($487.50 fraud) is false in gold only because of the count limit."
+}

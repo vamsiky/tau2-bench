@@ -1,0 +1,135 @@
+{
+  "task_id": "task_082",
+  "severity": "Blocker",
+  "headline": "Fraud on the Green Fee-Free card maps to close-and-reissue and the customer asks for a new number, but the gold never replaces that card; several other stored dispute fields also have more than one defensible value.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "The CryptoGems dispute on the Green Fee-Free card is card_not_present_fraud with card_action close_and_reissue, doc_031 says to perform the most severe action per card after filing, and the customer asks to reissue that card. The gold closes and reorders only the Blue card.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_not_present_fraud' \u2192 'close_and_reissue'\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"when performing the actual card action after filing all disputes, use the MOST SEVERE action across all disputes\"",
+        "user instructions step 7: \"Green Fee-Free card: 'I'd like to keep using this card but maybe with a new number? Can you reissue it?'\"",
+        "gold[15] btxn_d74e8a798f95 card_id dbc_mc47a2b9e1_gff \"card_action\": \"close_and_reissue\"",
+        "gold[17] close_debit_card_4721 only for dbc_mc47a2b9e1_blue; gold[19] order_debit_card_5739 only for chk_mc47a2b9e1_blue",
+        "Replay: gold + close dbc_mc47a2b9e1_gff (fraud_suspected) + order chk_mc47a2b9e1_gff STANDARD/CLASSIC -> debit_cards and debit_card_orders differ (VERIFIED MATCH False)"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "A competent agent that does what the documents and the customer ask closes and reissues the Green Fee-Free card and is graded 0.",
+      "suggested_fix": "Add close_debit_card_4721(dbc_mc47a2b9e1_gff) and order_debit_card_5739(chk_mc47a2b9e1_gff, ...) to the gold, with the shipping choice scripted for the customer."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Provisional credit for the FitLife recurring-charge dispute is set true, though recurring_charge_after_cancellation is listed as NOT REQUIRED (discretionary). Every other discretionary-category dispute in tasks 083-086 is gold false.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'unauthorized_transaction' 'card_present_fraud' 'card_not_present_fraud' 'atm_cash_discrepancy' 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: 1. The dispute category is: 'goods_services_not_received' 'recurring_charge_after_cancellation' 'atm_deposit_not_credited' 'incorrect_amount' 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "gold[13] btxn_d1f51e0a0db9 recurring_charge_after_cancellation \"provisional_credit_eligible\": true",
+        "task_083 gold goods_services_not_received false; task_084 incorrect_amount false; task_085 recurring_charge_after_cancellation false; task_086 goods_services_not_received / incorrect_amount / atm_deposit_not_credited false"
+      ],
+      "gold_action_refs": [
+        13
+      ],
+      "why_it_matters": "The flag is stored (and drives provisional_credit_issued/amount), so an agent applying the REQUIRED list, or the convention used everywhere else, stores false and fails.",
+      "suggested_fix": "Set FitLife provisional_credit_eligible to false, or state in doc_032 when discretionary credit is granted."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "For the ElectroniX dispute the customer wrote the PIN on a sticky note in a lost wallet. The gold records pin_compromised \"yes_shared\" (\"Customer shared PIN with someone\"), and that choice is what makes provisional credit false. \"unknown\" or \"yes_observed\" are at least as defensible, and either makes the dispute REQUIRED-eligible. transaction_type \"pin_purchase\" is likewise inferred from \"probably has the PIN\".",
+      "evidence": [
+        "tools.py pin_compromised: \"'yes_shared', 'yes_observed', 'no', 'unknown'\"; doc_031: \"'yes_shared': Customer shared PIN with someone; 'yes_observed': Customer believes PIN was observed/skimmed\"",
+        "user instructions: \"I had my PIN written on a sticky note in my wallet. So whoever has the card probably has the PIN too.\"",
+        "gold[12] \"pin_compromised\": \"yes_shared\", \"provisional_credit_eligible\": false, \"transaction_type\": \"pin_purchase\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: 1. The dispute category is: 'goods_services_not_received' 'recurring_charge_after_cancellation' 'atm_deposit_not_credited' 'incorrect_amount' 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\""
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "pin_compromised, pin_shared_voluntarily, provisional_credit_eligible/issued/amount are all stored; a different PIN classification changes all of them.",
+      "suggested_fix": "Script the customer to say they gave the PIN to someone, or change the gold to \"unknown\" with provisional credit true; add a doc rule for written-down PINs."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "card_in_possession for the FitLife dispute is true in the gold because the customer still had the card when charged, but the field asks whether the customer still has the card now, and the Blue card is lost.",
+      "evidence": [
+        "tools.py: \"card_in_possession (boolean): Whether the customer still has their physical debit card in their possession\"",
+        "doc_031: \"Ask: 'Do you still have your physical debit card in your possession?'\"",
+        "user instructions: \"No, I don't have the card anymore - it was in my wallet that I lost.\"",
+        "gold[13] FitLife \"card_in_possession\": true; gold[12] ElectroniX (same card) \"card_in_possession\": false"
+      ],
+      "gold_action_refs": [
+        13
+      ],
+      "why_it_matters": "An agent that answers the documented question for the same card gives false on both Blue disputes and fails.",
+      "suggested_fix": "Set FitLife card_in_possession to false, or redefine the field as possession at the time of the transaction."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "customer_max_liability_amount is 50 for all four disputes. doc_031 ties the tier to when the customer noticed and reported; FitLife was noticed 11/11 and the ATM shortfall 11/09, both more than 2 business days before today (11/14), which gives the $500 tier (89.99 and 100 after capping at the disputed amount). The statement date the rule names is never available.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount.\"",
+        "gold[13] FitLife discovery_date 11/11/2025, liability 50; gold[14] ATM discovery_date 11/09/2025, liability 50; clock get_now() = 2025-11-14"
+      ],
+      "gold_action_refs": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "why_it_matters": "The value is stored in each dispute row. Agents applying discovery-to-report timing, or capping at the disputed amount, write different numbers.",
+      "suggested_fix": "Give a single formula in doc_031 (timing basis, and whether to cap at the disputed amount) and include the statement date in tool output if the statement is the basis."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The Blue card was lost and then used fraudulently. Both \"lost\" and \"fraud_suspected\" are documented close reasons. The verified scorer strips closure_reason, but order_debit_card_5739 copies it into the new card's issue_reason (lost vs fraud), so the choice still decides the result.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_025: reasons \"Lost card ... Suspected fraud/unauthorized transactions\"",
+        "tools.py order_debit_card_5739: issue_reason = closure_reason if it is lost/stolen, \"fraud\" if fraud_suspected",
+        "Replay: gold with close reason fraud_suspected -> debit_cards dbc_6845d0896ace issue_reason \"fraud\" vs gold \"lost\" (VERIFIED MATCH False)"
+      ],
+      "gold_action_refs": [
+        17,
+        19
+      ],
+      "why_it_matters": "This dependency survives the verified scorer's closure_reason relaxation, so a defensible fraud_suspected close fails.",
+      "suggested_fix": "Script the reason, or exclude issue_reason derived from closure_reason when closure_reason itself is excluded."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The customer script gives no Blue replacement shipping preference (MID tier allows STANDARD $0 or EXPEDITED $15), and gives the CryptoGems discovery date as \"January 9th\" while saying \"today\".",
+      "evidence": [
+        "user instructions step 8: \"CryptoGems Store (online fraud): 'I discovered this one today, January 9th.'\"",
+        "gold[15] \"discovery_date\": \"11/14/2025\"; gold[19] delivery_option STANDARD, delivery_fee 0"
+      ],
+      "gold_action_refs": [
+        15,
+        19
+      ],
+      "why_it_matters": "The simulated customer may pick expedited or give a January date; both change stored fields.",
+      "suggested_fix": "Fix the date to November 14th and script \"standard shipping is fine\"."
+    }
+  ],
+  "solution_check": "Reconstructed four disputes: ElectroniX card_present_fraud (card lost), FitLife recurring_charge_after_cancellation, Rho-Bank ATM atm_cash_discrepancy $100, CryptoGems card_not_present_fraud; then the most severe action per card, which is close_and_reissue for both cards. The gold matches on categories and amounts but replaces only the Blue card, and several stored booleans and liability values depend on readings listed above. Gold replays without errors.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker (Green Fee-Free card never closed and reissued) is unchanged in v1.0.1, which only added reads; this review adds the PIN, possession, liability and close-reason ambiguities.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. Dispute limits are within tier (Blue MID 2 of 3, Green Fee-Free ENTRY 2 of 2). The Blue card's seed expiration_date is 06/30/2025 although status is ACTIVE; it does not affect grading."
+}

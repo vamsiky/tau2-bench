@@ -1,0 +1,34 @@
+{
+  "task_id": "task_023",
+  "severity": "Minor",
+  "headline": "The customer says the card was opened in November 2024 but the bank record says November 2022; the record-based answer (qualifies, apply for Diamond) matches the gold, though believing the customer could flip it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The persona says the Platinum card was opened in November 2024 and that she has been a customer 'for about a year', but credit_card_accounts records 11/10/2022. The transactions start exactly on 11/10/2024. Taken at face value, the persona's date puts the account in the Platinum first-year fee-waiver promo window, which would void the rebate for that year.",
+      "evidence": [
+        "db.json credit_card_accounts[cc_224959b99e_plat].date_of_account_open = \"11/10/2022\"",
+        "task_023 instructions: \"You've been using the card for a full year now (you opened it in November 2024)\"",
+        "doc_credit_cards_platinum_rewards_card_009: \"Start date: 2024-06-01\" / \"End date: 2024-12-31\"",
+        "doc_credit_cards_platinum_rewards_card_010: \"If your first cardmember year’s annual fee is waived under a promotional offer, the rebate does not apply to that year.\""
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "Using the system-of-record date (2022), the agent finds no waiver and evaluates 11/10/2024-11/09/2025: all 12 anniversary windows exceed $7,500, so the customer qualifies and applies for the Diamond Elite Card (gold). An agent that accepts the customer's 'November 2024' could conclude the first year was fee-waived and the rebate does not apply. The customer would then apply for the Silver Rewards Card, and replay confirms that fails credit_card_applications. A competent agent should prefer the DB, so the correct state is unchanged.",
+      "suggested_fix": "Align the persona with the DB (say the card was opened in November 2022), or move the DB open date to 11/10/2024 and confirm the promo-waiver rule against the intended answer."
+    }
+  ],
+  "solution_check": "Monthly windows start on the 10th per platinum_rewards_card_010 (monthly anniversary, posting date). Summed Platinum transactions for 11/10/2024-11/09/2025 per window: 7594.18, 7635.92, 7721.49, 7763.29, 7845.26, 7873.15, 7713.77, 7598.04, 7601.91, 7617.16, 7917.61, 7672.23. All are at or above $7,500 (platinum_007), so the customer qualifies and applies for the Diamond Elite Card with income 95000 and no subscription, matching the gold. With calendar months instead, five windows fall below $7,500, so the documented anniversary rule is load-bearing.",
+  "prior_status": "persists",
+  "prior_note": "Same Minor date mismatch as the prior review. I add that the persona's date interacts with the platinum_009 first-year waiver, so the mismatch could change the answer if the agent believes the customer.",
+  "notes": "apply_for_credit_card casts annual_income to float, so 95000 vs 95000.0 does not matter (replay confirmed). The v1.0.1 changes to platinum_rewards_card_002/003/007 (title '4%' -> '10%', '$135 days' -> '135 days') do not affect this task. No transactions are disputed or returned, so no adjustments are needed."
+}

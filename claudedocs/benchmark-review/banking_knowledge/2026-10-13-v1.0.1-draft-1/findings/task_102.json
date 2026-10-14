@@ -1,0 +1,68 @@
+{
+  "task_id": "task_102",
+  "severity": "Blocker",
+  "headline": "The graded judgment needs a fact the agent cannot obtain (Ember's real founding year), and 'maximize the bonus' could mean the customer's own bonus, which points to a different account.",
+  "ratings": {
+    "instructions_sufficient": "Insufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Blocker",
+      "summary": "The NL assertion requires recognizing that Ember Analytics exceeds Sky Blue's 4-year limit, but the customer says Ember is about 3 years old (incorporated late 2022), and no tool, DB record, or document holds Ember's real formation date. The script only reveals '2020' after the agent 'corrects' her.",
+      "evidence": [
+        "evaluation_criteria.nl_assertions: \"The agent should recommend TechFlow Labs (not Ember Analytics) for the Sky Blue Account referral, recognizing that Ember Analytics exceeds the 4-year company age limit\"",
+        "reward_basis = [\"DB\", \"NL_ASSERTION\"]",
+        "instructions step 7: \"They incorporated in late 2022, so that's about 3 years now.\"",
+        "instructions step 11 (only if agent says 5 years): \"oh, they incorporated in 2020\"",
+        "grep of db.json and documents/ for 'Ember Analytics'/'TechFlow' -> no matches"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "With the stated facts, Ember (3 yrs, $18k) and TechFlow (2 yrs, $12k) both qualify for Sky Blue at the same $400 combined bonus, so the TechFlow-for-Sky-Blue choice the assertion demands is a tie-break, and the reasoning it demands is impossible. The NL judge can fail correct work.",
+      "suggested_fix": "Have the customer state Ember's real formation year up front (as in task_101), or drop the age-recognition clause from the NL assertion."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "With one slot, the customer asks to 'maximize the bonus' without saying whose. Maximizing her own referrer bonus picks Ember -> Lime Green ($200), while maximizing the combined bonus picks Sky Blue ($400).",
+      "evidence": [
+        "instructions step 12: \"which one should I prioritize? I want to maximize the bonus.\"",
+        "doc_business_checking_accounts_lime_green_003: \"Your bonus: $200 ... Their bonus: $150 ... deposit $15,000\" (Ember $18,000; 2/12 used)",
+        "doc_business_checking_accounts_sky_blue_001: \"Your bonus: $150 ... Their bonus: $250\"",
+        "doc_business_checking_accounts_hunter_green_001: \"Referrer reward: $175\"",
+        "gold[2] submit_referral account_type \"Sky Blue Account\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent reading 'the bonus' as the customer's own recommends Lime Green; the user submits it and the referral record differs from the gold.",
+      "suggested_fix": "Change the line to 'maximize the combined bonus' (as task_101 does)."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_047/048 state the rolling cap in terms of referral bonuses received ('at most 2 referral bonuses in any rolling 9-day window'), and the FAQ answers 'How many people can I refer at once?' with 'You can have multiple referrals in progress'. The gold instead treats the cap as a limit on referrals submitted today.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window.\"",
+        "doc_bank_accounts_bank_accounts_(general)_048: \"You can have multiple referrals in progress\"",
+        "referrals: ref_recent_purple_001 COMPLETE 11/10/2025 (1 bonus in window)",
+        "gold submits exactly one referral"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Under the bonus-received reading, more than one referral could be submitted now (bonuses arrive when deposits qualify later), so an agent may recommend several and the user submits them all (script step 13), adding records beyond the gold.",
+      "suggested_fix": "Same as task_101: say explicitly whether submissions themselves count toward the 9-day cap."
+    }
+  ],
+  "solution_check": "get_referrals_by_user shows 11/10 Purple COMPLETE (1 of 2 slots used), Gold Years 6/6, Sky Blue 7/8, Lime Green 2/12. Under the submission-cap reading, one referral now. Combined-bonus ranking: Sky Blue $400 (TechFlow, or Ember at her stated 3 yrs) > Lime Green $350 (Ember) > Hunter Green $300. Referrer-bonus ranking: Lime Green $200 > Hunter Green $175 > Sky Blue $150. The gold's Sky Blue is reachable under the combined reading, but the NL assertion's Ember-age clause cannot be satisfied from the available materials.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Major for the referrer-vs-combined ambiguity (Lime Green $200); that persists, and I add a Blocker: the NL-graded Ember-age reasoning depends on information the agent cannot obtain.",
+  "notes": "This is the only task in this batch whose reward_basis includes NL_ASSERTION (LLM-judged via NLEvaluator in evaluator.py), which the grading model in the prompt does not mention. The DB part is identical for Ember->Sky Blue and TechFlow->Sky Blue because submit_referral records only (user_id, account_type)."
+}

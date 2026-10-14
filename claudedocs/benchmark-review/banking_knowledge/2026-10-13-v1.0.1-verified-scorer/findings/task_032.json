@@ -1,0 +1,36 @@
+{
+  "task_id": "task_032",
+  "severity": "Minor",
+  "headline": "The transfer protocol is clearly documented, but the grader only checks that the special tool was used at least once, not that it was used for the first three requests before the real transfer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "ACTION grading is presence-only. The three repeated initial_transfer_to_human_agent_0218 calls collapse to 'at least one', and transfer_to_human_agents has compare_args [], so the documented count and timing (calls 1-3, transfer on the 4th request) are never checked.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_010: \"Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests.\" / \"On the fourth request - Use the regular `transfer_to_human_agents` tool\"",
+        "evaluator_action._check_actions: each gold action passes if any predicted call matches; order and repetition are ignored",
+        "gold[1..3] are identical calls; gold[4].compare_args = []"
+      ],
+      "gold_action_refs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "An agent that calls 0218 once and transfers on the second request breaks the protocol but scores 1. Correct agents are not penalized, so this inflates scores rather than failing correct work. The DB cannot help either, since agent_discoverable_tools rows are keyed by tool name.",
+      "suggested_fix": "Add an order- and count-aware check (e.g., require transfer_to_human_agents to come after three 0218 calls), or record a per-call counter in the DB and grade on DB."
+    }
+  ],
+  "solution_check": "doc_010 maps the 5 scripted requests to: requests 1-3 call 0218 (unlock once), request 4 calls transfer_to_human_agents. That matches the gold sequence exactly. The base policy (transfer after 4 requests, overridable by KB) agrees.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this task clean. The protocol is unambiguous; the new Minor finding is that ACTION grading cannot enforce it.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. No DB grading here, so the verified scorer has no effect on this task."
+}

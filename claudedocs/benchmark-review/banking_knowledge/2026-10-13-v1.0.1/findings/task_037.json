@@ -1,0 +1,17 @@
+{
+  "task_id": "task_037",
+  "severity": "None",
+  "headline": "Clean: a fraud replacement plus two fraud disputes; card digits, dates, reasons, and provisional-credit eligibility (both eligible) all follow from the docs and data.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The replacement is as in task_036. For the disputes: last 4 digits via get_card_last_4_digits(cc_890389b165_silver) = 5320 (the old card's digits, which doc_014 asks for: 'the credit card under which the disputed transaction took place'). card_action=cancel_and_reissue (doc_014: use when a replacement was ordered via order_replacement_credit_card_7291), contacted_merchant=false, reason unauthorized_fraudulent_charge, full_refund, purchase dates 09/04/2025 and 09/06/2025, noticed 11/14/2025. Provisional: Silver opened 04/15/2024 (>60 days), fraud reason, $487.99/$299.95 within $25-$5,000, no prior disputes in transaction_disputes for this user, so both are eligible. Matches the gold; replay succeeds.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; no change.",
+  "notes": "Unlike task_031, this customer isn't given her credit card account ID, so the agent must supply cc_890389b165_silver when handing over get_card_last_4_digits. The user simulator could also invent last-4 digits if asked directly, which is simulator noise. Even if criterion 4 counted in-session disputes, the second dispute would see only 1 prior, so both stay eligible."
+}

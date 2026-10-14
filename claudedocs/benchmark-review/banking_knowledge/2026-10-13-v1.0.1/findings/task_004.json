@@ -1,0 +1,17 @@
+{
+  "task_id": "task_004",
+  "severity": "None",
+  "headline": "Clean: the customer can match only one of the four identity fields, so the agent cannot verify him and transfers with the code for identity verification failures.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "db.json users[6680a37184] has email 'kenji.tanaka@outlook.com' and phone '206-555-0293'. The customer gives gmail and the phone and withholds DOB and address, so 1 of 4 fields matches, short of the policy's 'any 2 out of the following values'. When he demands a human, doc_bank_accounts_bank_accounts_(general)_042 Tier 1 lists 'account_ownership_dispute | Ownership disputes, joint account issues, or identity verification failures requiring specialist', which is the gold reason (compare_args ['reason']).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None; nothing relevant changed in v1.0.1.",
+  "notes": "ACTION-only grading, so DB state is irrelevant. An agent wary of account takeover might pick the other Tier-1 code 'fraud_or_security_concern' ('Fraud, identity theft, unauthorized transactions, or security concerns'), but nothing in the dialogue reports fraud, and 042's literal 'identity verification failures' wording is the specific match, so I do not count this as a defect. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

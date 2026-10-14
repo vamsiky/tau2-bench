@@ -80,7 +80,7 @@ field path, quoted text).
 
 ## Output
 
-Produce a single new Markdown document, `claudedocs/banking_benchmark_review.md`, containing:
+Produce a single new Markdown document, `claudedocs/benchmark-review/banking_knowledge/2026-06-25-v1.0.0/review.md`, containing:
 
 **1. Summary** — task count reviewed, count clean vs. flagged, and the top 3–5 systemic issues
 (e.g., recurring document corruption, recurring underspecification).

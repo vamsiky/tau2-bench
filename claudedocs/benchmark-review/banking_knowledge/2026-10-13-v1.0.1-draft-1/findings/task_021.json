@@ -1,0 +1,32 @@
+{
+  "task_id": "task_021",
+  "severity": "Minor",
+  "headline": "Applying the documented rates, merchant exclusions, and round-down rule gives exactly the two gold disputes; the only gap is the rounding doc missing from the required list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding rule that makes the gold dispute set exact (doc_credit_cards_credit_cards_(general)_007) is not in this task's required_documents, so the golden_retrieval variant never shows it.",
+      "evidence": [
+        "task_021.required_documents does not include doc_credit_cards_credit_cards_(general)_007 (grep: only task_028 lists it)",
+        "src/tau2/domains/banking_knowledge/retrieval.py golden_prompt: replaces {{required_documents}} with task.required_documents only",
+        "src/tau2/domains/banking_knowledge/retrieval.py build_tools: \"# No retrieval tools (no_knowledge, full_kb, golden_retrieval)\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under golden_retrieval the agent cannot search the KB, so it must guess the rounding convention; round-half-up flags 6 extra transactions (ThredUp 50.92, HBO Max 142.55, Spotify 439.92, Tesla Supercharger 48.16x5, Patagonia 161.15x5, DTE 282.82). Search-based configs (default alltools, bm25, etc.) can retrieve doc_007, so headline scores are unaffected.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Computed all 17 transactions for d2e5bc4124: Business Bronze 1% with WeWork at 0% (doc_..._business_bronze_rewards_card_003 \"WeWork\" earns 0%), EcoCard 5/$ Green except ThredUp/Target/Walmart/Amazon. Under floor the only mismatches are txn_ccbb948ffa10 (Chipotle 369.55 -> 369 vs 184) and txn_5b30a52ac9d6 (Everlane Green 270.42x5 = 1352 vs 270), which are the gold. Round-half-up adds 6 false positives.",
+  "prior_status": "resolved",
+  "prior_note": "Prior (Major) said the rounding convention was undocumented; doc_credit_cards_credit_cards_(general)_007 states floor rounding, is unchanged since v1.0.0, and reproduces the gold exactly, so that defect never applied to search-based configs. Only the required_documents omission remains.",
+  "notes": "The Business Bronze new-customer promo (doc_..._010) is a statement credit, not a rate change, and the account opened 08/12/2024, so it does not apply. The persona verifies with DOB + email; gold[0] carries phone/address from db users[d2e5bc4124]."
+}

@@ -3,7 +3,7 @@
 Replaces tau2's local BM25/embedding `KB_search` with a [Hindsight](https://hindsight.vectorize.io)
 knowledge bank: the whole banking corpus is stored in a bank via `retain`, and `KB_search`
 answers queries at runtime via `recall`. Validated on the I1 task set
-(`claudedocs/i1_fix_validation.md`): **task_047, 058, 063, 064, 067**.
+(`claudedocs/task-success/i1-fixes/i1_fix_validation.md`): **task_047, 058, 063, 064, 067**.
 
 ## What was built
 

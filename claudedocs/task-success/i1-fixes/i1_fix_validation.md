@@ -62,7 +62,7 @@ was inspected tool-call by tool-call against gold. Findings:
 
 ## Iteration 1 — fix1: "Act on the customer's behalf" (generic)
 
-**Fix text** (`claudedocs/i1_fixes/fix1_act_on_behalf.txt`, appended to the agent
+**Fix text** (`claudedocs/task-success/i1-fixes/i1_fixes/fix1_act_on_behalf.txt`, appended to the agent
 instruction only — no policy/tool/card names):
 > You are empowered to complete the customer's request end-to-end using the tools
 > available to you. When a tool exists that performs an action the customer has asked
@@ -94,7 +94,7 @@ correct card in all 5):
   arg-level diff. A single generic instruction will not resolve all five.
 
 **Status:** paused after Iteration 1 at user request (Iteration 2 / minimality not run).
-Drafted but not executed: `claudedocs/i1_fixes/fix2_minimality.txt` (generic least-action
+Drafted but not executed: `claudedocs/task-success/i1-fixes/i1_fixes/fix2_minimality.txt` (generic least-action
 instruction) — the planned next test for the over-action sub-group (064, likely 067).
 
 ---
@@ -191,7 +191,7 @@ Agent-fixable causes to address: missing required checks (047), extra explorator
 
 ## Iteration A — fix3: "Follow the policy's required procedure exactly — no more, no less"
 
-**Fix text** (`claudedocs/i1_fixes/fix3_policy_calibrated.txt`, appended to the agent
+**Fix text** (`claudedocs/task-success/i1-fixes/i1_fixes/fix3_policy_calibrated.txt`, appended to the agent
 instruction only — generic, no tool/card/policy names):
 > - Perform every lookup/check/prerequisite the policy requires before acting — do not skip a required step.
 > - Do not make exploratory or confirmatory tool calls the policy does not call for.
@@ -270,14 +270,14 @@ prompt-only, gradient-free mechanisms; +14pp Airline / +7.3 Retail (Qwen3-Thinki
    mutating inside any SABER-style gate, or fix the hash (C6). Decide which before scaling.
 
 ## Iteration B — fix4: pointed (no list/get-all reads + required pre-checks + no over-tier)
-`claudedocs/i1_fixes/fix4_pointed.txt`. Run `--save-to i1_fix4`, 4 tasks × 1 trial.
+`claudedocs/task-success/i1-fixes/i1_fixes/fix4_pointed.txt`. Run `--save-to i1_fix4`, 4 tasks × 1 trial.
 **Result: 0/4 pass**, but **fix4 fixed task_058's account selection** (Gold → correct
 Silver). Remaining diffs: 058/063/064 = only the extra `get_all_user_accounts` read;
 047 = still missing the two required checks. The explicit "do not list/enumerate/get-all"
 clause did **not** suppress the read.
 
 ## Iteration C — fix5: SABER pre-mutation reflection routine
-`claudedocs/i1_fixes/fix5_premutation_reflection.txt` (restate rule+criteria → confirm
+`claudedocs/task-success/i1-fixes/i1_fixes/fix5_premutation_reflection.txt` (restate rule+criteria → confirm
 target/tier → confirm prerequisites done & no needless listing read → minimal args).
 Run `--save-to i1_fix5`, 4 tasks × 1 trial. **Result: 0/4 pass.** The read still fired
 (058/063/064); 047 still skipped its checks; and 058's selection **regressed to Gold**

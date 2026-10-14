@@ -31,7 +31,7 @@ Stages
    feeds an agent that issues many queries and must still hit required reads, so
    multi-query union recall matters more than aggressive single-query pruning. A
    higher threshold trades recall for precision; validated on the banking
-   policy-reasoning tasks (see ``claudedocs/zero_hallucination_rag_validation.md``).
+   policy-reasoning tasks (see ``claudedocs/task-success/zero-hallucination/zero_hallucination_rag_validation.md``).
 4. **Abstention.** If even the best surviving candidate scores below
    ``abstain_min_top_score``, the tool returns a single explicit
    ``INSUFFICIENT_EVIDENCE`` result instructing the agent to gather more
@@ -113,7 +113,7 @@ class ZeroHallucinationPipeline:
         # SDK agent's lock-held tool handler, ONE stuck gpt-5.2 request freezes
         # the whole episode for tens of minutes. A tight per-request timeout makes
         # a stuck call raise (caught per-doc), so the gate degrades instead of
-        # hanging. See claudedocs/zero_hallucination_rag_validation.md.
+        # hanging. See claudedocs/task-success/zero-hallucination/zero_hallucination_rag_validation.md.
         from openai import OpenAI
 
         self._reranker.client = OpenAI(

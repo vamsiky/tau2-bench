@@ -2,7 +2,7 @@
 
 Validation of the proposal in [`policy_reasoning_fixes.md`](policy_reasoning_fixes.md) — "move the
 rules/computations out of the LLM and into deterministic code" — against **every** POLICY_REASONING
-trial in [`opus47_banking_failure_evidence_table.md`](opus47_banking_failure_evidence_table.md).
+trial in [`opus47_banking_failure_evidence_table.md`](../failure-analysis/opus47_banking_failure_evidence_table.md).
 
 ## Bottom line
 

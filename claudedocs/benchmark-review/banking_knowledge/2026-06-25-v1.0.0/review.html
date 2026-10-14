@@ -166,6 +166,13 @@
     main{padding-top:66px}
     .stats{grid-template-columns:repeat(2,1fr)}
   }
+
+  /* Keep the table's horizontal scrollbar on screen: the box is never taller than the
+     window, and the header row and task column stay pinned while scrolling. */
+  .table-wrap{max-height:min(75vh,820px);overflow:auto}
+  .table-wrap thead th{position:sticky;top:0;z-index:2;background:var(--surface)}
+  .table-wrap th:first-child,.table-wrap td:first-child{position:sticky;left:0;z-index:1;background:var(--bg-elev)}
+  .table-wrap thead th:first-child{z-index:3;background:var(--surface)}
 </style>
 </head>
 <body>
@@ -1002,7 +1009,7 @@
 
 
         <footer>
-          Rendered from <code>claudedocs/banking_benchmark_review.md</code> · 97 tasks reviewed by 14 parallel auditors, every Blocker/Major re-verified against the live <code>db.json</code> and <code>tools.py</code> · severity colours: <span class="badge blocker">Blocker</span> <span class="badge major">Major</span> <span class="badge minor">Minor</span> <span class="badge none">Clean</span> · self-contained single page (no external scripts).
+          Rendered from <code>claudedocs/benchmark-review/banking_knowledge/2026-06-25-v1.0.0/review.md</code> · 97 tasks reviewed by 14 parallel auditors, every Blocker/Major re-verified against the live <code>db.json</code> and <code>tools.py</code> · severity colours: <span class="badge blocker">Blocker</span> <span class="badge major">Major</span> <span class="badge minor">Minor</span> <span class="badge none">Clean</span> · self-contained single page (no external scripts).
         </footer>
       </div>
     </main>

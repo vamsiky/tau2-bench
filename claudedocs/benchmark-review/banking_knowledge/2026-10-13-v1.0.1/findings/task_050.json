@@ -1,0 +1,17 @@
+{
+  "task_id": "task_050",
+  "severity": "None",
+  "headline": "Simple credit limit increase on a premium-tier card, exactly at the 50% maximum; clean.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Gold Rewards is premium tier (replacements_002 and doc_015). Limit $5000, so the maximum increase is 50% = $2,500, which is what the customer asks for. Following logistics_007, the agent submits 2500 first, then checks: account age (opened 03/20/2023), CLI history (only the new request), no disputes, no pending replacement, good standing, utilization 0% ($0 balance), and payment history (3 required; 6 on time). It approves new_credit_limit 7500. This matches gold[0..12] and the replay is clean.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior clean; still clean. The logistics_005 change in v1.0.1 only removed stray \"$\" signs from day counts.",
+  "notes": "The card-to-tier mapping is not in this task's required_documents (doc_015 or replacements_002 hold it) but is retrievable from the KB. logistics_007 \"Step 3: Verify Payment History and Requested Amount\" has an empty body (\".\"); doc_006 supplies the content, so it is harmless here. The read log records only tool names, so the months argument to get_payment_history_6183 does not affect the hash."
+}

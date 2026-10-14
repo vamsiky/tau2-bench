@@ -1,0 +1,17 @@
+{
+  "task_id": "task_035",
+  "severity": "None",
+  "headline": "Clean: the customer's symptoms match the 11/14 credit-bureau incident doc, which names the exact emergency tool and the transfer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "doc_012 is active 11/14-11/18/2025 (now = 11/14) and covers a sudden score drop plus a false delinquency report. It says: \"IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents.\" The reconstruction (unlock, call 1114, transfer) matches gold[0..2].",
+  "prior_status": "not_applicable",
+  "prior_note": "Agrees with the prior clean verdict.",
+  "notes": "ACTION grading is existence-only. Order (1114 before transfer) is not enforced, but each gold call is unique and required, so the task still discriminates. No verification is required; extra reads do not matter under ACTION grading."
+}

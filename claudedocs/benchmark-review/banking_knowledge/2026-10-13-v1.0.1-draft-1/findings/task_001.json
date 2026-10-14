@@ -1,0 +1,17 @@
+{
+  "task_id": "task_001",
+  "severity": "None",
+  "headline": "Clean: the only no-annual-fee personal card with the highest flat cash back is the Gold Rewards Card, which the customer qualifies for through her Rho-Bank+ subscription.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I listed every personal card's annual fee and cash-back rate from the docs: Bronze 1%/$0, Silver 1% base (4% travel/software, but her travel is on a corporate card)/$0, Gold 2.5%/$0 (requires Rho-Bank+), Platinum 10%/$200, Crypto-Cash Back 2%/$75, EcoCard 1-5%/$50, Diamond Elite 5%/$495 (invitation only). Among the $0-fee cards Gold's 2.5% is highest, and she has Rho-Bank+, so gold[0] apply_for_credit_card(Gold Rewards Card, Sarah Bosch, 100000, true) matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean; the only change to a required doc (gold_rewards_card_001 purchase-protection '$105 days' -> '105 days') is cosmetic and does not affect the decision.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). Platinum's first-year fee waiver (doc_credit_cards_platinum_rewards_card_009: 'Start date: 2024-06-01 / End date: 2024-12-31') has expired as of 2025-11-14, so it does not make Platinum a no-fee option. Credit scores are still written as dollar amounts (doc_credit_cards_gold_rewards_card_001: 'Minimum credit score required: $720'), but no credit score is part of this task, so that is not load-bearing here. Risk (not a data defect): rho_bank_subscription=true depends on the user simulator passing it when it self-applies; the instructions say she has the subscription but only to mention it if asked; the tool defaults to False."
+}

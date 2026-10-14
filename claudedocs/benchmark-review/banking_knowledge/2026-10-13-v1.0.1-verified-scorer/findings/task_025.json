@@ -1,0 +1,36 @@
+{
+  "task_id": "task_025",
+  "severity": "Major",
+  "headline": "The gold card (Business Platinum) wins only if an Apple Music subscription earns its 4% 'software/media advertising' rate; the docs disagree on whether streaming is 'Media' or 'Entertainment', and the strict reading drops Platinum to a tie or a loss.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Business Platinum's 4% rate covers 'Travel, software, and media advertising purchases'. The media doc lists only advertising buys, and the two category docs disagree on whether streaming services are Media or Entertainment. So whether a $100,000 Apple Music license earns 4% ($4,000) or 1.5% ($1,500) is not determined.",
+      "evidence": [
+        "doc_business_credit_cards_business_platinum_rewards_card_002: \"Travel, software, and media advertising purchases earn 4.0%.\" / \"Purchases outside those categories earn 1.5%.\"",
+        "doc_business_credit_cards_business_platinum_rewards_card_003: \"Streaming audio and video media placements when billed by media networks or ad platforms.\"",
+        "doc_credit_cards_credit_cards_(general)_005: \"Media (advertising spend, streaming services)\"",
+        "doc_credit_cards_credit_cards_(general)_019: \"**Entertainment**: Movies, concerts, sporting events, and streaming services\" vs \"**Media**: Advertising spend and digital media purchases\"",
+        "doc_business_credit_cards_business_silver_rewards_card_005: \"**Hardware/Electronics Merchants (Software Exclusion):**\" lists \"Apple\"",
+        "gold[0].arguments.card_type = \"Business Platinum Rewards Card\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Gold reading: Apple Music is Media (general_005) or software, so Platinum pays 4% = $4,000. Business Silver is excluded via 'Apple', giving 1% (2% if the double promo still applies on its last day) = $1,000-$2,000. Bronze is 1% + $500 = $1,500, so Platinum wins. Strict reading: a subscription is not 'media advertising' (platinum_003), and general_019 classes streaming as Entertainment, so Platinum pays 1.5% = $1,500, tying Bronze and losing to Business Silver if the double promo applies. If an agent instead treats Apple Music as software without applying the 'Apple' merchant exclusion, Business Silver pays 10%+ and wins. Any of these recommendations changes credit_card_applications and fails.",
+      "suggested_fix": "Make the purchase unambiguously a Platinum 4% category (for example a cloud/SaaS vendor), or state in platinum_002/003 that consumer streaming subscriptions earn 4%, and resolve the general_005/general_019 Media-vs-Entertainment conflict."
+    }
+  ],
+  "solution_check": "Under the gold's reading (streaming is Media, Platinum pays 4% on Media, Business Silver excludes 'Apple'), Business Platinum = $4,000 with the first-year fee waived (platinum_011 window 2025-11-01..2026-02-28). That beats Business Silver ($1,000-$2,000), Bronze ($1,500), Business Gold (1% less a $200 fee), and Silver Zoom (3% = $3,000, and a software company is not a logistics operator). The gold is reachable, but it depends on the contested category mapping.",
+  "prior_status": "persists",
+  "prior_note": "Same Major as the prior review. I add the general_005 vs general_019 Media/Entertainment contradiction and the narrow 'media advertising' wording in platinum_002/003 as the specific sources of the ambiguity.",
+  "notes": "Business Silver's double-cash-back promo window ends 2025-11-14, which is 'today'. Whether an account opened from an application submitted today qualifies is itself ambiguous (apply_for_credit_card says decisions take 5-7 business days); it matters only under the strict reading."
+}

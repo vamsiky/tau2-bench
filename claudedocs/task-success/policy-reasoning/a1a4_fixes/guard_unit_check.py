@@ -2,7 +2,7 @@
 procedure) tool guards added to banking_knowledge/tools.py.
 
 These assert the guard logic directly, independent of any stochastic LLM episode.
-Run: uv run python claudedocs/a1a4_fixes/guard_unit_check.py
+Run: uv run python claudedocs/task-success/policy-reasoning/a1a4_fixes/guard_unit_check.py
 """
 
 from tau2.domains.banking_knowledge.environment import get_db

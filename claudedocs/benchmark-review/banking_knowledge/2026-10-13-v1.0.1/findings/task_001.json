@@ -1,0 +1,17 @@
+{
+  "task_id": "task_001",
+  "severity": "None",
+  "headline": "Clean: the only no-annual-fee card with the top flat cash-back rate is the Gold Rewards Card, and the gold application matches it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Personal cards from the KB: Bronze 1.0% / $0, Silver 1.0% non-category (4% travel/software, but her travel is on a corporate card) / $0, Gold 2.5% all purchases / $0 (Rho-Bank+ required, which she has), Platinum 10% / $200, Crypto-Cash Back 2.0% / $75, EcoCard points / $50, Diamond Elite invitation-only / $495. Excluding annual-fee cards (a no-fee option exists) leaves Gold as the highest everyday cash back. Replaying gold adds credit_card_applications[e26eca5e8c8b1b90] (Gold Rewards Card, Sarah Bosch, 100000.0, rho_bank_subscription true), which matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None; the v1.0.1 edit to gold_rewards_card_001 ('$105 days' to '105 days') is cosmetic and does not change the answer.",
+  "notes": "rho_bank_subscription=true is a user-side argument; the customer reveals the subscription only when asked, and a competent agent must ask because gold_001 says 'Rho‑Bank+ premium subscription required: Yes'. A user simulator that omits the flag would produce a different application id (simulator noise, not a task defect). Credit scores are still written as dollar amounts in the card docs (e.g. gold_001 'Minimum credit score required: $720', bronze_001 '$640', silver_001 '$680', platinum_001 '$750'); v1.0.1 removed the '$105 days'/'$135 days' corruptions but not these. Reporting rule used across this batch: the corruption is an issue (Minor) only where the credit score decides the task; otherwise it is a note. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

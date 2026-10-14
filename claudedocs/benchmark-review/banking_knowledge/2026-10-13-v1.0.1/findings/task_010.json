@@ -1,0 +1,35 @@
+{
+  "task_id": "task_010",
+  "severity": "Major",
+  "headline": "The diagnosis (a weekly referral cap that has now passed) is clear, but the gold expects the customer to resubmit with a tool the knowledge base never mentions. An agent that hands over the documented referral-link tool fails the DB check.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The KB's only documented way to start a new credit-card referral is to give the customer get_referral_link via give_discoverable_user_tool. The gold instead has the customer call the base user tool submit_referral and never gives a tool. Giving the documented tool writes a user_discoverable_tools row that the gold lacks, so the hashes diverge.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009: \"Provide the customer with this tool and instruct them to run it themselves:\\n  - `get_referral_link(user_id: str, card_name: str)`\"",
+        "doc_credit_cards_credit_cards_(general)_020: \"To refer a friend, you'll need to generate a unique referral link that's tied to your account. You can do this through the Rho-Bank mobile app, online banking portal, or by contacting our customer service team.\"",
+        "No KB document mentions submit_referral (grep over documents/*.json returns only general_009 for get_referral_link and nothing for submit_referral)",
+        "gold[1] = submit_referral(user_id 76ad9cc60e, account_type 'Platinum Rewards Card'), requestor user; task_010.user_tools = ['apply_for_credit_card','submit_referral'] (no call_discoverable_user_tool)",
+        "Replay: gold + give_discoverable_user_tool('get_referral_link') adds user_discoverable_tools['fc21fceb1501a934'] = {tool_name: get_referral_link, status: GIVEN}, and the agent DB hash no longer equals the gold hash"
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "Instruction 7 makes the customer retry once the agent explains the cap has passed. A KB-faithful agent will usually help by giving the documented referral-link tool. That write alone fails the task, even though the customer, who has no tool to run get_referral_link, then resubmits correctly with submit_referral.",
+      "suggested_fix": "Make the gold path the documented one: give the user get_referral_link (add call_discoverable_user_tool to user_tools) and expect call_discoverable_user_tool(get_referral_link, {user_id, card_name: 'Platinum Rewards Card'}). Alternatively, document submit_referral in the KB as the retry path."
+    }
+  ],
+  "solution_check": "Verify with phone and email against users[76ad9cc60e] and log_verification using the DB values and '2025-11-14 03:40:00 EST' (matches gold[0]). get_referrals_by_user shows Bronze COMPLETE 10/20/2025, Gold COMPLETE 10/22/2025, Platinum REJECTED 10/25/2025 (a third referral inside the rolling 7-day window, general_002: 'at most 2 referral bonuses in any rolling 7-day window'), and Silver IN_PROGRESS 11/05/2025. On 2025-11-14 the window has passed, so the customer retries Platinum. The diagnosis matches the gold; the action set is where the materials allow a second defensible path.",
+  "prior_status": "new",
+  "prior_note": "Prior verdict was None; the conflict between the gold's undocumented submit_referral path and the KB's documented get_referral_link path is new, and it does not depend on the scorer variant.",
+  "notes": "log_verification stores all seven fields, so an agent must copy address '88 Harbor View Court, Boston, MA 02110' and DOB '04/17/1979' from the DB even though the customer verified only phone and email. That is the domain-wide convention implied by the docstring ('The verified user's address'). The user simulator must pass account_type exactly 'Platinum Rewards Card' (replay with 'Platinum' gives a different hash); submit_referral does not validate the string. general_001: 'REJECTED: Do not retry immediately; review the user’s existing referral activity before advising next steps' supports the review-then-retry flow. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

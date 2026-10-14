@@ -1,0 +1,87 @@
+{
+  "task_id": "task_084",
+  "severity": "Blocker",
+  "headline": "The official liability amounts follow no single rule (one is capped at the charge, another is not), so a consistent agent cannot match both; the duplicate-charge pick also relies on an unstated ordering convention.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "customer_max_liability_amount is internally inconsistent across gold disputes. The $47.50 duplicate stores 50 (no cap at the disputed amount). The $412.88 late fraud stores 412.88 (capped at the disputed amount instead of the $500 tier the customer script states).",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount.\"",
+        "gold[12] duplicate disputed_amount 47.5, \"customer_max_liability_amount\": 50",
+        "gold[14] TechWorld disputed_amount 412.88, \"customer_max_liability_amount\": 412.88",
+        "instructions step 9: \"So for the TechWorld charge, my liability could be up to $500 since I'm reporting it after the 2-day window?\""
+      ],
+      "gold_action_refs": [
+        12,
+        14
+      ],
+      "why_it_matters": "min(tier cap, disputed amount) reproduces 412.88 but gives 47.5 for the duplicate. The tier cap alone reproduces 50 but gives 500 for TechWorld. No single rule matches both gold values, so a consistent agent always mismatches one stored record.",
+      "suggested_fix": "Pick one rule (the docstring implies min(tier cap, disputed amount)), document it in doc 031, and regenerate gold (e.g. 47.5 for the duplicate)."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Major",
+      "summary": "Two identical same-date duplicates have no timestamps. Gold disputes the later-listed row, which is 'earliest' only if the agent infers that the stable most-recent-first sort reverses within-day order. The doc's wording 'earliest (first)' also invites picking the first-listed row, which is the opposite.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173 comment: \"same-date records keep their stored order, which under the most-recent-first contract identifies the later-listed record as the earlier one\"",
+        "get_bank_account_transactions_9173(chk_b8d92f4c17) output order (replayed): 2. btxn_d7f2a98c1b34 (11/06/2025), 3. btxn_e8c3b09d2c45 (11/06/2025)",
+        "gold[12] disputes btxn_e8c3b09d2c45"
+      ],
+      "why_it_matters": "The dispute_id is generate_dispute_id(user_id, transaction_id), so disputing the other twin changes the record key and the DB hash. An agent that reads '(first)' as first-listed, or treats the twins as interchangeable, fails.",
+      "suggested_fix": "Give the duplicates distinct timestamps (e.g. 'MM/DD/YYYY HH:MM:SS', which the sort already parses), or reword the rule as 'dispute the later-listed (older) of identical same-day charges'.",
+      "gold_action_refs": [
+        12
+      ]
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Doc 032 contradicts itself for a duplicate_charge where the customer has not contacted the merchant. duplicate_charge is in the REQUIRED list (whose conditions do not mention merchant contact), but the NOT REQUIRED list includes 'Customer has not contacted merchant first (for non-fraud disputes)'. Gold sets provisional_credit_eligible=true.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes)\"",
+        "instructions: \"No, I haven't contacted them yet.\"",
+        "gold[12] duplicate_charge \"contacted_merchant\": false, \"provisional_credit_eligible\": true"
+      ],
+      "why_it_matters": "An agent that applies the NOT REQUIRED clause sets false, which changes provisional_credit_eligible, provisional_credit_issued and provisional_credit_amount in the stored dispute.",
+      "suggested_fix": "State the precedence explicitly, e.g. 'duplicate_charge does not require prior merchant contact'.",
+      "gold_action_refs": [
+        12
+      ]
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Other stored fields have no unique answer. pin_compromised for TechWorld: gold 'unknown', though the customer says 'someone must have used my card with a PIN'. The liability anchor for the November disputes: discovery 11/10 and 11/09 are more than 2 business days before 11/14, yet gold uses the $50 tier.",
+      "evidence": [
+        "instructions step 6: \"someone must have used my card with a PIN.\"; gold[14] \"pin_compromised\": \"unknown\"",
+        "doc_..._031: \"'yes_observed': Customer believes PIN was observed/skimmed ... 'unknown': Customer unsure\"",
+        "gold[12] discovery_date 11/10/2025 and gold[13] discovery_date 11/09/2025, reported 11/14/2025 (Fri); both store customer_max_liability_amount 50",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\""
+      ],
+      "gold_action_refs": [
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "'yes_observed', or anchoring the 2-business-day window on discovery (as doc 031's 'based on when they noticed' suggests), changes stored values and the hash.",
+      "suggested_fix": "Script the PIN answer and define the liability window's anchor date (e.g. statement date supplied in the data)."
+    }
+  ],
+  "solution_check": "Independently: the Light Blue account (ENTRY, max 2 open) already has one OPEN dispute, so only one more can be filed; the customer prioritizes TechWorld. File the Evergreen duplicate (pin_purchase, provisional true) and incorrect_amount ($100, signature, provisional false), then TechWorld card_present_fraud (provisional true, close_and_reissue). Close dbc_82b5d1a6f3 as fraud_suspected with no reorder (ENTRY 48-hour wait). Category and card actions match gold. Gold's liability values cannot both be reproduced, and the duplicate pick depends on the ordering inference.",
+  "prior_status": "changed",
+  "prior_note": "Still a Blocker. The prior basis (tool returned rows oldest-first, so 'first' was unresolvable) is fixed by #403 and the gold twin is now the inferable one, so that part is downgraded to Major. The liability inconsistency the prior review also noted persists and now carries the Blocker.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Gold replays without errors. The P2P EveryonePay dispute is correctly not filed because of the ENTRY dispute limit."
+}

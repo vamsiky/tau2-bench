@@ -1,0 +1,17 @@
+{
+  "task_id": "task_057",
+  "severity": "None",
+  "headline": "Clean: Blue Account is the only personal checking that meets all four stated needs, the savings request must be refused, and the check deposit is fully determined.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I tabulated every personal checking product. Light Blue and Green Fee-Free have 0-day early direct deposit. Light Green (13-24), Dark Green (17-26) and Gold Years (62+) fail on age for a 30-year-old. Green (checking) offers no overdraft coverage. Bluest ($112,500) and Purple ($3,750) have waivers above $1k. Evergreen, Purple, Bluest and Gold Years never document overdraft fees or protection. Blue Account fits all four needs: $0 overdraft fee, opt-in protection at $12.50 per transfer, 1-day early direct deposit, and a $625 waiver. The customer has no accounts in db.json, so the new Blue account is 0 days old, savings must be refused (general_002: 14-day checking tenure), and the tool enforces this. Then deposit_check_3847 is given and the user deposits 2000 into ac554054181e71ad. The gold replays cleanly and matches.",
+  "prior_status": "resolved",
+  "prior_note": "The prior Minor ('only one checking doc in required_documents, so the choice is forced') is not a validity defect. The full KB is searchable, and Blue is the unique fit on documented criteria; the data is unchanged, so this is a reassessment.",
+  "notes": "The required_documents list holds only blue_account_001 as a product doc, so under the golden_retrieval config the choice is trivial. That is a property of that config, not of task validity. The user instructions contradict themselves: 'You remember being a 1 year customer... opened your first account a year ago' and an opening line about 'my old one year old checking account', against 'No existing Rho-Bank accounts (new customer)' and an empty DB. The agent relies on get_all_user_accounts_by_user_id_3847 (a gold read), so the correct final state is unchanged; I left it out of issues. Even under upstream grading, a refused savings open_bank_account_4821 call adds no extra agent_discoverable_tools row, because rows are keyed by tool name and gold already calls that tool."
+}

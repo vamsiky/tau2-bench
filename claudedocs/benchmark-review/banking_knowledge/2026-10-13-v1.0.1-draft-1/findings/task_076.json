@@ -1,0 +1,48 @@
+{
+  "task_id": "task_076",
+  "severity": "Major",
+  "headline": "Bluest also offers 2-day early direct deposit and costs less in ATM fees than Purple, yet the gold demands Purple; Bluest is ruled out only by a $75,000 opening deposit the customer is never told about and never addresses.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Among age-eligible accounts with 2-day early direct deposit (Purple, Bluest, Evergreen), Bluest is cheapest under the stacking reading the task's own notes use: 8x$2.00 = $16 against Purple's 8x$2.50 = $20. Under the no-stacking reading the two tie at $0. The gold excludes Bluest only for its $75,000 opening deposit, but the customer's instructions say nothing about available funds and the tool does not enforce the deposit.",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_010: \"| Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal |\"",
+        "doc_checking_accounts_bluest_account_003: \"No foreign ATM withdrawal fees: $0.00\"; doc_checking_accounts_bluest_account_001: \"| Early direct deposit | 2 day(s) before payday |\" and \"| Minimum opening deposit | $75,000 |\"",
+        "doc_checking_accounts_bluest_account_007: \"If your aggregate ATM fees exceed $50 in a given month, the excess will not be rebated.\" (read broadly, Bluest's own fees are rebated too)",
+        "doc_checking_accounts_purple_account_012: \"You are charged $2.50 per cash withdrawal made at an out-of-network ATM.\" (not among task_076's required_documents)",
+        "doc_checking_accounts_purple_account_001: \"| Foreign ATM withdrawal fee | $0.00 |\", \"| Early direct deposit | 2 days early |\"",
+        "task_076 description.notes: \"BLUEST ACCOUNT: $2.00 out-of-network × 8 = $16 ... (but requires $50k-100k minimum deposit - NOT PRACTICAL)\"",
+        "user_scenario.instructions: no statement of available funds or of the deposit the customer can make",
+        "gold[2].arguments.arguments account_class = \"Purple Account\""
+      ],
+      "gold_action_refs": [2],
+      "why_it_matters": "An agent that ranks by ATM fees as asked finds Bluest cheaper than, or tied with, Purple. Whether it then opens Bluest depends on whether it raises the $75k deposit and how the simulated user answers a question the script does not cover. Opening Bluest writes a different accounts row and fails the DB match.",
+      "suggested_fix": "Give the customer an explicit funding constraint, for example 'I'll only keep about $5,000 in this account', so Bluest is excluded, and add purple_account_012 to required_documents."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "No personal-account document says whether the out-of-network fee and the foreign fee stack. The gold's choice of Purple holds under either reading once Bluest is excluded (Purple $20 or $0, Evergreen at least $48), so this only feeds the Bluest tie above.",
+      "evidence": [
+        "doc_checking_accounts_evergreen_account_001: \"Foreign ATM withdrawal fee: 2% of the withdrawal amount, with a minimum of $3.00 per transaction.\"",
+        "doc_business_checking_accounts_navy_blue_008: \"abroad (foreign ATM fee applies)\""
+      ],
+      "gold_action_refs": [2],
+      "why_it_matters": "It does not change the correct final state once Bluest is excluded; recorded for consistency with task_075.",
+      "suggested_fix": "State the stacking rule in a personal-checking general doc."
+    }
+  ],
+  "solution_check": "User age 29 (DOB 03/14/1996), so Gold Years (62+), Light Green (13-24) and Dark Green (17-26) are excluded. Accounts with 2-day early deposit: Purple, Bluest and Evergreen. Green Fee-Free and Light Blue have 0 days; Blue and Green checking have 1 day. Fees for 8 withdrawals of $300, with stacking: Bluest $16, Purple $20, Evergreen 8x($2.50+$6.00) = $68. Without stacking: Bluest $0, Purple $0, Evergreen $48. Purple matches the gold only after Bluest is ruled out on its $75,000 opening deposit.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean, but Bluest beats or ties Purple on the customer's stated criterion, and the customer is never given any funding information that would exclude it.",
+  "notes": "Grading-model facts confirmed. open_bank_account_4821 does not enforce opening deposits. purple_account_012 (the $2.50 out-of-network fee) is not among this task's required_documents, though it is retrievable. The early-direct-deposit values come from purple_001, bluest_001, evergreen_001, gold_years_001, blue_001, green_account_(checking)_001, light_blue_002 and green_fee-free_003."
+}

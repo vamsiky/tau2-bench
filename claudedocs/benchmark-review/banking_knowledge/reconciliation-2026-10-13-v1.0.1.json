@@ -1,0 +1,487 @@
+{
+ "tasks": {
+  "task_016": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Minor",
+   "prior_verified": "None",
+   "why_runs_differed": "judgment",
+   "reason": "The customer's story says the friend has already made purchases on the card, but the DB has no user, account or transaction for friend_user_5839, so the amount the friend still needs is not observable. The inconsistency bears on the deciding value (the dollar amount the user submits), but a competent agent resolves it by quoting the documented $750 requirement, which the user is scripted to submit verbatim. A real inconsistency the agent can resolve, with no change to the correct final state: Minor under both scorers (no relaxed table is involved).",
+   "evidence": [
+    "task_016 instructions: \"Your friend has already been approved and has been consistently using the card - they've made some transactions on it.\"",
+    "task_016 instructions: \"an amount exactly the same as the requirement that the agent specified\"",
+    "db.json: no users/credit_card_accounts/credit_card_transaction_history rows for friend_user_5839",
+    "doc_credit_cards_silver_rewards_card_011: \"The referred person must be approved and spend at least $750 within 60 days of account opening\"",
+    "gold[1].arguments.amount = 750 (user submit_transaction, 'Silver Rewards Card', 'Best Buy', 'Shopping')"
+   ]
+  },
+  "task_026": {
+   "upstream_severity": "Blocker",
+   "verified_severity": "Blocker",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Blocker",
+   "prior_verified": "Blocker",
+   "why_runs_differed": "none (already agreed)",
+   "reason": "Included for 026-029 consistency; both runs already agree. The dispute-status defect is Major here as in 027-029, but gold[10] writes '1500 points' where the only documented rounding rule gives 1499, so the gold follows no document-supported reading. credit_card_transaction_history is compared exactly under both scorers.",
+   "evidence": [
+    "gold[10].arguments.arguments = {\"transaction_id\": \"txn_a8f1c2d3e411\", \"new_rewards_earned\": \"1500 points\"} (Zoom $149.99 x 10% = 1499.9)",
+    "doc_credit_cards_credit_cards_(general)_007: \"the system always truncates (floors) fractional points rather than rounding to the nearest integer\"",
+    "Replay (both runs): gold with '1499 points' fails under upstream hash and verified comparison"
+   ]
+  },
+  "task_027": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Blocker",
+   "prior_verified": "Major",
+   "why_runs_differed": "judgment",
+   "reason": "The deciding fact (cash_back_disputes.status SUBMITTED) is invisible to the agent: no agent tool reads that table and user-tool output is routed only to the user. But the no-update gold is reachable by a document-supported reading (doc_004 requires a resolved-dispute lookup the agent cannot perform, so it declines), and updating on the customer's word is the competing reading that task_026/028 reward. Calibration: two document-supported readings with different graded states is Major; Blocker is reserved for a gold that follows no supported reading, which is not the case here. The separate half-up seed vs doc_007 floor contradiction is also Major in both runs, so the task is Major under both scorers (all affected tables are writes compared exactly).",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+    "tools.py: cash_back_disputes is written only by KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool reads it",
+    "task_027.initial_state dispute_settings.auto_resolve_disputes = false; task_026 = true; Phase-2 user line identical in both",
+    "task_027 description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED\"",
+    "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number.\" vs seed txn_a8f1c2d3e402 stored '1100 points' (floor 1099)",
+    "Replay (run V): gold + task_026 update calls -> verified False (credit_card_transaction_history differs)"
+   ]
+  },
+  "task_028": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Blocker",
+   "prior_verified": "Major",
+   "why_runs_differed": "judgment",
+   "reason": "Same unobservable-dispute-status defect as 027/029, mirrored: the gold updates six transactions on the customer's unverifiable claim while task_029 expects refusal on identical agent-visible input. Updating is document-supported (the agent already holds the transaction ids that doc_004's lookup exists to find), and declining is the competing supported reading, so calibration gives Major, not Blocker. Run U's verifier raised it to Blocker only to match U's 026/027 ratings, which this reconciliation also sets to Major for this defect; the Phase-1 floor arithmetic reproduces exactly, and the EcoCard '$5.00 points' corruption stays Minor.",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database\"",
+    "task_028.initial_state auto_resolve_disputes = true; task_029 = false; Phase-2 line \"I just got a notification that they've all been approved and resolved!\" identical",
+    "gold[9..14] new_rewards_earned 750, 2049, 95, 1390, 642, 669 = floor(amount x rate) (both runs recomputed)",
+    "Replay (both runs): gold[0..7] only (agent refuses) -> fails",
+    "doc_credit_cards_ecocard_002: \"Green purchases: Earn $5.00 sustainability points per dollar spent\""
+   ]
+  },
+  "task_029": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "Major",
+   "why_runs_differed": "none (already agreed)",
+   "reason": "Both runs already agree; kept for 026-029 consistency. The refuse-to-update gold depends on a status no agent tool exposes, while task_028 rewards updating on the same message: two document-supported readings, Major. The doc_007 omission from required_documents (Minor) and the EcoCard '$5.00' corruption (Minor) stand.",
+   "evidence": [
+    "task_029.initial_state auto_resolve_disputes = false; gold has no update_transaction_rewards_3847 calls",
+    "task_029.required_documents lacks doc_credit_cards_credit_cards_(general)_007 (task_028 lists it)",
+    "Replay (run V): task_029 gold + task_028's six update calls -> verified False"
+   ]
+  },
+  "task_035": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "The emergency-transfer gold is reproducible, but the protocol's defining requirements (no identity verification, immediate escalation, tool before transfer) are invisible to presence-only ACTION grading. Calibration fixes 'rules the grader cannot see' at Minor. Run U recorded the same fact as a note instead of an issue; ACTION grading is identical under both scorers.",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_012: \"Identity verification is NOT required for this incident protocol. IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents.\"",
+    "task_035 reward_basis is ACTION; Action.compare_with_tool_call ignores order and extra calls such as log_verification"
+   ]
+  },
+  "task_037": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Minor",
+   "prior_verified": "None",
+   "why_runs_differed": "coverage",
+   "reason": "Both gold disputes store eligible_for_provisional_credit = true, which rests on doc_015 criterion 4 (prior disputes), and the only tool for checking that, get_user_dispute_history_7291, is documented solely in doc_016, which is absent from required_documents. Calibration: a required document missing from required_documents but retrievable in the default configuration is Minor. Run V's reviewer and verifier did not check the required_documents list; the substance (0 prior disputes, both eligible under every reading) is clean in both runs.",
+   "evidence": [
+    "task_037.required_documents = [replacements_001, (general)_013, (general)_014, (general)_015]; no doc_credit_cards_credit_cards_(general)_016",
+    "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+    "gold[6], gold[7] eligible_for_provisional_credit = true; seed transaction_disputes has no row for 890389b165",
+    "tasks 039/040/041/080/081 include doc_016 and the get_user_dispute_history_7291 read; 037 does neither"
+   ]
+  },
+  "task_041": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Blocker",
+   "prior_verified": "Major",
+   "why_runs_differed": "judgment",
+   "reason": "Two independent Majors. Provisional credit: with one prior dispute (09/20/2025), the gold's Staples/Coinbase true and the rest false follow the running-count reading of criterion 4, while the prior-history-only reading makes all 10 reason-eligible disputes true; that is two supported readings. XFINITY partial_refund_amount 69.99 is an unscripted customer choice (doc_014 says to ask), but it is derivable as 189.99 - 120 from the script's 'around $120'. Calibration caps an unscripted choice with no documented default at Major, and run U's Blocker rested on that choice, so Major under both scorers (transaction_disputes is compared exactly in both).",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+    "initial_state transaction_disputes = [dsp_dfab0685d198] (09/20/2025); gold[9] Staples true, gold[10] Coinbase true, gold[11..24] false",
+    "doc_credit_cards_credit_cards_(general)_014: \"13. resolution_requested (string) - Ask user what resolution they want.\"",
+    "user_scenario: \"XFINITY $189.99 on 10/28/2025 - INCORRECT AMOUNT. Your usual bill is around $120.\"; gold[19] partial_refund_amount = 69.99",
+    "Replay (both runs): all 10 reason-eligible true -> fails; XFINITY full_refund -> fails"
+   ]
+  },
+  "task_051": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "The gold path itself contains a call that errors: resubmitting the $1,000 CLI after the denial collides with the first submission's deterministic id and returns 'A similar request may already exist', and no document tells the agent to proceed to approval anyway. The correct final state is unchanged and reachable, so it is an inconsistency the agent must resolve (Minor). The blank Step 3 in logistics_007 is the same Minor rated in 050/052. Scorer-independent.",
+   "evidence": [
+    "utils.generate_credit_limit_increase_request_id seed = f\"cli_request:{credit_card_account_id}:{user_id}:{requested_increase_amount:.2f}\"",
+    "Replay (both runs): gold[17] returns \"Error: A similar request may already exist.\"; gold without gold[17] gives the gold DB",
+    "doc_credit_cards_credit_card_account_logistics_007: \"## Step 3: Verify Payment History and Requested Amount\\n\\n.\\n\\n## Step 4\""
+   ]
+  },
+  "task_052": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "coverage",
+   "reason": "The cooldown denial is uniquely derivable, but logistics_007, which 'MUST be followed in the exact order', has an empty Step 3, and that blank step is where the instruction for the gold-required get_payment_history_6183 read belongs. Here it bites because the request is already doomed at Step 2, yet the read is still graded (upstream allowlist hash; verified subset check). doc_006 (required) names the tool and the Step 3 heading survives, so Minor; run U's reviewer did not raise it and its 052 was never verified.",
+   "evidence": [
+    "doc_credit_cards_credit_card_account_logistics_007: \"## Step 3: Verify Payment History and Requested Amount\\n\\n.\\n\\n## Step 4\"",
+    "doc_credit_cards_credit_card_account_logistics_007: \"These steps MUST be followed in the exact order listed.\"",
+    "doc_credit_cards_credit_card_account_logistics_006: \"Use the get_payment_history_6183 tool to verify the customer's payment history meets the requirement for their card tier.\"",
+    "gold[10] call_discoverable_agent_tool get_payment_history_6183 {months: 6}; Replay (run V): gold without it -> verified False"
+   ]
+  },
+  "task_060": {
+   "upstream_severity": "Major",
+   "verified_severity": "None",
+   "difference_cause": "scorer",
+   "prior_upstream": "Major",
+   "prior_verified": "None",
+   "why_runs_differed": "scorer",
+   "reason": "The only defect is close_bank_account_7392's optional free-text reason: the gold omits it, so closure_reason gets the hidden default 'Customer requested closure', and no document says what reason to record. Under upstream exact-hash grading, an agent that records a sensible reason fails (no documented default, so Major by calibration). The verified scorer strips closure_reason from every record and no replacement copies it here (bank accounts, not order_debit_card_5739), so the task is clean under that scorer; every other part of the task (product choice, ordering) is derivable in both runs.",
+   "evidence": [
+    "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+    "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason guidance anywhere in the KB)",
+    "gold[6].arguments.arguments: account_id 58d57780cc15e32d, no reason",
+    "working repo evaluator_env.py: _FREE_TEXT_ANNOTATION_FIELDS = frozenset({\"closure_reason\"}); _verified_db_match strips it before comparing",
+    "Replay (run U): custom reason -> hash differs; (run V): custom reason -> verified True, exact False"
+   ]
+  },
+  "task_061": {
+   "upstream_severity": "Major",
+   "verified_severity": "None",
+   "difference_cause": "scorer",
+   "prior_upstream": "Major",
+   "prior_verified": "None",
+   "why_runs_differed": "scorer",
+   "reason": "The only defect is close_bank_account_7392's optional free-text reason: the gold omits it, so closure_reason gets the hidden default 'Customer requested closure', and no document says what reason to record. Under upstream exact-hash grading, an agent that records a sensible reason fails (no documented default, so Major by calibration). The verified scorer strips closure_reason from every record and no replacement copies it here (bank accounts, not order_debit_card_5739), so the task is clean under that scorer; every other part of the task (product choice, ordering) is derivable in both runs.",
+   "evidence": [
+    "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+    "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason guidance anywhere in the KB)",
+    "gold[8].arguments.arguments: account_id 61d4e5f6a7b8c901, no reason",
+    "working repo evaluator_env.py: _FREE_TEXT_ANNOTATION_FIELDS = frozenset({\"closure_reason\"}); _verified_db_match strips it before comparing",
+    "Replay (run U): custom reason -> hash differs; (run V): custom reason -> verified True, exact False"
+   ]
+  },
+  "task_062": {
+   "upstream_severity": "Major",
+   "verified_severity": "None",
+   "difference_cause": "scorer",
+   "prior_upstream": "Major",
+   "prior_verified": "None",
+   "why_runs_differed": "scorer",
+   "reason": "The only defect is close_bank_account_7392's optional free-text reason: the gold omits it, so closure_reason gets the hidden default 'Customer requested closure', and no document says what reason to record. Under upstream exact-hash grading, an agent that records a sensible reason fails (no documented default, so Major by calibration). The verified scorer strips closure_reason from every record and no replacement copies it here (bank accounts, not order_debit_card_5739), so the task is clean under that scorer; every other part of the task (product choice, ordering) is derivable in both runs.",
+   "evidence": [
+    "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+    "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason guidance anywhere in the KB)",
+    "gold[9], gold[12].arguments.arguments: account_id 61c9d8e7f6a5b432 / 61a8b7c6d5e4f321, no reason",
+    "working repo evaluator_env.py: _FREE_TEXT_ANNOTATION_FIELDS = frozenset({\"closure_reason\"}); _verified_db_match strips it before comparing",
+    "Replay (run U): custom reason -> hash differs; (run V): custom reason -> verified True, exact False"
+   ]
+  },
+  "task_066": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "None",
+   "why_runs_differed": "judgment",
+   "reason": "The Green savings naming defect is real and scorer-independent: doc_002 requires a savings account_class 'ending with Account', but doc_001 gives 'Green Account (checking)' as an example of exactly such an official name and every savings doc titles the product 'Green Account (savings)', while the gold stores bare 'Green Account'. account_class seeds the account id, so the parenthetical form opens a different record, and the accounts table is compared exactly under both scorers. Both runs rate this same defect Major in tasks 059 and 065, so 066 takes the same Major; run U's additional closure_reason Major is upstream-only and does not change the severity.",
+   "evidence": [
+    "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+    "doc_bank_accounts_bank_accounts_(general)_002: \"It must be the full official name ending with 'Account' (for example, 'Silver Plus Account', 'Gold Account').\"",
+    "doc_business_savings_accounts_emerald_saver_003 title: \"Emerald Saver vs Green Account (savings): What is the difference?\"",
+    "gold[4].arguments.arguments account_class = \"Green Account\"; tools.py open_bank_account_4821 account_id = _deterministic_id(f\"account:{user_id}:{account_type}:{account_class}\")",
+    "Replay (run U): 'Green Account (savings)' -> id 248a704a4fbe44b2 vs gold 4ba63ba5b4a98c12; (run V): 'table accounts differs'",
+    "Runs U and V both rate the identical naming issue Major in task_059 and task_065"
+   ]
+  },
+  "task_067": {
+   "upstream_severity": "Major",
+   "verified_severity": "None",
+   "difference_cause": "scorer",
+   "prior_upstream": "Major",
+   "prior_verified": "None",
+   "why_runs_differed": "scorer",
+   "reason": "The only defect is close_bank_account_7392's optional free-text reason: the gold omits it, so closure_reason gets the hidden default 'Customer requested closure', and no document says what reason to record. Under upstream exact-hash grading, an agent that records a sensible reason fails (no documented default, so Major by calibration). The verified scorer strips closure_reason from every record and no replacement copies it here (bank accounts, not order_debit_card_5739), so the task is clean under that scorer; every other part of the task (product choice, ordering) is derivable in both runs.",
+   "evidence": [
+    "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+    "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason guidance anywhere in the KB)",
+    "gold[8].arguments.arguments: account_id chk_rp65a7b3c4, no reason",
+    "working repo evaluator_env.py: _FREE_TEXT_ANNOTATION_FIELDS = frozenset({\"closure_reason\"}); _verified_db_match strips it before comparing",
+    "Replay (run U): custom reason -> hash differs; (run V): custom reason -> verified True, exact False"
+   ]
+  },
+  "task_070": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "Sky Blue is a startup account whose documents state a company-age eligibility threshold of 4 years, and the customer script never gives Brightwave Digital's formation date, so an agent that performs the documented check gets an improvised answer that can move it to Lime Green. This is an unscripted customer fact with no documented default that decides the graded account_class, which calibration rates Major; the run V argument that the internal opening checklist omits the check does not remove the explicit 'Verify Eligibility' rule. The same Sky Blue issue is Major in run U's 071, so 070 takes Major under both scorers (accounts table compared exactly).",
+   "evidence": [
+    "doc_business_checking_accounts_sky_blue_001: \"## Verify Eligibility - Confirm your company is within 4 years of formation.\"",
+    "doc_business_checking_accounts_sky_blue_008: \"Eligibility criteria tied to company age are evaluated when you open the account; the threshold is 4.\"",
+    "task_070 instructions: \"Your business has grown and you need to separate personal and business finances.\" (no formation date)",
+    "gold[4].arguments.arguments account_class = \"Sky Blue\""
+   ]
+  },
+  "task_072": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Minor",
+   "prior_verified": "Major",
+   "why_runs_differed": "coverage",
+   "reason": "Both gold credits include discrepancies on fee rows dated after the fixed clock (Bluest 11/20 +$0.50; Light Green 11/15 +$0.50), so an agent that scopes the review to 'through today' credits $13.50 and $3.00 and fails. Calibration fixes gold values that depend on post-clock data at Major; run U's 072 was never verified, and its reviewer's 'natural reading' rationale does not override the calibrated severity. The Bluest own-fee rebate reading (Minor) remains as a secondary issue. Scorer-independent.",
+   "evidence": [
+    "utils.py get_now() = datetime(2025, 11, 14, 3, 40, 0)",
+    "db.json btxn_fcd7ef3a24ed chk_lj82d4f1a9 date 11/20/2025 amount -2.5 \"NON-RHO ATM FEE\" status posted",
+    "db.json btxn_49c0c0b3b8c1 chk_538bfb9cba date 11/15/2025 amount -4.0 \"FOREIGN ATM FEE - 2% OF WITHDRAWAL (MIN $3.00)\"",
+    "gold[7].amount = 14.00, gold[8].amount = 3.50; on-or-before-clock only gives 13.50 / 3.00",
+    "calibration.md: \"Gold values that depend on data dated after the fixed clock: Major.\""
+   ]
+  },
+  "task_075": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Blocker",
+   "prior_verified": "Major",
+   "why_runs_differed": "fact_error",
+   "reason": "Fact: no personal-checking document states that the out-of-network and foreign ATM fees stack; only business-checking docs do (hunter_green_010, navy_blue_009), and hunter_green_009 treats seeing both as a reason for review. But purple_account_012 defines Purple's $2.50 fee by network membership with no domestic limit, and the customer says the ATMs abroad are out of network, so the gold's reading (Purple 18 x $2.50 = $45, Green Fee-Free uniquely $0 on both fees) is document-supported; run U's 'no KB document states this' overlooked those texts. The no-stacking reading (Purple and Bluest $0 abroad, with Purple's operator-fee rebates) leads to Purple or a tie, so this is two supported readings with different graded states: Major, not Blocker, under both scorers (accounts compared exactly).",
+   "evidence": [
+    "doc_checking_accounts_purple_account_012: \"You are charged $2.50 per cash withdrawal made at an out-of-network ATM.\" / \"Applies to withdrawals made at ATMs that are not in Rho-Bank's ATM network.\"",
+    "doc_checking_accounts_purple_account_001: \"No foreign ATM withdrawal fees: $0.00 per withdrawal (third-party ATM operator fees may still apply)\"",
+    "doc_checking_accounts_green_fee-free_account_005: \"Rho does not charge a fee for using out-of-network ATMs: $0.00 per withdrawal. Foreign ATM withdrawals are also fee-free: $0.00 per withdrawal.\"",
+    "doc_business_checking_accounts_hunter_green_010: \"If the international withdrawal is made at a non-Rho ATM, the $2.00 out-of-network fee also applies.\"",
+    "doc_business_checking_accounts_navy_blue_009: \"both the $2.50 out-of-network fee and the international withdrawal fee of 3% (minimum $5.00) can apply.\"",
+    "doc_business_checking_accounts_hunter_green_009: \"If you see both a foreign ATM fee and a domestic out-of-network fee for the same international withdrawal, share the transaction details for review.\"",
+    "task_075 instructions: \"You'll need to withdraw cash regularly from out of network ATMs abroad\"",
+    "gold[2] account_class = \"Green Fee-Free Account\"; Replay (run V): 'Purple Account' -> table accounts differs"
+   ]
+  },
+  "task_078": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "The graded debit_cards rows keep frozen_date/unfrozen_date from the gold's freeze-then-unfreeze path, so an agent that closes the lost cards directly (doc_026: CLOSE 'Use when card is confirmed lost/stolen') reaches the same business outcome and fails. Here the customer asks to freeze at the opening and confirms the loss only at step 4, so the freeze-first path is the clearly favoured one and the risk is small: Minor. The fields and the unfreeze tool name are compared under both scorers, so the severity is scorer-independent.",
+   "evidence": [
+    "task_078 step 1: \"I need to freeze all of them right away and get replacements.\"; step 4: \"After freezing, confirm cards are definitely lost\"",
+    "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+    "tools.py freeze_debit_card_3892 writes card[\"frozen_date\"]; unfreeze_debit_card_3893 writes card[\"unfrozen_date\"]; close_debit_card_4721 accepts only ACTIVE/PENDING",
+    "Replay (run V): gold minus freeze/unfreeze for lb/green -> verified False (missing unfreeze_debit_card_3893; debit_cards differs)"
+   ]
+  },
+  "task_079": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "Same path-dependence as 078, but here the theft is confirmed in the opening line, which is exactly when doc_026 says to recommend closing instead of freezing; the script does not cover that branch and follows the agent's guidance. Following the customer's literal freeze request and following doc_026 are both document-supported, and they produce different graded debit_cards rows: Major by calibration. That stated difference (theft confirmed up front) is why 079 is rated above 078. The pending-refund req 4 vs req 5 overlap is a resolvable Minor.",
+   "evidence": [
+    "task_079 step 1: \"Hi, my wallet was stolen about an hour ago and I need to freeze all my debit cards immediately.\"",
+    "doc_bank_accounts_bank_accounts_(general)_026: \"CLOSE: Permanent deactivation - cannot be reversed. Use when card is confirmed lost/stolen\"",
+    "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+    "gold[4..6] freeze ev/lb/green; gold[13..15] unfreeze; gold[17..19] close reason 'stolen'",
+    "Replay (both runs): gold minus freeze/unfreeze -> fails (frozen_date/unfrozen_date on three cards)"
+   ]
+  },
+  "task_080": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Minor",
+   "prior_verified": "Major",
+   "why_runs_differed": "judgment",
+   "reason": "Fact: when the third dispute is filed, the customer has filed two disputes (both earlier in this call, none before), and two is not 'more than 2', so gold[31] eligible=true is correct under both the prior-history and the running-count readings. Only counting the dispute still being filed gives false, and that reading would also break task_041's gold, where Coinbase is true after one prior dispute plus Staples. The author notes' '<=2 eligible' rule and the script's prioritization branch contradict the gold but cannot push a correct agent off it, so this is a note-level contradiction plus an unused script branch: Minor. The freeze-path Minor (as in 078) also applies.",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+    "initial_state transaction_disputes = {} for tm92c4d7e8; get_user_dispute_history_7291 -> \"No transaction disputes found for this user.\"",
+    "gold[31].arguments eligible_for_provisional_credit = true (txn_39c2ddb4e1d2); all three disputes true",
+    "task_080 description.notes: \"Rule is \u22642 disputes eligible for provisional credit\" (author note; agent never sees it)",
+    "task_041 gold: 1 prior dispute, Staples true, Coinbase true, Delta false = running count excluding the current filing"
+   ]
+  },
+  "task_081": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Minor",
+   "prior_verified": "Major",
+   "why_runs_differed": "judgment",
+   "reason": "Fact: when the third dispute is filed, the customer has filed two disputes (both earlier in this call, none before), and two is not 'more than 2', so gold[33] eligible=true is correct under both the prior-history and the running-count readings. Only counting the dispute still being filed gives false, and that reading would also break task_041's gold, where Coinbase is true after one prior dispute plus Staples. The author notes' '<=2 eligible' rule and the script's prioritization branch contradict the gold but cannot push a correct agent off it, so this is a note-level contradiction plus an unused script branch: Minor. The ungraded fourth-request transfer (Minor: a rule the grader cannot see) and the freeze-path Minor also apply.",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+    "initial_state transaction_disputes = {} for tm92c4d7e8; get_user_dispute_history_7291 -> \"No transaction disputes found for this user.\"",
+    "gold[33].arguments eligible_for_provisional_credit = true (txn_39c2ddb4e1d2); all three disputes true",
+    "task_080 description.notes: \"Rule is \u22642 disputes eligible for provisional credit\" (author note; agent never sees it)",
+    "task_041 gold: 1 prior dispute, Staples true, Coinbase true, Delta false = running count excluding the current filing",
+    "policy_header.md rule 6: \"If the user asks for a human agent 4 times, then you may invoke the transfer_to_human_agents tool.\"; transfer_to_human_agents writes nothing"
+   ]
+  },
+  "task_087": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Minor",
+   "prior_verified": "Major",
+   "why_runs_differed": "judgment",
+   "reason": "doc_039 tells the agent to escalate to the security team when the customer reports transactions they did not make, which is exactly this case, and nothing tells it to file the dispute, close and reorder first. The gold handles the fraud in-channel, and an agent that escalates per doc_039 ends the episode before any of the graded writes. Run U's 'escalate after the writes' reconciliation is the agent's own invention, not documented guidance, so these are two supported readings with different graded states: Major under both scorers.",
+   "evidence": [
+    "doc_bank_accounts_bank_accounts_(general)_039: \"Escalate to security team when: ... Customer reports transactions they did not make\"",
+    "doc_checking_accounts_checking_accounts_(general)_003 CODE 05: \"If they confirm all transactions are legitimate, clear the alert.\" (no branch for a disowned charge)",
+    "gold[15] file_debit_card_transaction_dispute_6281 card_present_fraud; gold[17] close fraud_suspected; gold[19] order EXPEDITED/PREMIUM",
+    "Replay (run V): escalate path (gold[0..14] only) -> verified False (missing close/dispute/order)"
+   ]
+  },
+  "task_092": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "Two Majors, both on writes compared exactly under either scorer. No document or tool says how to unlock a PIN-locked card, yet the gold unlocks Evergreen via reset_debit_card_pin_6284 (documented for forgotten PINs); an undocumented convention is Major by definition, as run V's own 091 verifier noted. On the Green card, doc_041 Step 6 lists a PIN reset the script accepts ('Sure, set it to 4567') while the gold closes with fraud_suspected for a customer who confirmed the attempts, which is two supported readings; run V's 092 was never verified.",
+   "evidence": [
+    "doc_bank_accounts_bank_accounts_(general)_041 STEP 3: \"0-4 | LOW | Unlock after standard identity verification\" (no unlock tool named anywhere in the KB)",
+    "tools.py reset_debit_card_pin_6284: \"Reset a debit card PIN when the customer has forgotten it.\" (code comment: \"Reset the PIN and unlock the card\")",
+    "gold[18] reset_debit_card_pin_6284 dbc_rw42b8d3e1_evergreen new_pin 8127",
+    "doc_041 STEP 6 options: \"Card closure and replacement (recommended if fraud suspected)\", \"Transfer to security team\", \"PIN reset (issues new PIN, invalidates potential compromise)\"",
+    "task_092 script item 23: \"If agent offers to reset the PIN on the Green card: Sure, set it to 4567.\"; gold[13] close dbc_rw42b8d3e1_green fraud_suspected"
+   ]
+  },
+  "task_093": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "coverage",
+   "reason": "The $33.00 credit is derivable, but required doc silver_002 shows an unrendered placeholder exactly where the linked-checking APY boost (+0.25% for Green) should be, and that boost is a deciding input to the credit. Calibration: an unrendered placeholder is Minor when the corrupted value is the deciding fact, and green_account_(checking)_001 supplies the value. Run U's reviewer missed the placeholder and its 093 was never verified. The gold applies the 0.025% relationship bonus for a two-product customer.",
+   "evidence": [
+    "doc_savings_accounts_silver_account_002: \"your Silver APY receives an additional [[linked_checking_apy_bonus]]\"",
+    "doc_checking_accounts_green_account_(checking)_001: \"Boost a linked savings account's APY: Gold +0.75% or Silver +0.25%\"",
+    "gold[6] apply_savings_account_credit_6831 amount 33.00; gold[8] expected_apy 4.275 (= 4.0 + 0.25 + 0.025), actual_apy 4.0"
+   ]
+  },
+  "task_097": {
+   "upstream_severity": "Blocker",
+   "verified_severity": "Blocker",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "Blocker",
+   "why_runs_differed": "judgment",
+   "reason": "Fact: the required doc silver_002 and FAQ silver_005 grant the 0.025% relationship bonus to customers with multiple Rho-Bank products, this customer holds 13, and doc_044 names 'Missing Relationship Bonus' as a discrepancy type. task_093's gold applies the bonus (expected_apy 4.275) to a two-product customer with no credit card. The only text that could exclude it, silver_009's Platinum-Rewards-Card section, calls it 'the existing ... 0.025% relationship bonus' (not Platinum-only), and reading it as Platinum-only would break task_093's gold. The gold's 6.65% therefore follows no reading consistent with the documents or the benchmark's own convention: Blocker under both scorers. The 220.84 vs 220.83 rounding issue is an additional Major.",
+   "evidence": [
+    "doc_savings_accounts_silver_account_002 (required): \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+    "doc_savings_accounts_silver_account_005: \"Do I get a bonus for having multiple Rho-Bank products? - Yes. Eligible customers receive a relationship APY bonus of 0.025% added to the base Silver APY.\"",
+    "doc_savings_accounts_silver_account_009: \"Combined with the existing 15 ATM fee rebates and 0.025% relationship bonus, Platinum Rewards Card holders get an elevated Silver Account experience.\"",
+    "doc_bank_accounts_bank_accounts_(general)_044: \"Missing Relationship Bonus: Customer maintains multiple Rho-Bank products but the relationship bonus was not applied.\"",
+    "task_097 gold[14] expected_apy = 6.65 (4.0 + 0.45 + 2.2, no bonus); gold[9] amount = 220.84",
+    "task_093 gold[8] expected_apy = 4.275 (4.0 + 0.25 + 0.025, bonus applied)",
+    "Replay (both runs): Silver credit 222.92 (with bonus) -> fails; 220.83 -> fails"
+   ]
+  },
+  "task_099": {
+   "upstream_severity": "Minor",
+   "verified_severity": "Minor",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "coverage",
+   "reason": "World Blue ($300) is the unique maximum referrer bonus, but the World Blue referral doc frames the program as 'referring other international businesses', which could steer a careful agent away from World Blue for a domestic consulting LLC. The formal qualification list has no international condition, so the agent can resolve it and the correct state is unchanged: Minor. The '$140 supported regions' corruption does not decide anything and is a note. Run U's 099 was never verified.",
+   "evidence": [
+    "doc_business_checking_accounts_world_blue_007: \"you can earn rewards by referring other international businesses to World Blue\"",
+    "doc_business_checking_accounts_world_blue_001: \"For a referral to qualify: The referred business must open a World Blue account; They must deposit at least $25,000 within 90 days\"",
+    "doc_business_checking_accounts_world_blue_001: \"Supported regions for payments | $140\"",
+    "Replay (run V): submit_referral 'Lime Green Account' -> verified False (referrals differs)"
+   ]
+  },
+  "task_100": {
+   "upstream_severity": "None",
+   "verified_severity": "None",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "None",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "The customer's 'mid-July' tenure claim is the task's intended verification trap: doc_047 measures tenure from the earliest checking account, and the DB date (09/10/2025, 65 days) settles it uniquely. Hunter Green ($175) is the unique maximum. A deliberate, resolvable trap is what the task tests, not a defect (review.md: keep issues to real defects), and run V's 100 was never verified.",
+   "evidence": [
+    "task_100 instruction 5: \"I opened my first account with Rho-Bank back in mid-July this year.\"",
+    "db accounts.biz_ti87k4x9m2_worldblue.date_opened = \"09/10/2025\"",
+    "doc_bank_accounts_bank_accounts_(general)_047: \"calculated from when you first became a Rho-Bank checking customer\u2014specifically, the date your earliest checking account was opened\"",
+    "doc_business_checking_accounts_hunter_green_001: \"A minimum relationship duration of 60 days\"; world_blue_001: \"at least 90 days\""
+   ]
+  },
+  "task_101": {
+   "upstream_severity": "Major",
+   "verified_severity": "Major",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Major",
+   "prior_verified": "Minor",
+   "why_runs_differed": "judgment",
+   "reason": "doc_047 and doc_048 limit bonuses received in a rolling 9-day window, and doc_048 says outright that multiple referrals may be in progress. No bonus falls in the current window (last ones 10/25 and 10/10), and a bonus is received when the referred person qualifies, not on submission, so submitting all four now is a document-supported reading, and the script then submits all four. The gold (two now) follows the competing reading that new submissions count toward the window, so this is two supported readings with different graded referrals tables: Major under both scorers.",
+   "evidence": [
+    "doc_bank_accounts_bank_accounts_(general)_048: \"You can have multiple referrals in progress, but you can only receive a maximum of 2 referral bonuses in any rolling 9-day window.\"",
+    "doc_bank_accounts_bank_accounts_(general)_047: \"If you attempt to receive more than 2 referrals in a single 9-day period, the third referral (and any subsequent referrals in that window) will be automatically denied.\"",
+    "initial_state referrals: latest COMPLETE 10/25/2025 and 10/10/2025; clock 11/14/2025",
+    "task_101 instruction 17: \"If agent recommends all 4 referrals without mentioning rolling window ... submit ALL 4\"",
+    "Replay (both runs): four referrals -> fails (referrals differs)"
+   ]
+  },
+  "task_102": {
+   "upstream_severity": "Blocker",
+   "verified_severity": "Blocker",
+   "difference_cause": "none (runs now agree)",
+   "prior_upstream": "Blocker",
+   "prior_verified": "Major",
+   "why_runs_differed": "coverage",
+   "reason": "Fact: the NL assertion requires the agent to recognize that Ember Analytics exceeds Sky Blue's 4-year limit, but Ember's real age (5 years) appears only in author notes and in task_101's script. It is in no DB record, document or tool output, and this customer says Ember incorporated in late 2022 ('about 3 years'). On agent-visible facts Ember and TechFlow both qualify for Sky Blue at the same $400 combined bonus, and the script branch where the agent 'corrects' Ember to 5 years can only fire on hallucination. reward_basis multiplies the NL result into the score, so the information needed does not exist: Blocker under both scorers, since NL grading is unchanged. Run V judged the assertion satisfiable without weighing its 'recognizing' clause; the 'maximize the bonus' referrer-vs-combined ambiguity is an additional Major.",
+   "evidence": [
+    "evaluation_criteria.nl_assertions[0]: \"The agent should recommend TechFlow Labs (not Ember Analytics) for the Sky Blue Account referral, recognizing that Ember Analytics exceeds the 4-year company age limit for Sky Blue eligibility.\"",
+    "evaluation_criteria.reward_basis = [\"DB\", \"NL_ASSERTION\"]",
+    "task_102 instruction 7: \"They incorporated in late 2022, so that's about 3 years now.\"; instruction 11 fires only \"If agent VERIFIES and CORRECTS you about Ember's age (says they're 5 years old, not 3)\"",
+    "grep 'Ember Analytics|TechFlow' over db.json and documents/*.json: 0 hits; task_102 initial_state: 0 hits",
+    "task_102 description.notes: \"'Ember is 3 years old' - actually 5 years (ineligible for Sky Blue)\" (author note only)",
+    "doc_business_checking_accounts_lime_green_003: \"Your bonus: $200\" vs sky_blue_001: \"Your bonus: $150 ... Their bonus: $250\""
+   ]
+  }
+ },
+ "notes": [
+  "Only four differences are scorer-caused (060, 061, 062, 067): each rests solely on close_bank_account_7392's free-text closure_reason, which the verified scorer strips. task_066 shares that defect but also has the scorer-independent Green savings naming defect, so it stays Major under both scorers.",
+  "Benchmark self-contradiction, ATM fee stacking: business-checking docs state that out-of-network and foreign fees stack (hunter_green_010, navy_blue_009), while personal-checking docs never say so, and task_074's seed data and gold treat Purple foreign withdrawals as fee-free (no stacking). task_075's gold assumes stacking. Fix in one direction across 072-075.",
+  "Benchmark self-contradiction, relationship bonus: task_093's gold applies the Silver 0.025% multi-product relationship bonus to a 2-product customer, and task_097's gold withholds it from a 13-product customer. silver_009's Platinum-card framing is the only text that could separate them, and it calls the bonus 'existing'.",
+  "Benchmark self-contradiction, rewards rounding: user 755bcb4d5d's seed (tasks 020, 026, 027) is rounded half-up and task_026's gold writes 1500 for 1499.9, while doc_007 mandates floor and tasks 018/019/021/022/028/029 store floor values.",
+  "026-029 consistency: the unobservable cash_back_disputes status defect is rated Major everywhere (two supported dispositions, each gold reachable). task_026 stays Blocker only because gold[10] '1500 points' follows no documented rounding rule.",
+  "Provisional-credit criterion 4 is applied by every gold (039, 040, 041, 080, 081) as a running count that excludes the dispute being filed. 041 is Major because its pre-session history differs from the running count; 080/081 are Minor because both readings give all three true and only the author notes disagree.",
+  "Calibration applied uniformly: post-clock gold values Major (072); unscripted customer facts or choices with no documented default Major (041 XFINITY, 070/071 company age); undocumented conventions Major (092 and 091 unlock-by-reset); rules the grader cannot see Minor (035, 081 transfer); missing-but-retrievable required docs Minor (037, 029, 050); deciding-value placeholders Minor (093).",
+  "The blank Step 3 in doc_credit_cards_credit_card_account_logistics_007 affects every CLI task (050-054). It is rated Minor wherever a gold-required get_payment_history_6183 read depends on it. Run U's 050 is Minor for a different reason (tier mapping missing from required_documents), and 053/054 were not re-adjudicated here.",
+  "Known verified-scorer gaps matter for the debit-card tasks: order_debit_card_5739 copies the closed card's reason into the new card's issue_reason, so closure reasons still decide 078/079/080/081/087/092 under the verified scorer. User-side tables (user_discoverable_tool_calls, human_transfer_requests) are compared exactly, which keeps 081's four simulator transfer requests graded under both scorers.",
+  "Replays were not re-run for this reconciliation. Every hash claim relied on here was reproduced independently by a reviewer or verifier in at least one run, with no conflicting replay between runs; the facts adjudicated (075, 080/081, 097, 102, 066) were settled from snapshot documents, task files and db.json read directly."
+ ]
+}

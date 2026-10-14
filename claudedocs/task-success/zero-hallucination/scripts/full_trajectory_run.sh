@@ -2,7 +2,7 @@
 # Run full episodes for a list of tasks with zero_hallucination retrieval.
 # Tree-kills a stuck episode by save-to name so one hang can't block the batch.
 # Usage: full_trajectory_run.sh <prefix> <deadline_s> task_043 task_047 ...
-cd /Users/vamsiconversive/github/tau2-bench
+cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 export OPENAI_API_KEY=$(grep '^OPENAI_API_KEY=' .env | cut -d= -f2- | tr -d '"')
 PREFIX=$1; DEADLINE=$2; shift 2
 VARIANT=${VARIANT:-zero_hallucination}

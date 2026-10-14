@@ -1,0 +1,76 @@
+{
+  "task_id": "task_041",
+  "severity": "Major",
+  "headline": "Which disputes get provisional credit depends on whether disputes filed earlier in the same call count toward the 'no more than 2 disputes in 12 months' rule, which the policy never says; the XFINITY refund amount also has to be inferred from 'around $120'.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "eligible_for_provisional_credit is persisted per dispute. The gold sets it true only for Staples and Coinbase, which matches one reading of criterion 4: count disputes filed earlier in the same session and file the customer's two priorities first. If criterion 4 counts only pre-session history (1 prior dispute), all 10 reason-eligible disputes qualify. If the 16 new filings count all at once, none do.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "initial_state transaction_disputes.dsp_dfab0685d198.submitted_at = \"09/20/2025\" (the only prior dispute)",
+        "gold[9] Staples txn_645286a3dd13 eligible_for_provisional_credit = true; gold[10] Coinbase txn_1b4cc30a928e = true; gold[11] Delta txn_107c4fa829bd (fraud, $487.50, Gold card opened 03/15/2024) = false",
+        "user instructions: \"The Staples and Coinbase charges are the biggest ones ... Please prioritize those if there's any limit.\" (said only if the agent raises provisional credit)",
+        "file_credit_card_transaction_dispute_4829 stores \"provisional_credit_given\": eligible_for_provisional_credit",
+        "Replay: gold with all 10 reason-eligible disputes set true -> verified match False, transaction_disputes differs in 8 records"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "why_it_matters": "Criteria 1, 2, 3 and 5 pass for 10 of the 16 disputes: 4 fraud, 4 duplicate, and 2 goods-not-received older than 30 days, all at least $25 and under the tier caps, on accounts open more than 60 days, with the merchant contacted where required. An agent that reads criterion 4 as a pre-session history gate marks all 10 true and fails on 8 records. The prior review took that reading. Only an agent that counts its own in-session filings, and files Staples and Coinbase before every other dispute, reaches the gold.",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the same interaction count toward criterion 4, and that the customer chooses which disputes are evaluated first. Alternatively, make the gold mark all 10 reason-eligible disputes true."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The gold files XFINITY as partial_refund with partial_refund_amount 69.99 (189.99 minus 120). The customer gives no resolution for any dispute and only says the usual bill is 'around $120'. Tesla ('overcharged ... promised a refund') and AT&T ('promised a partial refund') are filed as full_refund.",
+      "evidence": [
+        "user instructions: \"XFINITY $189.99 on 10/28/2025 - INCORRECT AMOUNT. Your usual bill is around $120.\"",
+        "gold[19].arguments: \"resolution_requested\": \"partial_refund\", \"partial_refund_amount\": 69.99",
+        "gold[24] AT&T (\"promised a partial refund\") resolution_requested = \"full_refund\"",
+        "doc_credit_cards_credit_cards_(general)_014: \"13. resolution_requested (string) - Ask user what resolution they want.\"",
+        "Replay: gold with XFINITY as full_refund -> verified match False (transaction_disputes differs)"
+      ],
+      "gold_action_refs": [
+        19,
+        22,
+        24
+      ],
+      "why_it_matters": "The doc says to ask the customer for the resolution, but the simulator has no scripted answer, so what is stored depends on what it improvises. A reply of 'full refund on all of them' or a refund of 'about $70' gives a different record and fails the task.",
+      "suggested_fix": "Script the resolution for each of the 16 disputes. For XFINITY give an exact figure, e.g. \"I want a partial refund of $69.99, the amount over my usual $120.00 bill.\""
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The dispute-filing doc lists 'reversal_of_charge' as a valid resolution_requested value, but the tool rejects it.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_014: \"'reversal_of_charge': Charge reversal/chargeback\"",
+        "tools.py file_credit_card_transaction_dispute_4829: valid_resolutions = [\"full_refund\", \"partial_refund\"]"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "An agent that picks reversal_of_charge for a fraud charge gets an error and has to retry. The failed call writes nothing outside the relaxed agent_discoverable_tools table, so the final state is unaffected.",
+      "suggested_fix": "Remove reversal_of_charge from doc_014, or accept it in the tool."
+    }
+  ],
+  "solution_check": "I rebuilt all 16 disputes from the transactions table (amounts, dates, card types) and checked the five doc_015 criteria for each. 10 disputes pass criteria 1, 2, 3 and 5. The gold's two trues come out only if criterion 4 counts in-session filings and Staples and Coinbase are filed first. Every other field matches the instructions and DB: card last 4 via 4 user tool calls, issue_noticed_date 11/14/2025 ('today'), and contacted_merchant per the scripted answers.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated the provisional-credit cap a Blocker because it read it as undocumented. I read doc_015 criterion 4, applied per filing, as one defensible route to the gold, so I downgrade it to Major and add the unscripted XFINITY partial-refund amount as a second Major issue.",
+  "notes": "Scorer: none of these issues depends on the verified relaxations. transaction_disputes is compared exactly under both scorers. The gold's give_discoverable_user_tool passes no arguments, but the user_discoverable_tools record holds only tool_name and status, so arguments the agent passes do not matter. The four user get_card_last_4_digits calls each write a user_discoverable_tool_calls row keyed by their arguments, so the user must look up exactly the four account ids, once each. Filing order changes nothing in the DB (submitted_at is a date). Task notes cite an internal 'provisional_credit_max_disputes_in_period = 3' that no agent-visible doc contains."
+}

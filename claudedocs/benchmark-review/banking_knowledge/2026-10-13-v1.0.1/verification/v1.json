@@ -1,0 +1,318 @@
+{
+ "verifier_id": "v1",
+ "fact_checks": [
+  {
+   "fact": "DB grading replays gold on a fresh env and requires exact agent-side and user-side DB hash match",
+   "status": "Confirmed",
+   "evidence": "src/tau2/evaluator/evaluator_env.py EnvironmentEvaluator.calculate_reward: gold_environment.make_tool_call for each golden action, then agent_db_hash == predicted_agent_db_hash and user_db_hash == predicted_user_db_hash; toolkit.get_db_hash = get_dict_hash(self.db.model_dump()). Both toolkits are built on the same TransactionalDB (environment.py get_environment: build_tools(variant, db, ...) and KnowledgeUserTools(db)), so the two hashes move together (seen in every replay: MATCH (False, False))."
+  },
+  {
+   "fact": "Discoverable read calls are logged only when the gold makes that read (_derive_read_log_allowlist)",
+   "status": "Confirmed",
+   "evidence": "runner/build.py _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; _build_env_kwargs passes it when domain == banking_knowledge; tools.py call_discoverable_agent_tool logs only if getattr(method, MUTATES_STATE_ATTR) or name in self._read_log_allowlist. Record id is generate_agent_discoverable_tool_id(tool_name) (name only) and add_to_db refuses duplicates, so repeated calls are idempotent. Nuance: GENERIC discoverable tools (e.g. initial_transfer_to_human_agent_0218) have mutates_state=False and are treated like reads."
+  },
+  {
+   "fact": "call_discoverable_agent_tool / call_discoverable_user_tool parse integers as floats",
+   "status": "Confirmed",
+   "evidence": "tools.py: json.loads(arguments, parse_int=float) in both wrappers; apply_for_credit_card casts annual_income = float(annual_income). give_discoverable_user_tool uses plain json.loads but stores only the tool name."
+  },
+  {
+   "fact": "ACTION grading: at least one matching call per gold action on compare_args (all agent-passed args when unset); order, repetition and extra calls ignored",
+   "status": "Confirmed",
+   "evidence": "evaluator_action._check_actions loops gold actions and breaks on first pred match; data_model/tasks.py Action.compare_with_tool_call uses tool_call.arguments.keys() when compare_args is None and returns True when compare_args == []."
+  },
+  {
+   "fact": "Agent and user toolkits share one DB; writes are logged even when the tool returns an error string",
+   "status": "Confirmed",
+   "evidence": "Shared DB confirmed (environment.py). The error-string part holds only after the call reaches the underlying method: call_discoverable_agent_tool logs the CALLED row after method(**args) returns, whatever string it returns, but returns early without logging on unknown/not-unlocked tool, bad JSON or TypeError; apply_for_credit_card with an invalid card_type and user discoverable tools not yet given return before any write. The review's notes state this nuance correctly."
+  },
+  {
+   "fact": "Clock is fixed",
+   "status": "Confirmed",
+   "evidence": "utils.py get_now() -> datetime(2025, 11, 14, 3, 40, 0); tools.py get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'"
+  },
+  {
+   "fact": "Some reads are always available, others are discoverable and must be unlocked",
+   "status": "Confirmed",
+   "evidence": "get_environment(retrieval_variant='bm25').tools.get_tools() = KB_search, call_discoverable_agent_tool, change_user_email, get_credit_card_accounts_by_user, get_credit_card_transactions_by_user, get_current_time, get_referrals_by_user, get_user_information_by_{email,id,name}, give_discoverable_user_tool, list_discoverable_agent_tools, log_verification, transfer_to_human_agents, unlock_discoverable_agent_tool. No always-available or discoverable agent tool reads cash_back_disputes (get_user_dispute_history_7291 reads transaction_disputes)."
+  },
+  {
+   "fact": "(added) User-tool results are not visible to the agent",
+   "status": "Confirmed",
+   "evidence": "agent/base_agent.py is_valid_agent_history_message keeps ToolMessage only when requestor == 'assistant', so submit_cash_back_dispute_0589's 'Status: RESOLVED' / 'Status: SUBMITTED' text reaches only the user simulator."
+  }
+ ],
+ "task_verdicts": {
+  "task_002": {
+   "verdict": "Confirmed",
+   "review_severity": "None",
+   "verified_severity": "None",
+   "evidence": [
+    "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"",
+    "doc_credit_cards_platinum_rewards_card_001: \"Annual fee: $200.00.\" (no Rho-Bank+ requirement)",
+    "doc_credit_cards_platinum_rewards_card_007: \"Earn a $150.00 rebate on your annual fee by meeting a monthly spend threshold of $7500.00.\" -> $200 - $150 = $50 <= $100 at $50,000/month",
+    "doc_credit_cards_platinum_rewards_card_009: promo window 2024-06-01 to 2024-12-31 (expired)",
+    "Highest other rates: Diamond Elite 5% (invitation-only, $495 fee), Business Silver 10% travel/software only (business card), Gold 2.5% (needs Rho-Bank+)",
+    "gold[0] apply_for_credit_card(Platinum Rewards Card, Sera Chen, 250000, false); annual_income cast to float by the tool"
+   ],
+   "citation_problems": [],
+   "note": "Audited from scratch. Grepped every card doc for cash-back rates: Platinum's flat 10% is the highest for everyday spend, and its effective $50 fee fits the $100 budget once the agent asks about monthly spend. Clean."
+  },
+  "task_003": {
+   "verdict": "Confirmed",
+   "review_severity": "None",
+   "verified_severity": "None",
+   "evidence": [
+    "doc_credit_cards_silver_rewards_card_001: \"Annual fee: $0.00\", \"Foreign transaction fee with a premium subscription: 0%\", \"Initial credit limits typically range from $10,000 to $100,000\", \"Purchase protection: eligible items are protected for 90 days\"",
+    "doc_credit_cards_gold_rewards_card_001: \"Annual fee: $0.00\", \"Foreign transaction fee: 0%\", \"$17,500 to $112,500\", \"Cash back on all purchases: 2.5%\", \"Rho‑Bank+ premium subscription required: Yes\"",
+    "doc_credit_cards_silver_rewards_card_002: travel/software \"4.0% back\"",
+    "doc_credit_cards_bronze_rewards_card_001: FTF 2.75%; doc_credit_cards_crypto-cash_back_001: \"purchase protection on this card is No\"; doc_credit_cards_ecocard_001: FTF 1.0%",
+    "gold[0] apply_for_credit_card(Silver Rewards Card, Catherine Wells, 180000, true)"
+   ],
+   "citation_problems": [],
+   "note": "Audited from scratch. Silver and Gold tie at a $0 fee, and with mostly-travel spend Silver's 4% beats Gold's 2.5%, matching the gold. Business Silver (first-year fee 0, 10% travel) is a possible lure, but it requires business formation and revenue details the customer does not have, so I do not count it."
+  },
+  "task_004": {
+   "verdict": "Confirmed",
+   "review_severity": "None",
+   "verified_severity": "None",
+   "evidence": [
+    "db.json users[6680a37184]: email 'kenji.tanaka@outlook.com', phone '206-555-0293' -> customer matches 1 of 4 fields",
+    "prompts/components/additional_instructions.md: \"ensure that they are able to give correctly any 2 out of the following values: date of birth, email, phone number, address\"",
+    "doc_bank_accounts_bank_accounts_(general)_042 Tier 1: \"account_ownership_dispute | Ownership disputes, joint account issues, or identity verification failures requiring specialist\"; \"always select from the highest tier that applies\"",
+    "gold[0] transfer_to_human_agents reason 'account_ownership_dispute', compare_args ['reason'], reward_basis ['ACTION']"
+   ],
+   "citation_problems": [],
+   "note": "Audited from scratch. Verification fails, the customer demands a human, and 042's Tier-1 row names identity verification failures explicitly, so the reason code is determined. 'fraud_or_security_concern' is a weaker fit because no fraud is reported. Clean."
+  },
+  "task_005": {
+   "verdict": "Confirmed",
+   "review_severity": "Minor",
+   "verified_severity": "Minor",
+   "evidence": [
+    "data/tau2/user_simulator/simulation_guidelines_tools.md: \"If you have been transferred to another agent, generate the '###TRANSFER###' token... Only do this after the agent has clearly indicated that you are being transferred.\"",
+    "task_005.user_tools = ['apply_for_credit_card'] (tools variant of guidelines)",
+    "doc_customer_support_special_support_codes_001: \"Verify the code exactly matches 9K2X7M4P1N8Q3R5T6A\" and the field mapping (all fields = code, time_verified = actual timestamp)",
+    "Replay: gold adds verification_history['9K2X7M4P1N8Q3R5T6A_20251114_034000_EST'] and sets users[6680a37184].email = 'kenji.tanaka@gmail.com'"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced the replay and the simulator-guideline conflict. The scenario explicitly scripts 'Okay, I'll hold' and a return, so Minor is a fair rating. Additional risk (note, not an issue): the customer pattern (wrong email, failed verification, then a 'supervisor' code) invites a security-minded refusal under the doc's 'If you suspect the code has been exposed or misused, stop the process', but the exact-match procedure points to acceptance."
+  },
+  "task_006": {
+   "verdict": "Confirmed",
+   "review_severity": "Minor",
+   "verified_severity": "Minor",
+   "evidence": [
+    "doc_credit_cards_crypto-cash_back_009: \"What is the minimum credit score to apply for the card to earn crypto rewards? $660.\"",
+    "doc_credit_cards_crypto-cash_back_008: FTF 0%, \"What is the minimum monthly payment? 1.5% of the outstanding balance.\"; crypto-cash_back_001: \"Virtual card management availability: Yes.\"",
+    "doc_credit_cards_ecocard_001: \"Minimum credit score required to apply: 0 (0 indicates no credit score requirement).\", FTF 1.0%; ecocard: \"minimum monthly payment is 1.0%\", \"Virtual card management features are available: Yes\"",
+    "Bronze/Silver virtual card 'No'; Gold min payment 2.0% and Rho-Bank+; Platinum 2.5%; Diamond 3.0%"
+   ],
+   "citation_problems": [],
+   "note": "Re-derived the filter: only Crypto-Cash Back and EcoCard pass FTF/min-payment/virtual, and the $660 floor (customer has 540) removes Crypto. The dollar-sign corruption sits on the deciding value, so Minor follows the calibration rule. Business cards also checked (Green Rewards documents no min payment or virtual cards and is a business card)."
+  },
+  "task_010": {
+   "verdict": "Confirmed",
+   "review_severity": "Major",
+   "verified_severity": "Major",
+   "evidence": [
+    "db.json referrals for 76ad9cc60e: Bronze COMPLETE 10/20/2025, Gold COMPLETE 10/22/2025, Platinum REJECTED 10/25/2025, Silver IN_PROGRESS 11/05/2025",
+    "doc_credit_cards_credit_cards_(general)_002: \"You can receive at most 2 referral bonuses in any rolling 7-day window.\"",
+    "doc_credit_cards_credit_cards_(general)_009: \"Provide the customer with this tool and instruct them to run it themselves: - `get_referral_link(user_id: str, card_name: str)`\"",
+    "task_010.user_tools = ['apply_for_credit_card','submit_referral']; no KB doc mentions submit_referral (grep)",
+    "Replay: gold + give_discoverable_user_tool('get_referral_link') -> MATCH (False, False), diff + user_discoverable_tools['fc21fceb1501a934'] {tool_name: get_referral_link, status: GIVEN}"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced the diagnosis and the hash divergence. The gold credits an agent that explains the cap and leaves the retry to the customer's own undocumented submit_referral. The KB-documented retry path (giving get_referral_link) fails. That is two defensible action sets, so Major."
+  },
+  "task_012": {
+   "verdict": "Confirmed",
+   "review_severity": "None",
+   "verified_severity": "None",
+   "evidence": [
+    "grep over all 698 docs for travel notif/alert/notice: only passing mentions (gold_rewards_card_004 \"Enable travel notifications if your risk controls require it.\", diamond_elite_card_008 \"Enable travel alerts so legitimate international activity is recognized.\", general_023, a business-checking service list)",
+    "doc_bank_accounts_bank_accounts_(general)_042 Tier 2: \"kb_search_unsuccessful_customer_requests_transfer | Customer asked for information or instructions that you searched for in KB but couldn't find, you informed customer, customer then requests transfer\"",
+    "gold[0] reason 'kb_search_unsuccessful_customer_requests_transfer', compare_args ['reason']"
+   ],
+   "citation_problems": [],
+   "note": "Audited from scratch. No travel-notification procedure exists, and no Tier-1 code applies, so the Tier-2 code is the only fit. Clean."
+  },
+  "task_014": {
+   "verdict": "Adjusted",
+   "review_severity": "Blocker",
+   "verified_severity": "Major",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_009: \"If no referral program is documented for the requested card, or if the user’s claimed terms are incorrect, ... explain why and do not provide a referral link tool. Do not transfer to a human in these cases.\"",
+    "doc_bank_accounts_bank_accounts_(general)_042 Tier 2 'When to Use': \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
+    "No doc_credit_cards_crypto-cash_back_* mentions referral (grep)",
+    "task_014.required_documents includes 042, omits 009; gold[0] transfer reason 'unconfirmed_external_communication', ACTION grading"
+   ],
+   "citation_problems": [
+    "notes: \"An agent cannot satisfy both tasks with one consistent policy\" is wrong. task_015's customer moves to the next card when the agent cannot provide a Crypto link (instruction 2), and an offered or extra transfer writes nothing to the DB, so a policy of 'offer a transfer for an unverifiable letter-backed claim' passes both 014 and 015."
+   ],
+   "note": "The conflict is real: 009 forbids a transfer for a card with no documented referral program, and the gold transfers. But 042's 'When to Use' row is itself scenario-specific transfer guidance that names exactly this situation (a letter the agent cannot verify), so the gold follows a document-supported reading. Two documents give opposite instructions for the same scenario, and the gold follows one, so the calibration rule gives Major, not Blocker."
+  },
+  "task_015": {
+   "verdict": "Confirmed",
+   "review_severity": "None",
+   "verified_severity": "None",
+   "evidence": [
+    "Crypto-Cash Back: no referral doc",
+    "doc_business_credit_cards_business_gold_rewards_card_010: \"The referral program accepts new referrals until 2025-09-15.\"",
+    "doc_credit_cards_ecocard_011: \"Receive 50 for each successful referral\" (claimed $200)",
+    "doc_business_credit_cards_silver_zoom_card_011: \"$150\", \"$7,500 within 90 days\", \"No new referrals are accepted after 2025-10-01\"",
+    "doc_credit_cards_platinum_rewards_card_008: \"referral bonus of $100\", \"at least $1,500 within 90 days\"",
+    "db.json: no referrals for 890389b165 (no weekly-cap risk)",
+    "Replay: give with arguments + reordered JSON keys + an extra transfer -> MATCH (True, True)"
+   ],
+   "citation_problems": [],
+   "note": "Audited from scratch. Only the Platinum claim matches a live program, the gold gives get_referral_link and the customer runs it, and the replay confirms that argument/key-order variation and an extra transfer do not change the hash. Note: Fatima holds no Platinum card and can only give user_id and phone (cannot pass 2-of-4 verification), but giving the tool needs neither."
+  },
+  "task_017": {
+   "verdict": "Confirmed",
+   "review_severity": "Major",
+   "verified_severity": "Major",
+   "evidence": [
+    "db.json txn_31fd03682992: Hilton Seattle, Travel, '$289.50', '1159 points'; 289.50 x 4 = 1158.00 under any rounding",
+    "txn_913d14a20dc5 Amazon $156.78 x 1% -> 156 vs stored 15 (gold); txn_cfabb609133d $87.25 -> 87 vs stored 47 (gold); txn_cedd88ce1f65 Adobe $54.99 x 4 = 219.96 -> floor 219 = stored, half-up 220",
+    "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number.\"",
+    "db.json transaction_disputes.dsp_7a3e91b4c2d8: txn_913d14a20dc5, duplicate_charge, UNDER_REVIEW"
+   ],
+   "citation_problems": [
+    "evidence quote of doc_credit_cards_credit_cards_(general)_003 drops the words 'for a particular transaction' without an ellipsis (source: \"...between the cash back they received for a particular transaction and the cash back they should have received.\"); meaning unchanged"
+   ],
+   "note": "Recomputed all five Silver transactions. The two gross under-credits match the gold, and the 1-point over-credit on 31fd03 fits no rounding rule, so whether the user files a third dispute depends on the agent's choice: Major. The secondary Minor (rounding doc not in required_documents) also holds."
+  },
+  "task_018": {
+   "verdict": "Confirmed",
+   "review_severity": "Minor",
+   "verified_severity": "Minor",
+   "evidence": [
+    "Recomputed 47 transactions for 890389b165 with floor: mismatches exactly txn_57ecc6da56c2 (95 vs 47), txn_d80aef98f532 (1390 vs 521), txn_896ac64b98d7 (642 vs 128), txn_adea68821a1d (669 vs 167), txn_0be1ccc37761 (2049 vs 768), txn_e647e242ce96 (750 vs 1875)",
+    "Half-up adds 22 one-point false positives (e.g. txn_e45e7acb56a0 Amazon $89.99 -> 90 vs 89)",
+    "doc_credit_cards_credit_cards_(general)_007 not in task_018.required_documents"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced the six-dispute set exactly under the documented floor rule, and the 22 half-up false positives. The rounding doc is retrievable but not listed, which is Minor by calibration. Unflagged: the EcoCard earn rate (deciding for txn_896ac64b98d7) is written as dollars ('$5.00 sustainability points per dollar'). Per calibration this is a Minor issue in its own right, and the task severity does not change."
+  },
+  "task_019": {
+   "verdict": "Confirmed",
+   "review_severity": "Minor",
+   "verified_severity": "Minor",
+   "evidence": [
+    "Recomputed 23 transactions for af0581dcbf: floor mismatches exactly txn_f093f96e2001 (875 vs 175), txn_580773a8649e (600 vs 240), txn_d398545ca1a2 (1000 vs 600), txn_37b5b8e67a5e (800 vs 775)",
+    "Half-up adds 11 false positives (e.g. txn_f2a3b4c5d6e7 Sprouts $112.58 x 5 = 562.9 -> 563 vs stored 562)",
+    "required_documents lists gold_rewards_card_002 (concierge) not the rate doc"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced exactly. Same Minor class as 018, and the same unflagged EcoCard '$5.00 points' wording on deciding values (Thrive Market, Tentree), which does not change the severity."
+  },
+  "task_020": {
+   "verdict": "Confirmed",
+   "review_severity": "Major",
+   "verified_severity": "Major",
+   "evidence": [
+    "cc_755bcb4d5d_bsilver opened 02/13/2025; doc_business_credit_cards_business_silver_rewards_card_012 promo 2024-11-14..2025-11-14, 2x for 6 months from opening (to 08/13/2025)",
+    "Gold disputes: a8f1c2d3e403 (6300 vs 3150), b7e2d4c5f506 (1020 vs 2550), a8f1c2d3e410 (3800 vs 1520), a8f1c2d3e411 (1499.9 vs 600)",
+    "Floor gives nine extra stored=floor+1 rows: a8f1c2d3e402, 404, 406, 409, 414, b7e2d4c5f503, 507, 509, 512; half-up gives exactly the four gold rows"
+   ],
+   "citation_problems": [],
+   "note": "Recomputed all 26 transactions with the double promo and exclusions. The seed follows round-half-up while the KB prescribes floor, so a KB-faithful agent sees nine 1-point over-credits. The gold passes only if the agent does not dispute them. Same class and severity as 017."
+  },
+  "task_021": {
+   "verdict": "Confirmed",
+   "review_severity": "Minor",
+   "verified_severity": "Minor",
+   "evidence": [
+    "Recomputed 17 transactions for d2e5bc4124: floor mismatches exactly txn_ccbb948ffa10 Chipotle (369 vs 184) and txn_5b30a52ac9d6 Everlane Green (1352 vs 270)",
+    "WeWork stored 0 (doc_business_credit_cards_business_bronze_rewards_card_003 coworking 0%); ThredUp at 1x (doc_credit_cards_ecocard_004)",
+    "Half-up adds 6 false positives (HBO Max, DTE, ThredUp, Spotify, Tesla Supercharger, Patagonia 10/30)"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced exactly. The rounding doc is missing from required_documents, which is Minor. The EcoCard '$5.00 points' wording is unflagged (deciding for Everlane) but changes nothing."
+  },
+  "task_022": {
+   "verdict": "Confirmed",
+   "review_severity": "Minor",
+   "verified_severity": "Minor",
+   "evidence": [
+    "Recomputed 77 transactions for f9bf8de0be (Business Silver opened 06/10/2024, before the double promo): floor mismatches exactly the ten gold ids (8a8873, 4d2b79, 508e27, 30cb41, f84fa2, 1a4918, ffeede Dell exclusion, 097c07 Datadog, 4f5e24 ThredUp exclusion, ba8b47 Target exclusion)",
+    "Half-up adds 26 false positives",
+    "task notes say 75 transactions; DB has 77 (author note only)"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced exactly, including the merchant exclusions. The customer asks for errors in both directions, so the over-credits belong in the gold. Same Minor class as 018-021."
+  },
+  "task_024": {
+   "verdict": "Confirmed",
+   "review_severity": "Major",
+   "verified_severity": "Major",
+   "evidence": [
+    "doc_business_credit_cards_silver_zoom_card_012: \"You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31\"; \"All other eligible purchases earn 3 × 1.0% during the promo period\"; \"Transportation and logistics category purchases earn 3 × 3.0%\"",
+    "doc_business_credit_cards_silver_zoom_card_001: \"Who this card is built for - Established transportation and logistics operators\"; \"Annual membership is $74.50\"",
+    "doc_business_credit_cards_business_bronze_rewards_card_010: 2025-10-01..2026-03-31, $10,000 in 2 months -> $500",
+    "$40,000: Bronze 1% + $500 = $900; Silver Zoom 3% = $1,200 - $74.50 (or 9% = $3,600 if a truck counts as transportation spend); Business Silver 2x1% = $800; Business Gold <= $1,000 - $200"
+   ],
+   "citation_problems": [],
+   "note": "Recomputed every business card. Bronze wins only if Silver Zoom is treated as closed to a landscaping company, which the KB implies ('built for', 'for logistics business approval') but never states as a requirement. Two defensible recommendations, so Major. Note: Bronze's credit line is '$10,000 and may be as high as $50,000', which a $40,000 purchase may exceed."
+  },
+  "task_025": {
+   "verdict": "Confirmed",
+   "review_severity": "Major",
+   "verified_severity": "Major",
+   "evidence": [
+    "doc_business_credit_cards_business_platinum_rewards_card_002: \"Travel, software, and media advertising purchases earn 4.0%.\" / \"Purchases outside those categories earn 1.5%.\"",
+    "doc_business_credit_cards_business_silver_rewards_card_005: \"Hardware/Electronics Merchants (Software Exclusion): - Apple\"",
+    "doc_business_credit_cards_business_platinum_rewards_card_011: first-year fee 0 for accounts opened 2025-11-01..2026-02-28",
+    "Software reading: Platinum $4,000 > Silver Zoom $3,000 - $74.50 > Business Silver 2x1% $2,000; non-software reading: Platinum $1,500 loses"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced. The Silver exclusion list hints that the author treats Apple purchases as software, but nothing places Apple Music in Platinum's 4% categories, and 'media' there means advertising. The gold depends on that classification, so Major."
+  },
+  "task_026": {
+   "verdict": "Confirmed",
+   "review_severity": "Blocker",
+   "verified_severity": "Blocker",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database\"; no agent tool reads cash_back_disputes; base_agent.is_valid_agent_history_message hides user-tool results from the agent",
+    "task_026 and task_027 Phase 2 user line identical; initial_state auto_resolve_disputes true vs false",
+    "gold[10] new_rewards_earned '1500 points' for txn_a8f1c2d3e411 ($149.99 x 10% = 1499.9; floor 1499 per general_007)",
+    "Replays: gold with '1499 points' -> MATCH (False, False), diff only rewards_earned 1500 -> 1499; refusing the updates -> MATCH (False, False)"
+   ],
+   "citation_problems": [],
+   "note": "Reproduced all three issues. Independently of the dispute-status problem, gold[10] encodes round-half-up against the documented floor rule, so a policy-faithful agent that trusts the customer still fails. That gold value follows no document-supported reading: Blocker."
+  },
+  "task_027": {
+   "verdict": "Confirmed",
+   "review_severity": "Blocker",
+   "verified_severity": "Blocker",
+   "evidence": [
+    "task_027.description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED\"; no agent tool can read cash_back_disputes",
+    "Replay: gold + task_026's unlock and update calls -> MATCH (False, False)",
+    "Same identical Phase-2 user line as task_026, opposite gold"
+   ],
+   "citation_problems": [],
+   "note": "The deciding fact (SUBMITTED vs RESOLVED) is invisible to the agent. 026/027 present identical agent-visible evidence with opposite golds, so the outcome tracks the agent's disposition, not its use of evidence. A cautious agent reaches this gold, but the benchmark rewards the opposite disposition on the same input in 026 and 028. Blocker under the 'information needed does not exist' rule, consistent with 026."
+  },
+  "task_028": {
+   "verdict": "Upgraded",
+   "review_severity": "Major",
+   "verified_severity": "Blocker",
+   "evidence": [
+    "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database\"; no agent tool reads it",
+    "task_029 Phase 2 line identical to task_028; task_029 gold has no update calls; initial_state auto_resolve_disputes true (028) vs false (029)",
+    "Recomputed: gold update values 95, 1390, 642, 669, 2049, 750 match floor(amount x rate) exactly",
+    "Replay: refusing the updates -> MATCH (False, False)"
+   ],
+   "citation_problems": [],
+   "note": "The rewards math reproduces exactly. The remaining defect, applying corrections on a dispute status the agent cannot observe while task_029 expects refusal on identical evidence, is the same defect class the review rated Blocker in 026/027 with no stated reason to differ. Raised to Blocker for consistency. The Minor EcoCard '$5.00 points' issue holds."
+  }
+ },
+ "calibration_notes": [
+  "Dispute-status-unobservable class: Blocker in task_026 and task_027, Major in task_028, with identical evidence and no stated reason. The same class should get the same severity; I rate all three Blocker (task_029 is outside my batch, but it pairs with 028 and should match).",
+  "task_014 rated Blocker for a two-document contradiction (general_009 'Do not transfer' vs 042's letter-specific transfer code). The calibration rule for two document-supported readings is Major, and 042 explicitly covers letter-backed claims, so I rate it Major.",
+  "EcoCard earn rate written as dollars ('Earn $5.00 sustainability points per dollar', doc_credit_cards_ecocard_002) is a Minor issue in task_028, where it decides a corrected value, but is not mentioned in tasks 018, 019, 021 and 022, where it equally decides dispute rows. Task severities are unchanged (already Minor), but the issue lists are inconsistent.",
+  "Rounding-doc-missing-from-required_documents is consistently Minor across 017-022. The 1-point over-credit class (017, 020, and the Major sub-issue in 026/027) is consistently Major."
+ ],
+ "methodology_note": "The review's grading model matches the snapshot. Every load-bearing computation I re-ran (reward recomputations for 017-022 and 028, card-value comparisons for 002/003/006/024/025, and DB replays for 010, 015, 026, 027 and 028) reproduced, and every quote I checked exists in the cited document; the only citation issue is one quote in 017 that drops words without an ellipsis. Blind spots: (1) severities for paired tasks (026/027 vs 028/029) were set per reviewer instead of per defect class; (2) task_014 treats one of two conflicting scenario-specific documents as controlling and then calls the gold unsupported, which overstates it to Blocker; its claim that 014 and 015 cannot both be passed is wrong, because 015 tolerates a transfer offer; (3) cosmetic document corruptions on deciding values are recorded unevenly across tasks. The unflagged sample (002, 003, 004, 012, 015) held up under a from-scratch audit, with no missed defects."
+}

@@ -1,0 +1,17 @@
+{
+  "task_id": "task_012",
+  "severity": "None",
+  "headline": "Clean: the KB has no travel-notification procedure, so the agent should say so and transfer under kb_search_unsuccessful_customer_requests_transfer when the customer asks.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Searched all 698 docs for travel notifications/notices/alerts: some docs mention them in passing (gold_rewards_card_004 \"Enable travel notifications if your risk controls require it\", diamond_elite_card_008 \"Enable travel alerts\", platinum_rewards_card_003 \"Enable transaction and international use alerts\"), but none gives a procedure, form or channel. The agent should say it has no documented process. The customer then asks for a human, which matches the Tier 2 code kb_search_unsuccessful_customer_requests_transfer exactly; no Tier 1 code applies.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean and still holds.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. Risk, not a defect: an agent that passes on the passing KB tips, or the generic support number in credit_cards_(general)_023 (\"1-800-RHO-BANK\"), may lead the user simulator to treat that as instructions (scenario rule 4 mentions phone numbers) and end without a transfer. Scenario rule 2's follow-up questions usually pull an honest agent back to admitting the gap."
+}

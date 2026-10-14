@@ -1,0 +1,55 @@
+{
+  "task_id": "task_028",
+  "severity": "Major",
+  "headline": "The rewards math is fully documented and reproduces the gold exactly, but the agent has no way to confirm the disputes were approved, so it must update rewards on the customer's word alone. Task_029 shows the same evidence and expects a refusal.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "doc_004 tells the agent to look up the customer's resolved disputes in cash_back_disputes before updating rewards. No agent tool can read that table, and the user tool's 'RESOLVED' output goes only to the user, so the agent can only take the customer's claim on trust. Updating on that claim and declining because the required lookup is impossible are both defensible, and the gold credits only the first.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: the only reference to cash_back_disputes is the add_to_db in KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool or discoverable tool reads it (get_user_dispute_history_7291 reads transaction_disputes only)",
+        "agent/base_agent.py is_valid_agent_history_message keeps only ToolMessages with requestor == 'assistant' and drops user tool-call messages, so the agent never sees the user tool's 'Status: RESOLVED - The dispute has been reviewed and approved.'",
+        "task_029 user_scenario: the user speaks the identical Phase 2 line (\"I just got a notification that they've all been approved and resolved!\") while the disputes are SUBMITTED, and its gold makes no update_transaction_rewards_3847 calls",
+        "gold[8..14]: unlock + six update_transaction_rewards_3847 calls"
+      ],
+      "gold_action_refs": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "A cautious agent that won't update without the documented lookup leaves the six transactions unchanged and fails the DB hash. Because task_029 rewards exactly that refusal on the same agent-visible evidence, no fixed policy passes both tasks.",
+      "suggested_fix": "Add a discoverable read tool for cash_back_disputes (e.g. get_cash_back_dispute_status) documented in doc_004 and include it in both golds, so the agent can see RESOLVED here and SUBMITTED in task_029."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The EcoCard earn-rate doc writes points as dollar amounts, and the rounding doc's worked example has broken intermediate arithmetic. The intended values (5 or 1 points per dollar, floor) can still be recovered, and the seed rewards_earned values agree with that reading.",
+      "evidence": [
+        "doc_credit_cards_ecocard_002: \"Green purchases: Earn $5.00 sustainability points per dollar spent\"",
+        "doc_credit_cards_ecocard_002: \"A $100 purchase at a qualifying green merchant earns 100 × $5.00 points.\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar, giving 126 points\"",
+        "db.json credit_card_transaction_history[txn_e83813b6528a] EcoCard Green $147.63 -> rewards_earned '738 points' (= floor(147.63*5))"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "These are cosmetic corruptions. A careful agent gets 642 points for txn_896ac64b98d7 ($128.47 x 5) either way, but the dollar sign invites a misreading.",
+      "suggested_fix": "Write 'Earn 5 sustainability points per dollar' and fix the example to '$126.77 x 1 point per dollar = 126.77, floored to 126 points'."
+    }
+  ],
+  "solution_check": "I computed floor(amount x rate) for all 47 of user 890389b165's transactions: Silver 4% travel/software else 1%, Business Platinum 4% travel/software/media else 1.5%, Crypto 2%, EcoCard 5 pt/$ green else 1. Exactly six stored values differ: txn_57ecc6da56c2 47->95, txn_d80aef98f532 521->1390, txn_896ac64b98d7 128->642, txn_adea68821a1d 167->669, txn_0be1ccc37761 768->2049, txn_e647e242ce96 1875->750. These match the gold dispute set and the gold 'X points' values exactly; round-half-up would give 28 mismatches. Replaying the gold in the v1.0.1 snapshot succeeds; the agent and user hashes are identical (shared DB), b21bb8bc...",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. I confirm the rewards math (floor is documented in doc_007, which is in required_documents), but report a new Major defect: the dispute-status lookup the docs require cannot be performed.",
+  "notes": "txn_e647e242ce96 is overpaid (1875 vs 750 points). The gold disputes and corrects it, as the customer insists in Phase 1 step 4; nothing in the KB forbids disputing an overpayment, but an agent that keeps refusing would diverge. The format 'X points' is mandated by doc_004, and the tool stores new_rewards_earned verbatim, so '95' or '$0.95' would fail. Discoverable-tool and user-tool records are keyed by tool name, so repeated give/unlock calls do not change the hash."
+}
