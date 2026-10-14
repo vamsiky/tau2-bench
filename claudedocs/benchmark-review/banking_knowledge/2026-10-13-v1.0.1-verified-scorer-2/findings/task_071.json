@@ -1,0 +1,49 @@
+{
+  "task_id": "task_071",
+  "severity": "Major",
+  "headline": "The account choices are right, but the business-savings procedure tells the agent to open the account with account_type 'savings' while the gold uses 'business_savings', and the two produce different accounts.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_004 (Opening Business Savings Accounts) instructs \"Set account_type to 'savings'\", while the tool docstring lists 'business_savings' and the gold uses it. With account_type 'savings' the tool runs the personal-savings eligibility check, which this customer passes (3-year personal Green checking), so the call succeeds and creates a different account id and record.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004: \"How to call: - Set account_type to 'savings'. - Set account_class to the exact official name provided by the customer (e.g., 'Bronze Saver Account').\"",
+        "tools.py open_bank_account_4821 docstring: \"Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "gold[5].arguments = {\"account_type\": \"business_savings\", \"account_class\": \"Gold Saver Account\"}",
+        "replay: account_type \"savings\" -> \"Bank account opened successfully! ... Account Type: savings\"; verified match False, \"table 'accounts' differs\""
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "An agent that follows the internal business-savings procedure verbatim opens a \"savings\" account and fails the accounts table even though it chose the right product.",
+      "suggested_fix": "Change doc_004's tool instructions to \"Set account_type to 'business_savings'\"."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Sky Blue is a startup account restricted to companies within 4 years of formation, and the customer script never says how old the business is. The promotion only applies among accounts the customer qualifies for, so the gold silently assumes eligibility.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "doc_business_checking_accounts_sky_blue_008: \"Eligibility criteria tied to company age are evaluated when you open the account; the threshold is 4.\"",
+        "user_scenario.instructions: no formation date or company age is given"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "A careful agent that asks the company age gets an improvised answer; if the simulated customer says more than 4 years, the agent correctly falls back to Lime Green and fails the gold. Most agents will not ask, so the effect is limited.",
+      "suggested_fix": "Add a line to the script stating the business was formed within the last 4 years (e.g., \"I started the agency 2 years ago\")."
+    }
+  ],
+  "solution_check": "Checking (mobile deposit >= $10,000/day, $0 overdraft fee, minimum < $10,000, APY >= 1%): Sky Blue ($25,000, $0, none, 1.25%), Lime Green ($15,000, $0, $5,000, 1.5%), Hunter Green ($10,000, $0, $5,000, 1.0%); November promotion puts Sky Blue first. Savings (same-day ACH, minimum < $50,000, wire <= $15): Gold Saver (Yes, 15), Silver Plus Saver (Yes, $5,000 min, 15), Gold Plus Saver (Yes, $25,000 min, $10); November promotion puts Gold Saver first. Business-savings eligibility holds (Cobalt Blue opened 09/15/2025, 60 days, $12,500). Gold matches; order of the two opens does not matter (replayed).",
+  "prior_status": "new",
+  "prior_note": "Prior review rated the task clean; the account_type contradiction and the company-age gap were not reported there.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. The same doc_004 instruction affects any sibling task that opens a business savings account (e.g., task_056, outside this batch). Gold requires get_all_user_accounts_by_user_id_3847 (replay: skipping it fails)."
+}

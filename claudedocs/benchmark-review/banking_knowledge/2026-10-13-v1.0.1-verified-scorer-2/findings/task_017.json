@@ -1,0 +1,49 @@
+{
+  "task_id": "task_017",
+  "severity": "Major",
+  "headline": "The Hilton transaction was credited one point more than the documented rate allows, but the gold leaves it undisputed. An agent that follows the rewards rules and flags it fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "Seed row txn_31fd03682992 (Hilton Seattle, $289.50, Travel, Silver 4%) stores 1159 points. The documented rate gives exactly 1158.00, so no rounding convention produces 1159. The gold disputes only the two gross errors and treats this 1-point overcredit as correct.",
+      "evidence": [
+        "db.json credit_card_transaction_history[txn_31fd03682992]: transaction_amount \"$289.50\", category \"Travel\", rewards_earned \"1159 points\"; 289.50 x 4.0 = 1158.00 exactly",
+        "doc_credit_cards_silver_rewards_card_002: \"Pay with your card for eligible travel and software transactions to earn 4.0% back\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "doc_credit_cards_credit_cards_(general)_003: \"Use this process when a customer believes there is a discrepancy between the cash back they received for a particular transaction and the cash back they should have received.\"",
+        "gold[2] txn_cfabb609133d (Sushi Kashiba $87.25 Dining 1% -> 87, stored 47); gold[3] txn_913d14a20dc5 (Amazon $156.78 Shopping 1% -> floor 156, stored 15)",
+        "Replay: gold plus a dispute on txn_31fd03682992 -> verified match False (tables cash_back_disputes and user_discoverable_tool_calls differ)"
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "A careful agent that recomputes every row by the documented rules finds three discrepancies, not two. Kenji is told to follow the agent's lead, so if the agent reports the 1-point overcredit, he files a third dispute. That adds a cash_back_disputes row and a user_discoverable_tool_calls row the gold lacks, and the task fails. The gold is reached only if the agent decides on its own that a 1-point difference is not worth disputing, a threshold no document states. The verified scorer compares both tables exactly, so this result is the same as under upstream grading.",
+      "suggested_fix": "Set txn_31fd03682992.rewards_earned to \"1158 points\", or add txn_31fd03682992 to the gold dispute set."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rounding rule that decides which rows count as errors lives in doc_credit_cards_credit_cards_(general)_007, which is not listed in required_documents. The agent can still find it with KB search or grep in the default alltools configuration.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_017.required_documents = [\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_006\", \"doc_credit_cards_silver_rewards_card_001\", \"doc_credit_cards_silver_rewards_card_002\"] (no _007)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under a retrieval configuration that only shows required_documents (golden_retrieval / required_docs prompt), the agent never sees the floor rule. An agent that rounds half-up instead flags many correctly floored rows as 1-point errors and over-disputes.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Verified Kenji (6680a37184) and recomputed his 5 Silver Rewards transactions (4% Travel/Software, 1% otherwise, floor per doc _007). Floor gives three mismatches: the two gold rows (913d14: 156 vs stored 15; cfabb6: 87 vs stored 47) plus 31fd03 (1158 vs stored 1159). Round-half-up adds a fourth (cedd88 219.96 -> 220 vs stored 219). The gold dispute set is therefore exactly the two gross errors. Replaying the gold matches itself, and adding the third dispute fails the verified comparison.",
+  "prior_status": "changed",
+  "prior_note": "The prior review attributed the problem to an undocumented rounding rule. Floor rounding is in fact documented (doc _007, unchanged since v1.0.0), and under it the only remaining defect is the seeded 1159 on txn_31fd03682992, which no rounding explains. Still Major.",
+  "notes": "Doc _007's worked example is garbled ('1.2677 points, which rounds down to 1 point per dollar, giving 126 points'), but its rule and its second example (249.975 -> 249) are clear, so this is a note only. All grading here is DB tables the verified scorer compares exactly (user_discoverable_tools, user_discoverable_tool_calls, cash_back_disputes, verification_history). None of its relaxations apply."
+}

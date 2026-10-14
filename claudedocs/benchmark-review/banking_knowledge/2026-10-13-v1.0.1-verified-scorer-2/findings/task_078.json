@@ -1,0 +1,17 @@
+{
+  "task_id": "task_078",
+  "severity": "None",
+  "headline": "Lost-wallet task with three debit cards is clean: every gold write follows from the customer script, the tier table, and the card-closure rules.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Reconstructed independently: verify, list accounts, read debit cards for the three accounts (needed to get card ids), freeze all three, read transactions (Light Green chk_mc78a5b9d2_3 has two status 'pending' rows, so its card stays frozen), count Light Blue replacements (dbc_mc78a5b9d2_lb issued 07/25/2025 'lost' and lb_old1 issued 03/15/2025 'lost', both inside 12 months, so a third is over the ENTRY limit and the customer declines the $25 fee), unfreeze then close Light Blue and Green as 'lost' (close_debit_card_4721 rejects FROZEN cards), and order Green EXPEDITED $15 CLASSIC $0. Replaying that sequence in a different order with float fees and an extra failed close on a frozen card matched the gold under both the verified and exact comparison.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior review rated this clean; the v1.0.1 change only added the get_all_user_accounts_by_user_id_3847 read, which any agent needs to find the account ids, so the verdict stands.",
+  "notes": "Unfreeze-before-close is forced by the tool and documented: doc_bank_accounts_bank_accounts_(general)_025 requirement 3 \"The debit card must currently be in ACTIVE or PENDING status\"; close_debit_card_4721 returns \"cannot be closed. Current status: FROZEN\". The failed close is a status rejection, so it logs close_debit_card_4721, which the gold logs anyway. Keeping the Light Blue card frozen instead of closing it fails (debit_cards differs), but the customer explicitly asks to close all three after confirming the wallet is gone, so closing is the reading the script supports. get_credit_card_accounts_by_user returns no records (doc_030 check is a no-op). Shipping address in the order is the on-file address string verbatim; the script never states a different address."
+}

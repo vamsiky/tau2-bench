@@ -1,0 +1,81 @@
+{
+  "task_id": "task_074",
+  "severity": "Major",
+  "headline": "The corrected Light Blue refund ($14.50) and the Dark Green and Evergreen refunds are right, but the Purple refund ($27.00) still counts a fee dated after \"today\" and a rebate the Purple docs limit to ATM-operator fees.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "The Purple credit includes the duplicate $2.50 fee posted 11/15/2025, after the fixed clock (2025-11-14 03:40). Counting only rows up to today gives $24.50.",
+      "evidence": [
+        "tools.py get_current_time: \"2025-11-14 03:40:00 EST\"",
+        "db.json btxn_ar_purple_15f and btxn_ar_purple_15f_dup: 11/15/2025, atm_fee -2.5 each, one rebate btxn_ar_purple_15r +2.5",
+        "gold[9].amount = 27.00 (chk_ar72c5d8e3_1)"
+      ],
+      "gold_action_refs": [
+        9
+      ],
+      "why_it_matters": "An agent that excludes transactions dated after today credits $24.50; the amount is hashed into the credit transaction id and the balance, so the DB differs.",
+      "suggested_fix": "Re-date the 11/15-11/18 rows to on or before 11/14/2025, or advance the clock."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "$2.50 of the Purple credit is a \"missing rebate\" on Rho-Bank's own $3.50 out-of-network fee (11/11 BofA). The Purple docs define the $30/month rebate as a refund of ATM-operator fees, not of Rho-Bank's fee, so a document-faithful agent credits only the $1.00 overcharge. The seeded rows (every other NON-RHO fee paired with an equal ATM FEE REBATE) support the gold's broader reading.",
+      "evidence": [
+        "doc_checking_accounts_purple_account_004: \"You are eligible for refunds of ATM operator fees up to a monthly cap of $30.\"",
+        "doc_checking_accounts_purple_account_010: \"Confirm that the charge is labeled as an ATM operator fee\"",
+        "doc_checking_accounts_purple_account_012: \"You are charged $2.50 per cash withdrawal made at an out-of-network ATM.\"",
+        "db.json btxn_ar_purple_11f: 11/11/2025 NON-RHO ATM FEE -3.5, no rebate row; btxn_ar_purple_05f/05r: -2.5/+2.5",
+        "description.notes: \"(4) $3.50 fee charged instead of $2.50 AND missing $2.50 rebate\""
+      ],
+      "gold_action_refs": [
+        9
+      ],
+      "why_it_matters": "Strict reading: Purple = $24.50 (or $22.00 through today) instead of $27.00. Task_075 relies on the opposite reading (Purple's $2.50 fees are not rebated), so the benchmark itself is inconsistent about this policy.",
+      "suggested_fix": "State in the Purple docs whether the $30 global rebate covers Rho-Bank's out-of-network fee, and align task_074 and task_075 to that statement."
+    },
+    {
+      "class": "answer_leak",
+      "severity": "Minor",
+      "summary": "Several seeded transaction ids flag the errors: the tool prints each record id, and ids such as btxn_ar_purple_03f_err, btxn_ar_lb_05f_err and btxn_ar_purple_15f_dup mark which fees are wrong. v1.0.1 scrubbed the descriptions but not the ids.",
+      "evidence": [
+        "tools.py get_bank_account_transactions_9173: formatted_lines.append(f\"{i}. Record ID: {record_id}\")",
+        "db.json ids: btxn_ar_purple_03f_err, btxn_ar_purple_07f_err, btxn_ar_purple_09f_err, btxn_ar_purple_15f_dup, btxn_ar_lb_03f_err, btxn_ar_lb_05f_err, btxn_ar_lb_08f_err, btxn_ar_dg_02f_err, btxn_ar_ev_03f_err"
+      ],
+      "gold_action_refs": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "why_it_matters": "Does not change the correct state, but partly gives away which fees are erroneous, weakening what the task measures (the same kind of leak #374 removed from descriptions).",
+      "suggested_fix": "Rename the seeded ids to neutral values."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The Purple out-of-network fee ($2.50) that the Purple items depend on is stated only in purple_account_012, which is not in required_documents; it is retrievable by search.",
+      "evidence": [
+        "required_documents lists doc_checking_accounts_purple_account_001 and _004 only for Purple",
+        "doc_checking_accounts_purple_account_012: \"$2.50 per cash withdrawal made at an out-of-network ATM\""
+      ],
+      "gold_action_refs": [
+        9
+      ],
+      "why_it_matters": "Under golden retrieval the agent cannot verify the $2.50 baseline; in default retrieval it can.",
+      "suggested_fix": "Add doc_checking_accounts_purple_account_012 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed per account. Light Blue (2 free domestic out-of-network then $2.50; 2 free foreign then $4.00): RHO-BANK fee +2.50, 11/05 and 11/06 free withdrawals charged +5.00, 11/08 and 11/09 free foreign charged +8.00, 11/10 4th domestic uncharged -2.50, 11/13 $5.50 vs $4.00 +1.50 = $14.50, all before the clock; matches the corrected gold (#374). Dark Green (1% min $1.50; foreign 2.5% max $6): +1.50 +2.00 +4.00 -1.00 -1.75 = $4.75. Evergreen (1% max $2.50; foreign 2% min $3): +1.50 +1.50 +3.50 -1.00 -1.80 = $3.70. Purple: RHO-BANK +2.50, London +8.00, Maybank +10.50, 11/11 +1.00 fee +2.50 rebate, 11/15 duplicate +2.50 = $27.00 only with the post-clock row and the broad rebate reading.",
+  "prior_status": "changed",
+  "prior_note": "Prior Blocker cited the old $8.00 Light Blue refund, an undocumented Purple domestic fee, and post-clock data; Light Blue is fixed and the Purple fee is documented (purple_account_012), but the post-clock duplicate and the rebate-scope question remain, so Major.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Netting undercharges against overcharges follows doc_bank_accounts_bank_accounts_(general)_017 (\"apply a credit for the net correction across all identified fee discrepancies\"); overcharge-only refunds would be Light Blue $17.00, Dark Green $7.50, Evergreen $6.50. One credit per account with the majority credit_type (fee_refund) per doc_017. Fee-stacking: the gold treats foreign withdrawals as owing only the foreign fee (e.g., Purple London refunds the full $8.00, not $8.00-$2.50), the opposite of the stacking assumption in task_075/076. Light Blue 11/17 $500 withdrawal exceeds the documented $400 daily limit (post-clock, cosmetic). Dark Green holder is 36 vs the documented 17-26 age range; not graded."
+}

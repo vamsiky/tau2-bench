@@ -1,0 +1,112 @@
+{
+  "summary": "97 tasks reviewed against v1.0.1 under the revised verified scorer: 12 Blocker, 33 Major, 24 Minor, 28 clean (v1.0.0 review: 10 / 11 / 14 / 62). Severities are the reviewers' verdicts as checked by four independent verifiers, who covered every Blocker and Major, every change from v1.0.0, and a seeded sample of 12 low-severity tasks; they confirmed 70 of 79, upgraded 8 (027 to Blocker; 046, 054, 066, 093, 101 to Major; and issue-level upgrades in 091 and 102) and corrected the reasoning in 075. Nothing is reconciled with any other run. Four of the ten v1.0.0 Blockers persist (063, 082, 083, 084) and six drop to Major because the documents support the gold's reading on one side (039, 040, 041, 074, 075, 101). The rewards rounding rule is documented (round down), which reduces 018, 019, 021 and 022 to a missing required document, but it exposes seed data and a gold value that break the rule (017, 020, 026, 027). 36 tasks the v1.0.0 review rated clean have a defect, 20 of them Major or Blocker, found mostly by replaying gold and alternative actions. The scorer's relaxations decide no Blocker or Major: bank-account closures with a custom reason (060, 061, 062, 067) are clean, and every other divergence tested fails both the verified and the exact comparison. Verifiers noted three possible under-ratings outside their groups that are left as reported: task_092's unscripted shipping speed (Minor, Major in 082), and tasks 080 and 081 if counting the dispute being filed is a supported reading of the provisional-credit limit.",
+  "systemic_issues": [
+    {
+      "title": "Gold depends on information the agent cannot observe",
+      "description": "No agent tool reads cash_back_disputes and the customer's own tool results never reach the agent, so 026-029 grade the same customer claim about dispute approval in opposite ways and any one behaviour passes at most one twin. task_053's gold uses card digits only the customer's get_card_last_4_digits call can return but omits that call, and task_049's gold contains a customer transfer request the script never tells the simulated customer to make.",
+      "tasks": [
+        "task_026",
+        "task_027",
+        "task_028",
+        "task_029",
+        "task_049",
+        "task_053"
+      ]
+    },
+    {
+      "title": "Gold values contradict the documents or sibling golds",
+      "description": "task_026 writes 1500 points where the documented round-down rule gives 1499 (sibling 028 rounds down); task_069 picks Silver Plus although Gold and Silver savings both document ATM rebates; task_082 never closes the Green Fee-Free card its own close_and_reissue dispute requires; task_083's four dispute calls omit the required customer_max_liability_amount; task_084's liabilities follow no single rule; task_091 orders STANDARD/CLASSIC where the Premium-tier 'best free option' is EXPEDITED/PREMIUM (as in 086, 087, 090) and reorders an Entry-tier card inside its 48-hour wait; task_097 omits the 0.025% bonus that 093's gold applies.",
+      "tasks": [
+        "task_026",
+        "task_069",
+        "task_082",
+        "task_083",
+        "task_084",
+        "task_091",
+        "task_097"
+      ]
+    },
+    {
+      "title": "Gold actions that contradict a documented procedure",
+      "description": "task_014's gold transfers to a human where the referral document says to explain and not transfer; task_015 gives a referral tool to a customer who cannot be verified; task_087's gold skips the escalation doc_039 prescribes for an unrecognised charge; task_088's decline codes prescribe steps (offer a funds transfer, follow the stolen-card protocol) that the gold and the script do not take.",
+      "tasks": [
+        "task_014",
+        "task_015",
+        "task_087",
+        "task_088"
+      ]
+    },
+    {
+      "title": "Strings the gold stores verbatim differ from what the documents tell the agent to write",
+      "description": "The gold stores account_class 'Green Account' while the documents name the products 'Green Account (savings)' and use 'Green Account (checking)' as the example, and general_004 says to open business savings with account_type 'savings' while the gold uses 'business_savings'. Both values are hashed into the account id, so the documented spelling fails.",
+      "tasks": [
+        "task_056",
+        "task_059",
+        "task_065",
+        "task_066",
+        "task_068",
+        "task_071"
+      ]
+    },
+    {
+      "title": "Ties and multiple defensible products with no tie-breaker",
+      "description": "task_063 is an exact tie (Bronze and Silver Rewards both add +0.15% at $0); in the others a second product is as good or better under a supported reading: Silver Zoom's promo (024), Apple Music's category (025), Platinum and Business Silver against the competitor (048), ATM fee stacking (075), Bluest's fees and opening deposit (076), and whose referral bonus to maximise (102).",
+      "tasks": [
+        "task_063",
+        "task_024",
+        "task_025",
+        "task_048",
+        "task_075",
+        "task_076",
+        "task_102"
+      ]
+    },
+    {
+      "title": "Rules with two document-supported readings",
+      "description": "Whether disputes filed earlier in the same call count toward the provisional-credit limit (039-041), whether the 0.025% relationship bonus stacks with a card bonus (093-095, 097), and whether the referral limit caps submissions or bonuses (101). Each gold takes one reading and fails an agent that applies the other consistently.",
+      "tasks": [
+        "task_039",
+        "task_040",
+        "task_041",
+        "task_093",
+        "task_094",
+        "task_095",
+        "task_097",
+        "task_101"
+      ]
+    },
+    {
+      "title": "Fee and rewards data that break the documented rules",
+      "description": "Seed rewards in 017 and for Amara (020, 026, 027) do not follow the documented round-down rule; refunds in 072-074 count fees dated after the fixed clock; 072-074 assume out-of-network and foreign ATM fees do not stack while 075 and 076 need them to, and 074 rebates Rho-Bank's own fee where Purple's documents limit the rebate to operator fees.",
+      "tasks": [
+        "task_017",
+        "task_020",
+        "task_027",
+        "task_072",
+        "task_073",
+        "task_074",
+        "task_075"
+      ]
+    },
+    {
+      "title": "Dispute fields with no single documented rule",
+      "description": "How customer_max_liability_amount is derived (no statement dates exist; the $500 tier is capped at the amount, the $50 tier is not), which provisional-credit list applies when the REQUIRED and NOT REQUIRED lists overlap, and how pin_compromised and the transaction type are chosen all vary between sibling golds.",
+      "tasks": [
+        "task_084",
+        "task_085",
+        "task_086",
+        "task_088"
+      ]
+    },
+    {
+      "title": "Hidden ordering and choices the script never states",
+      "description": "task_054 and task_053 need the credit limit increase before the dispute the customer asked for first; task_046 passes only if the agent reports just the first failed retention check, otherwise the scripted customer pays the balance; task_041 never states the refund types the gold records.",
+      "tasks": [
+        "task_041",
+        "task_046",
+        "task_053",
+        "task_054"
+      ]
+    }
+  ]
+}

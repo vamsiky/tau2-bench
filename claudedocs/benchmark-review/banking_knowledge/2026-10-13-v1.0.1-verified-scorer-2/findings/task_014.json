@@ -1,0 +1,52 @@
+{
+  "task_id": "task_014",
+  "severity": "Major",
+  "headline": "The gold transfers the customer to a human, but the KB's own referral-link procedure says that when a card has no documented referral program the agent must explain and 'not transfer to a human', so careful agents fail.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The internal referral-link doc forbids a transfer in exactly this case (a referral link requested for a card with no documented program). The transfer-reason doc has a code that describes this case, and the gold uses that code.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009 (title 'Generating a Credit Card Referral Link (Internal)'): \"If no referral program is documented for the requested card, or if the user’s claimed terms are incorrect, ... explain why and do not provide a referral link tool. Do not transfer to a human in these cases.\"",
+        "prompts/components/policy_header.md guideline 5: \"This guidance may be overridden by specific scenario-based transfer guidance in the knowledge base.\"",
+        "doc_bank_accounts_bank_accounts_(general)_042 (TIER 2): \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
+        "No doc_credit_cards_crypto-cash_back_* document mentions a referral program (the ones that exist are silver_011, platinum_008, ecocard_011, and business_gold_010 / silver_zoom_011)",
+        "gold[0] = transfer_to_human_agents(reason=\"unconfirmed_external_communication\"), reward_basis=[\"ACTION\"]; required_documents omits credit_cards_(general)_009",
+        "Sibling task_015 (same customer, same Crypto-Cash Back opening line) follows doc 009: its gold never transfers"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "The customer opens by asking 'How can I get a referral link', so doc 009 is the most directly relevant document. An agent that follows it, and the policy header's rule that scenario-specific KB transfer guidance overrides the general one, explains and declines without transferring, which fails ACTION grading. In all four earlier Opus 4.7 trials the agent cited doc 009 ('this isn't something I can transfer to a human agent for') and none matched the gold. The gold is reachable only by letting doc 042's reason-code table override doc 009's explicit prohibition.",
+      "suggested_fix": "Either change the gold to no transfer (assert via NL that the agent explains no Crypto-Cash Back referral program is documented), or narrow doc 009's 'Do not transfer' sentence so it excludes customers who hold an official-looking communication, and add credit_cards_(general)_009 to required_documents."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Even when the agent does transfer, the Tier-1 code 'customer_demands_after_unavailable_offer_refusal' competes with the gold's Tier-2 code. The 'highest tier' rule picks Tier 1 whenever the customer has 'persisted multiple times' and asks for a human, which this script tells her to do ('Ask them to double-check or look harder').",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_042: \"always select from the highest tier that applies\"",
+        "doc_bank_accounts_bank_accounts_(general)_042 (TIER 1): \"customer_demands_after_unavailable_offer_refusal | ... customer persisted multiple times, and now demands human\"",
+        "task_014 user_scenario: \"Be politely persistent ... Ask them to double-check or look harder\" / \"If the agent ... offers to transfer you to a human agent: Accept the transfer\"",
+        "Sibling task_008 gold uses the Tier-1 code for a near-identical flyer/offer scenario"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Which code is correct depends on whether the agent offers the transfer or the customer asks for it, and whether her pushback counts as 'persisted multiple times'. The distinction is thin and the sibling task_008 resolves it the other way.",
+      "suggested_fix": "Accept either reason in compare_args for this task, or reword the Tier-1 row to require an explicit demand after multiple refusals."
+    }
+  ],
+  "solution_check": "I found no Crypto-Cash Back referral program anywhere in the KB. Following doc 009, I would explain that and decline to give a referral link without transferring; following the general policy plus doc 042, I would offer a transfer coded 'unconfirmed_external_communication'. The gold takes the second path. Because doc 009 is scenario-specific and the policy header gives such guidance precedence, I count the gold as one of two document-supported readings, and the less supported one (Major, not Blocker, because doc 042 does describe this case).",
+  "prior_status": "new",
+  "prior_note": "Prior review called this clean. It did not consider doc_credit_cards_credit_cards_(general)_009's 'Do not transfer to a human in these cases', which is unchanged between v1.0.0 and v1.0.1.",
+  "notes": "ACTION-only, so the verified DB scorer is irrelevant here. The severity sits close to Blocker: an agent that reads the most relevant document and follows the stated precedence rule fails. I kept Major per calibration because doc 042's Tier-2 row reads as an endorsed path for exactly this case. In the earlier Opus trials, 0 of 4 called transfer_to_human_agents (trial 0 offered a fraud-team transfer in text only)."
+}

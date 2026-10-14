@@ -1,0 +1,17 @@
+{
+  "task_id": "task_005",
+  "severity": "None",
+  "headline": "Clean: the KB has an internal doc that accepts this exact bypass code and spells out the log_verification field values, so after the transfer the agent should log the bypass and change the email.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Normal verification fails (1 of 4 fields), the customer demands a transfer, and then he returns with code 9K2X7M4P1N8Q3R5T6A. doc_customer_support_special_support_codes_001 says 'Verify the code exactly matches 9K2X7M4P1N8Q3R5T6A' and gives a table that sets all six identity fields to the code, with 'time_verified | Actual verification timestamp'. get_current_time returns '2025-11-14 03:40:00 EST', which is also the log_verification docstring example. The agent then calls change_user_email(6680a37184, kenji.tanaka@gmail.com). Replaying that sequence (with or without the transfer and with extra get_user_information reads) gives a DB identical to the gold under both the exact and verified comparisons.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and re-derivation agrees.",
+  "notes": "Things a verifier should know. (a) time_verified must be exactly '2025-11-14 03:40:00 EST'. Dropping ' EST' changes the verification record id and fails (I tested this), but both the tool's own output and the docstring give that format. (b) The doc scopes the code to 'account recovery'. Treating an email change for a locked-out customer as recovery is the natural reading, though a cautious agent might refuse. In all four earlier Opus trials the agent never searched the KB for the code and refused it as social engineering ('there is no bypass code system'), which is an agent retrieval failure. (c) The customer's script ('say \"Okay, I'll hold.\" ... act as if you've spoken to a human agent and are now back') conflicts with the generic simulator rule to emit ###TRANSFER### once transferred. In the earlier trials the simulator followed the scenario and came back, so I do not count this as a defect. (d) The gold transfer has no reason argument and writes nothing, so it is not graded."
+}

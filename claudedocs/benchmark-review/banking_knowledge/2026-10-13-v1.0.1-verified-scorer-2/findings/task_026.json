@@ -1,0 +1,93 @@
+{
+  "task_id": "task_026",
+  "severity": "Blocker",
+  "headline": "The agent is asked to correct rewards after disputes are resolved, but no tool lets it see a dispute's status. The gold's corrected Zoom value (1500) also breaks the documented round-down rule, which gives 1499.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "gold[10] writes new_rewards_earned \"1500 points\" for txn_a8f1c2d3e411 (Zoom $149.99, Business Silver 10%, after the promo ended), i.e. 1499.9 rounded half-up. Doc _007 says rewards are always floored, giving 1499. Doc _004 tells the agent to recalculate and write 'the correct whole-number point value'.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "doc_credit_cards_credit_cards_(general)_004: \"new_rewards_earned: a string formatted as 'X points' where X is the correct whole-number point value\"",
+        "gold[10].arguments = {\"transaction_id\": \"txn_a8f1c2d3e411\", \"new_rewards_earned\": \"1500 points\"}; 149.99 x 10% = 1499.9",
+        "Replay: gold with \"1499 points\" -> verified match False (credit_card_transaction_history differs)"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "An agent that follows the only documented rounding rule writes 1499 and fails. The gold's 1500 matches only an agent that never finds doc _007 or overrides it. The verified scorer compares credit_card_transaction_history exactly, so this fails under both scorers.",
+      "suggested_fix": "Change gold[10] to \"1499 points\" (and re-seed this user's rows to floor), or change doc _007 to round half-up."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Blocker",
+      "summary": "Doc _004 requires the agent to look up resolved disputes in cash_back_disputes before updating rewards, but no agent tool reads that table, and the dispute tool's status message goes only to the customer. The agent cannot tell this task (disputes RESOLVED, gold updates) from task_027 (disputes SUBMITTED, gold refuses), because both customers make the identical claim.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: the only code touching cash_back_disputes is KnowledgeUserTools.submit_cash_back_dispute_0589 (add_to_db). get_user_dispute_history_7291 reads transaction_disputes, KnowledgeUserTools.query_database has no @is_tool, and the alltools shell only sees the KB directory",
+        "submit_cash_back_dispute_0589 returns 'Status: RESOLVED ...' (task_026, auto_resolve_disputes=True) or 'Status: SUBMITTED ...' (task_027, False) to the user only; orchestrator routes requestor='user' ToolMessages to Role.USER",
+        "task_026 and task_027 differ only in initial_state.task_config.dispute_settings.auto_resolve_disputes; both customers say \"I just got a notification that they've all been approved and resolved!\"",
+        "Replay: task_026 gold without the update calls -> verified match False (missing update_transaction_rewards_3847; credit_card_transaction_history differs)"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "The documented precondition cannot be checked, so the agent must choose blindly between trusting the customer and refusing. Trusting passes this task and fails task_027; refusing does the reverse. A doc-faithful agent that will not update without the documented lookup fails here.",
+      "suggested_fix": "Add an agent read tool for cash_back_disputes (e.g. get_cash_back_disputes_by_user), document it in doc _004, and add that read to gold so both 026 and 027 test actual verification."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Amara's seed rewards are rounded half-up, which contradicts the documented always-floor rule. Following doc _007, nine correctly categorized transactions are over-credited by 1 point each. The gold disputes none of them, so it only matches an agent that rounds half-up or ignores 1-point differences on its own initiative.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "txn_a8f1c2d3e402 Adobe Creative Cloud $54.99, Business Silver Software 10% x2 promo (opened 02/13/2025) = 1099.80 -> floor 1099, stored 1100",
+        "txn_a8f1c2d3e404 Microsoft 365 $79.99, Business Silver excluded 1% x2 = 159.98 -> 159, stored 160",
+        "txn_a8f1c2d3e406 Whole Foods $127.43, 1% x2 = 254.86 -> 254, stored 255",
+        "txn_a8f1c2d3e409 Amazon $156.78, 1% x2 = 313.56 -> 313, stored 314",
+        "txn_a8f1c2d3e414 Coursera $49.99, excluded 1% = 49.99 -> 49, stored 50",
+        "txn_b7e2d4c5f503 Slack $44.99, Silver 4% = 179.96 -> 179, stored 180",
+        "txn_b7e2d4c5f507 Netflix $22.99, 1% -> 22, stored 23",
+        "txn_b7e2d4c5f509 Costco $143.56, 1% -> 143, stored 144",
+        "txn_b7e2d4c5f512 Nordstrom $187.50, 1% -> 187, stored 188",
+        "Replay (task_020 data): gold plus disputes on these 9 rows -> verified match False (cash_back_disputes and user_discoverable_tool_calls differ)"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "why_it_matters": "A doc-faithful agent that recomputes every row finds 13 discrepancies: 4 gross and 9 one-point overcredits. The customer is told to follow the agent's lead, so if the agent presents all 13 she disputes all 13 and the task fails. Customers in sibling tasks 018/022 are told to dispute overpaid rows, so flagging overcredits is the benchmark's own convention. The gold is reached only by rounding half-up (against _007) or by an unstated materiality threshold. The verified scorer compares both affected tables exactly. Here the extra disputes would also be auto-resolved, inviting extra update writes.",
+      "suggested_fix": "Re-seed Amara's (755bcb4d5d) non-error rows with floored values (e.g. a8f1c2d3e402 -> 1099, b7e2d4c5f503 -> 179, ...), so the documented rule reproduces the gold set; or change _007 to round half-up and re-seed the floor-convention tasks 017-019/021/022."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rounding rule that decides which rows count as errors lives in doc_credit_cards_credit_cards_(general)_007, which is not listed in required_documents. The agent can still find it with KB search or grep in the default alltools configuration.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_026.required_documents = [\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_004\", \"doc_business_credit_cards_business_silver_rewards_card_001\", \"doc_business_credit_cards_business_silver_rewards_card_002\", \"doc_business_credit_cards_business_silver_rewards_card_005\", \"doc_business_credit_cards_business_silver_rewards_card_012\", \"doc_credit_cards_silver_rewards_card_001\", \"doc_credit_cards_silver_rewards_card_002\"] (no _007)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under a retrieval configuration that only shows required_documents (golden_retrieval / required_docs prompt), the agent never sees the rounding rule, so whether a row counts as a 1-point error depends on whichever convention the agent assumes.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Disputes: same seed as task_020; the 4 gold rows match half-up but not the documented floor (9 extra one-point rows). Updates: recomputed e403 6300 (20% in promo), f506 1020 (Silver 4%), e410 3800 (10% after the promo ended 08/13/2025) and e411 1499.9, which floors to 1499 against gold's 1500. The dispute-status lookup in step 1 of doc _004 is impossible with the agent's tools. The gold replay matches itself; the replays with 1499 and with no updates both fail the verified comparison.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor ('normal rounding works'). Under the documented floor rule the gold write itself is wrong, and the review also missed that the agent has no tool to verify dispute status.",
+  "notes": "Under the verified scorer, agent_discoverable_tools must contain update_transaction_rewards_3847. An extra update on a non-disputed row is a successful write that changes credit_card_transaction_history, so it fails either way. The scorer's relaxations do not rescue any path here."
+}

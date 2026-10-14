@@ -1,15 +1,17 @@
 """Compare benchmark-review runs of the same benchmark version task by task.
 
-Measures agreement at each stage (reviewer, verifier, reconciled) and separates
-differences the scorer causes from run-to-run judgment noise.
+Measures agreement at each stage (reviewer, verifier, and reconciled when a
+reconciliation file is given) against a same-scorer repeat that measures run-to-run
+judgment noise.
 
 Usage:
     python claudedocs/benchmark-review/compare_runs.py \
         claudedocs/benchmark-review/<domain>/comparison-<date>-<version>.json
 
 The spec names the runs to compare, an optional same-scorer repeat used as the noise
-baseline, and the reconciliation file. Output is written next to the spec as .md and
-.html.
+baseline, and an optional reconciliation file. Without one, each run's verified
+severity is final and every differing task shows both runs' reasoning. Output is
+written next to the spec as .md and .html.
 """
 
 from __future__ import annotations
@@ -21,6 +23,11 @@ from collections import Counter
 from pathlib import Path
 
 SEVERITIES = ["Blocker", "Major", "Minor", "None"]
+STAGES = [
+    ("reviewer", "Reviewers"),
+    ("verified", "After verification"),
+    ("reconciled", "After reconciliation"),
+]
 
 
 def load_run(run_dir: Path) -> dict:
@@ -46,6 +53,16 @@ def verified(run: dict, t: str) -> str:
     return v if v in SEVERITIES else reviewer(run, t)
 
 
+def explanation(run: dict, t: str) -> str:
+    """The verifier's note where it changed the severity, else the reviewer's headline."""
+    v = run["verdicts"].get(t, {})
+    if v.get("verified_severity") in SEVERITIES and v["verified_severity"] != reviewer(
+        run, t
+    ):
+        return v.get("note", "")
+    return run["findings"][t].get("headline", "")
+
+
 def agreement(a: dict[str, str], b: dict[str, str]) -> tuple[int, list[str]]:
     diff = sorted(t for t in a if a[t] != b.get(t))
     return len(a) - len(diff), diff
@@ -58,7 +75,12 @@ def build(spec_path: Path) -> dict:
     a_label, b_label = [r["label"] for r in spec["runs"]]
     a_side, b_side = [r["side"] for r in spec["runs"]]
     A, B = runs[a_label], runs[b_label]
-    rec = json.loads((base / spec["reconciliation"]).read_text())["tasks"]
+    rec_data = (
+        json.loads((base / spec["reconciliation"]).read_text())
+        if spec.get("reconciliation")
+        else {}
+    )
+    rec = rec_data.get("tasks", {})
     baseline = (
         load_run(base / spec["noise_baseline"]["dir"])
         if spec.get("noise_baseline")
@@ -87,7 +109,8 @@ def build(spec_path: Path) -> dict:
         t: rec[t][f"{b_side}_severity"] if t in rec else stage["verified"][1][t]
         for t in tasks
     }
-    stage["reconciled"] = (final_a, final_b)
+    if spec.get("reconciliation"):
+        stage["reconciled"] = (final_a, final_b)
 
     rows = []
     for t in tasks:
@@ -110,6 +133,8 @@ def build(spec_path: Path) -> dict:
                 else "",
                 "why": r.get("why_runs_differed", ""),
                 "reason": r.get("reason", ""),
+                "a_why": explanation(A, t),
+                "b_why": explanation(B, t),
             }
         )
 
@@ -131,15 +156,14 @@ def build(spec_path: Path) -> dict:
         "spec": spec,
         "rows": rows,
         "summary": summary,
-        "notes": json.loads((base / spec["reconciliation"]).read_text()).get(
-            "notes", []
-        ),
+        "notes": rec_data.get("notes", spec.get("notes", [])),
     }
 
 
 def render_md(c: dict) -> str:
     s, (a, b) = c["summary"], c["summary"]["labels"]
     n = s["n"]
+    reconciled = "reconciled" in s["stages"]
     out = [
         f"# {c['spec']['title']}",
         "",
@@ -155,20 +179,26 @@ def render_md(c: dict) -> str:
         out.append(
             f"| Noise baseline: {s['noise_label']} vs {a} reviewers (same scorer) | {same}/{len(diff) + same} | {len(diff)} |"
         )
-    for k, label in [
-        ("reviewer", "Reviewers"),
-        ("verified", "After verification"),
-        ("reconciled", "After reconciliation"),
-    ]:
-        same, diff = s["stages"][k]
-        out.append(f"| {label}: {a} vs {b} | {same}/{n} | {len(diff)} |")
-    same, diff = s["stages"]["reconciled"]
-    out += ["", "## What remains after reconciliation", ""]
-    out += [
-        f"- **{r['task']}**: {a} {r['a_fin']}, {b} {r['b_fin']}. {r['reason']}"
-        for r in c["rows"]
-        if r["task"] in diff
-    ]
+    for k, label in STAGES:
+        if k in s["stages"]:
+            same, diff = s["stages"][k]
+            out.append(f"| {label}: {a} vs {b} | {same}/{n} | {len(diff)} |")
+    final = "reconciled" if reconciled else "verified"
+    same, diff = s["stages"][final]
+    differing = [r for r in c["rows"] if r["task"] in diff]
+    if reconciled:
+        out += ["", "## What remains after reconciliation", ""]
+        out += [
+            f"- **{r['task']}**: {a} {r['a_fin']}, {b} {r['b_fin']}. {r['reason']}"
+            for r in differing
+        ]
+    else:
+        out += ["", f"## Tasks that differ after verification ({len(diff)})", ""]
+        out += [
+            f"- **{r['task']}**: {a} {r['a_fin']}, {b} {r['b_fin']}.\n"
+            f"  - {a}: {r['a_why']}\n  - {b}: {r['b_why']}"
+            for r in differing
+        ]
     out += [
         "",
         "## Final severity counts",
@@ -180,17 +210,25 @@ def render_md(c: dict) -> str:
         f"| {sv} | {s['counts'][a].get(sv, 0)} | {s['counts'][b].get(sv, 0)} |"
         for sv in SEVERITIES
     ]
-    out += [
-        "",
-        "## Every task",
-        "",
-        f"| Task | v1.0.0 | Repeat | {a} reviewer | {a} verified | {b} reviewer | {b} verified | {a} final | {b} final | Why runs differed |",
-        "|---|---|---|---|---|---|---|---|---|---|",
-    ]
-    for r in c["rows"]:
-        out.append(
+    out += ["", "## Every task", ""]
+    if reconciled:
+        out += [
+            f"| Task | v1.0.0 | Repeat | {a} reviewer | {a} verified | {b} reviewer | {b} verified | {a} final | {b} final | Why runs differed |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        out += [
             f"| {r['task']} | {r['prior']} | {r['baseline']} | {r['a_rev']} | {r['a_ver']} | {r['b_rev']} | {r['b_ver']} | {r['a_fin']} | {r['b_fin']} | {r['why'] or '-'} |"
-        )
+            for r in c["rows"]
+        ]
+    else:
+        out += [
+            f"| Task | v1.0.0 | Repeat | {a} reviewer | {a} verified | {b} reviewer | {b} verified |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        out += [
+            f"| {r['task']} | {r['prior']} | {r['baseline']} | {r['a_rev']} | {r['a_ver']} | {r['b_rev']} | {r['b_ver']} |"
+            for r in c["rows"]
+        ]
     if c["notes"]:
         out += ["", "## Notes", ""] + [f"- {x}" for x in c["notes"]]
     return "\n".join(out) + "\n"
@@ -222,6 +260,7 @@ label{display:inline-flex;gap:6px;align-items:center;margin-bottom:10px}
 def render_html(c: dict) -> str:
     s, (a, b) = c["summary"], c["summary"]["labels"]
     e = html.escape
+    reconciled = "reconciled" in s["stages"]
 
     def sev(x: str) -> str:
         return f'<span class="sev {e(x)}">{e(x)}</span>' if x in SEVERITIES else e(x)
@@ -236,43 +275,61 @@ def render_html(c: dict) -> str:
                 len(diff),
             )
         )
-    for k, label in [
-        ("reviewer", "Reviewers"),
-        ("verified", "After verification"),
-        ("reconciled", "After reconciliation"),
-    ]:
-        same, diff = s["stages"][k]
-        stages.append((f"{label}: {a} vs {b}", f"{same}/{s['n']}", len(diff)))
+    for k, label in STAGES:
+        if k in s["stages"]:
+            same, diff = s["stages"][k]
+            stages.append((f"{label}: {a} vs {b}", f"{same}/{s['n']}", len(diff)))
     stage_rows = "".join(
         f"<tr><td>{e(name)}</td><td>{e(x)}</td><td>{d}</td></tr>"
         for name, x, d in stages
     )
-    remaining = s["stages"]["reconciled"][1]
-    rem = "".join(
-        f"<tr><td>{e(r['task'])}</td><td>{sev(r['a_fin'])}</td><td>{sev(r['b_fin'])}</td><td class='wrap'>{e(r['reason'])}</td></tr>"
-        for r in c["rows"]
-        if r["task"] in remaining
-    )
+    remaining = s["stages"]["reconciled" if reconciled else "verified"][1]
+    differing = [r for r in c["rows"] if r["task"] in remaining]
+    if reconciled:
+        rem_title = f"What remains after reconciliation ({len(remaining)})"
+        rem_head = f"<th>Task</th><th>{e(a)}</th><th>{e(b)}</th><th>Why</th>"
+        rem = "".join(
+            f"<tr><td>{e(r['task'])}</td><td>{sev(r['a_fin'])}</td><td>{sev(r['b_fin'])}</td><td class='wrap'>{e(r['reason'])}</td></tr>"
+            for r in differing
+        )
+    else:
+        rem_title = f"Tasks that differ after verification ({len(remaining)})"
+        rem_head = f"<th>Task</th><th>{e(a)}</th><th>{e(b)}</th><th>{e(a)} reasoning</th><th>{e(b)} reasoning</th>"
+        rem = "".join(
+            f"<tr><td>{e(r['task'])}</td><td>{sev(r['a_fin'])}</td><td>{sev(r['b_fin'])}</td><td class='wrap'>{e(r['a_why'])}</td><td class='wrap'>{e(r['b_why'])}</td></tr>"
+            for r in differing
+        )
     counts = "".join(
         f"<tr><td>{sev(x)}</td><td>{s['counts'][a].get(x, 0)}</td><td>{s['counts'][b].get(x, 0)}</td></tr>"
         for x in SEVERITIES
     )
-    body = "".join(
-        f"<tr class='{'diff' if r['a_ver'] != r['b_ver'] or r['a_fin'] != r['b_fin'] else ''}'>"
-        f"<td>{e(r['task'])}</td><td>{sev(r['prior'])}</td><td>{sev(r['baseline'])}</td>"
-        f"<td>{sev(r['a_rev'])}</td><td>{sev(r['a_ver'])}</td><td>{sev(r['b_rev'])}</td><td>{sev(r['b_ver'])}</td>"
-        f"<td>{sev(r['a_fin'])}</td><td>{sev(r['b_fin'])}</td><td>{e(r['why'] or '-')}</td><td class='wrap'>{e(r['reason'])}</td></tr>"
-        for r in c["rows"]
-    )
+    head = f"<th>Task</th><th>v1.0.0</th><th>Repeat</th><th>{e(a)} reviewer</th><th>{e(a)} verified</th><th>{e(b)} reviewer</th><th>{e(b)} verified</th>"
+    if reconciled:
+        head += f"<th>{e(a)} final</th><th>{e(b)} final</th><th>Why runs differed</th><th>Reconciliation reason</th>"
+
+    def row(r: dict) -> str:
+        cells = (
+            f"<td>{e(r['task'])}</td><td>{sev(r['prior'])}</td><td>{sev(r['baseline'])}</td>"
+            f"<td>{sev(r['a_rev'])}</td><td>{sev(r['a_ver'])}</td><td>{sev(r['b_rev'])}</td><td>{sev(r['b_ver'])}</td>"
+        )
+        if reconciled:
+            cells += (
+                f"<td>{sev(r['a_fin'])}</td><td>{sev(r['b_fin'])}</td>"
+                f"<td>{e(r['why'] or '-')}</td><td class='wrap'>{e(r['reason'])}</td>"
+            )
+        differs = r["a_ver"] != r["b_ver"] or r["a_fin"] != r["b_fin"]
+        return f"<tr class='{'diff' if differs else ''}'>{cells}</tr>"
+
+    body = "".join(row(r) for r in c["rows"])
     notes = "".join(f"<li>{e(x)}</li>" for x in c["notes"])
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(c["spec"].get("page_title", "Review run comparison"))}</title><style>{CSS}</style></head><body><main>
 <section><h1>{e(c["spec"]["title"])}</h1><p class="muted">{e(c["spec"].get("intro", ""))}</p></section>
 <section><h2>Agreement by stage</h2><div class="tscroll"><table><thead><tr><th>Stage</th><th>Same severity</th><th>Differences</th></tr></thead><tbody>{stage_rows}</tbody></table></div></section>
-<section><h2>What remains after reconciliation ({len(remaining)})</h2><div class="tscroll"><table><thead><tr><th>Task</th><th>{e(a)}</th><th>{e(b)}</th><th>Why</th></tr></thead><tbody>{rem}</tbody></table></div></section>
+<section><h2>{e(rem_title)}</h2><div class="tscroll"><table><thead><tr>{rem_head}</tr></thead><tbody>{rem}</tbody></table></div></section>
 <section><h2>Final severity counts</h2><div class="tscroll"><table><thead><tr><th>Severity</th><th>{e(a)}</th><th>{e(b)}</th></tr></thead><tbody>{counts}</tbody></table></div></section>
 <section><h2>Every task</h2><label><input type="checkbox" id="only"> Show only tasks where the runs differ</label>
-<div class="tscroll"><table id="all"><thead><tr><th>Task</th><th>v1.0.0</th><th>Repeat</th><th>{e(a)} reviewer</th><th>{e(a)} verified</th><th>{e(b)} reviewer</th><th>{e(b)} verified</th><th>{e(a)} final</th><th>{e(b)} final</th><th>Why runs differed</th><th>Reconciliation reason</th></tr></thead><tbody>{body}</tbody></table></div></section>
+<div class="tscroll"><table id="all"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div></section>
 {f"<section><h2>Notes</h2><ul>{notes}</ul></section>" if notes else ""}
 </main><script>
 document.getElementById('only').onchange = e => document.querySelectorAll('#all tbody tr').forEach(tr => tr.hidden = e.target.checked && !tr.classList.contains('diff'));

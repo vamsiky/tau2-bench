@@ -1,0 +1,17 @@
+{
+  "task_id": "task_016",
+  "severity": "None",
+  "headline": "Clean: the only in-progress referral is a Silver Rewards Card referral whose documented requirement is $750 of spending, and the customer then makes exactly that purchase.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Looked up user 86e92f639e by name, then listed referrals: 15 rows, and the only IN_PROGRESS one is f2a3b4c5d6789012 (Silver Rewards Card, 11/13/2025), which is also the most recent, as the customer says. doc_credit_cards_silver_rewards_card_011 says \"The referred person must be approved and spend at least $750 within 60 days of account opening\", so the agent tells the customer $750. The customer's script then submits Silver Rewards Card / Best Buy / 750 / Shopping for friend_user_5839. Replaying the gold in the snapshot environment matches under both the verified and exact comparison, and amount 750.0 hashes the same as 750 because generate_transaction_id formats the amount with :.2f.",
+  "prior_status": "resolved",
+  "prior_note": "The prior review rated this Minor but described it as 'No real issue; uniquely determined'. I found no defect either, so the verdict is None.",
+  "notes": "The only DB write the agent makes is log_verification. submit_transaction is a user tool, and the customer runs it once the agent names the card and the $750 requirement, whether or not the agent endorses using a friend's card. friend_user_5839 has no user, account, or transaction rows, so the agent cannot check the friend's partial spending. The script says the friend 'made some transactions', but it also tells the customer to submit the amount the agent states, which is the full $750 requirement. Rolling 7-day cap (doc_credit_cards_credit_cards_(general)_002): the COMPLETE referrals dated 11/11 and 11/04 leave one bonus inside the 11/07-11/14 window, so the cap does not block payout. The user has 8 COMPLETE referrals across card types in 2025. An agent that read the Silver doc's 'up to 7 referral bonuses per calendar year' as a cross-card cap might add a caveat, but it would still state the $750 requirement, so the DB outcome does not change. The verified scorer's relaxations do not apply here: no agent discoverable calls and no bank-account closure."
+}

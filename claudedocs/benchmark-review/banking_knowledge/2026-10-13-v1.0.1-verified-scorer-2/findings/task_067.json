@@ -1,0 +1,17 @@
+{
+  "task_id": "task_067",
+  "severity": "None",
+  "headline": "Clean: Purple checking + Platinum Plus savings + Platinum Rewards Card is the unique best combination for $100,000, by gross APY and after the card fee.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Platinum Plus (7.0%, $100,000 minimum met exactly) dominates. Pairing boosts for Platinum Plus: Purple +0.3%, Dark Green +0.45% (blocked: age 17-26 per doc_checking_accounts_dark_green_account_002). Card bonuses on Platinum Plus: Platinum Rewards +0.4% ($200 fee; the 2024 first-year waiver promo expired before the 11/14/2025 clock), Crypto-Cash Back +0.25% ($75), Gold +0.1% (needs Rho-Bank+), Diamond Elite invitation-only. Net: Platinum Rewards $7,700-$200 = $7,500 vs Crypto $7,550-$75 = $7,475 vs no card $7,300; Blue+Platinum+Platinum Rewards = $7,550-$200 = $7,350. Gold replay matches; extra reads do not change the hash.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior review rated the task clean; re-derivation agrees.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. The $25 margin between Platinum Rewards and Crypto-Cash Back is narrow but documented. Requires the agent to call get_all_user_accounts_by_user_id_3847 (gold-required read). closure_reason relaxation applies if the agent supplies a reason. Platinum Rewards minimum credit score ($750) is not checked by any tool and Riley's score is unknown; not graded."
+}

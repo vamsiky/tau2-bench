@@ -1,0 +1,72 @@
+{
+  "task_id": "task_084",
+  "severity": "Blocker",
+  "headline": "The gold's liability amounts follow no consistent rule: it caps one dispute at the charge amount but not another, so any agent applying one rule throughout gets a value wrong.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "customer_max_liability_amount is capped at the disputed amount for TechWorld (412.88 instead of 500) but left above it for the $47.50 duplicate (50). Both duplicate and incorrect-amount were noticed 4-5 business days before reporting yet get the $50 tier.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability.\"",
+        "No statement dates exist in the DB or the documents; get_now() = 2025-11-14 (Friday)",
+        "gold[14] TechWorld disputed 412.88, liability 412.88 (= min(500, 412.88))",
+        "gold[12] Bella's duplicate disputed 47.5, liability 50 (not min(50, 47.5)); discovery 11/10/2025 -> 4 business days to 11/14",
+        "gold[13] Whole Foods incorrect_amount discovery 11/09/2025 -> 5 business days, liability 50",
+        "Replay: duplicate liability 47.5 -> debit_card_disputes differs"
+      ],
+      "gold_action_refs": [
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "Capping at the disputed amount everywhere gives 47.5 for gold[12]. Never capping gives 500 for gold[14]. Counting from discovery gives 500 for gold[12] and gold[13]. No single documented reading reproduces all three gold values.",
+      "suggested_fix": "Adopt one rule in doc_031 and the docstring (for example tier by business days from discovery, capped at the disputed amount) and regenerate all three values."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The two identical Bella's Bistro charges share the date 11/06. The gold disputes the second-listed row, which is right only if the agent infers within-day order from the most-recent-first contract.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173: stable sort by date, reverse=True; same-date rows keep stored order (comment: \"identifies the later-listed record as the earlier one\")",
+        "Tool output for chk_b8d92f4c17 lists btxn_d7f2a98c1b34 before btxn_e8c3b09d2c45, both 11/06/2025 -47.5",
+        "gold[12] transaction_id btxn_e8c3b09d2c45",
+        "Replay: disputing btxn_d7f2a98c1b34 -> debit_card_disputes differs"
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "An agent reading 'first' as the first row shown disputes btxn_d7f2a98c1b34 and fails.",
+      "suggested_fix": "Give the duplicates distinct timestamps, or state the within-day tie-break explicitly in doc_031."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The duplicate charge is set provisional-credit eligible although the customer has not contacted the merchant, which doc_032 lists as 'not required'.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "gold[12] duplicate_charge contacted_merchant false, provisional_credit_eligible true"
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "An agent applying the merchant-contact condition stores false and fails debit_card_disputes.",
+      "suggested_fix": "Make doc_032's lists mutually exclusive."
+    }
+  ],
+  "solution_check": "Reconstructed: Evergreen duplicate and incorrect-amount disputes (keep_active), Light Blue limited to one more dispute because Entry max 2 and one is already open (customer picks TechWorld), TechWorld card_present_fraud close_and_reissue, then close the Light Blue card as fraud_suspected with no reorder (ENTRY 48-hour wait). Categories, ids, and card actions match the gold. The liability values and the provisional flag on the duplicate cannot be uniquely derived.",
+  "prior_status": "changed",
+  "prior_note": "The v1.0.1 sort fix (#403) makes the gold's duplicate pick consistent with the documented most-recent-first order (no longer a raw-order contradiction), but the inconsistent liability values that made it a Blocker remain.",
+  "notes": "Dispute limit logic is clean: get_debit_dispute_status_7483 shows dsp_5a5e134f5b86 OPEN on chk_e5a31c7d82 (Light Blue, Entry max 2). TechWorld 10/05/2025 is 40 days old, within doc_031's 60-day pre-filing window. pin_compromised 'unknown' for TechWorld matches the scripted \"I don't know\"."
+}

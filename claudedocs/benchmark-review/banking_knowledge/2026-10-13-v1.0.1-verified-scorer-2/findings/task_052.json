@@ -1,0 +1,17 @@
+{
+  "task_id": "task_052",
+  "severity": "None",
+  "headline": "A customer twists policies to dodge the 120-day entry-tier cooldown; the agent must submit the $400 request and deny it for an active cooldown, and the documents determine this uniquely.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze is Entry tier (doc_015). A 10% request on $4,000 is $400, within the 25% cap. Per logistics_007 Step 1, submit 400 first. CLI history shows an approved request submitted 2025-09-15, 60 days before 11/14/2025, inside the 120-day entry cooldown, which applies because the last request was approved. Other checks pass: utilization 37.5%, 8 on-time payments, no disputes or orders. So deny with cooldown_period_active. None of the customer's tactics (60-day premium cooldown, 'Marcus' pre-approval, loyalty, downgrade reset, business claim) has documentary support. This matches gold[2] and gold[12].",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found this task clean, and the verdict holds under v1.0.1.",
+  "notes": "Payment-history dates here use ISO format (2025-03-15) unlike other fixtures; the string sort still orders them correctly. Repeated denials reuse the same record ID (amount 0.0) and change nothing. A downgrade (Tactic 4) would be an extra successful write and fail, correctly."
+}

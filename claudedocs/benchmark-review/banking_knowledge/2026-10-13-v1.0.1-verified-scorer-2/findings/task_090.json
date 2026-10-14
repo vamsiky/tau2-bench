@@ -1,0 +1,66 @@
+{
+  "task_id": "task_090",
+  "severity": "Minor",
+  "headline": "The three-card PIN-lock case resolves to the gold, but the Blue card's fraud score sits on several undefined boundaries and the Evergreen replacement's card design is never stated by the customer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "Three Blue-card flags fall on boundaries the protocol does not resolve: B3 (the 14:30:00 to 14:32:00 gap is exactly 2 minutes, which is in both '1-2 minutes' and '2-5 minutes'), E1 (the account is 91 days old, which is under 3 calendar months but over 90 days), and C3 (it compares a POS decline against an ATM-withdrawal average). After the customer confirms the location, the score lands anywhere from 8 to 11, and 11 is VERY HIGH ('Cannot unlock on this call').",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"1-2 minutes apart: 2 points\" / \"2-5 minutes apart: 1 point\"",
+        "doc_bank_accounts_bank_accounts_(general)_041: \"3-6 months: 1 point\" / \"Less than 3 months: 2 points\"",
+        "doc_bank_accounts_bank_accounts_(general)_041: \"11-14 | VERY HIGH | Cannot unlock on this call.\"",
+        "initial_state accounts.chk_er38a7c9d2_blue.date_opened = \"08/15/2025\" (91 days before the fixed 11/14/2025)",
+        "initial_state txns btxn_b88bd6c2086c 11/13/2025 14:30:00, btxn_cfd32b0bb2e7 14:32:00, btxn_e7df665be9cc 14:35:00 (POS DECLINED - TARGET STORE CAMBRIDGE MA)",
+        "debit_cards.dbc_er38a7c9d2_blue.pin_locks_last_90_days = 2"
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "At the low end (8, HIGH) the agent unlocks and then must offer a reset (D1=2), which yields the gold reset. At the top end (11) the agent cannot unlock. Step 6 still lists 'PIN reset' as an option and the customer accepts it ('set my new PIN to 7294'), so most paths still reach the gold state. An agent that insists on enhanced SSN verification instead leaves the card locked and fails.",
+      "suggested_fix": "Make the boundaries inclusive on one side (e.g. '1 to <2 minutes', '>=90 days'), and say whether C3 applies to POS declines."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The customer never chooses a card design for the Evergreen replacement. On a Premium-tier account both CLASSIC and PREMIUM designs cost $0. The gold uses CLASSIC, which is the documented default.",
+      "evidence": [
+        "user_scenario: \"Give the fastest option that's free - just get me a new card with a new number as fast as possible.\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "gold[10].arguments: card_design \"CLASSIC\", delivery_option \"EXPEDITED\", delivery_fee 0",
+        "Replay: card_design PREMIUM changes debit_card_orders and debit_cards (verified match False)"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "If the agent asks about design and the simulator answers 'the free one' or 'the nicest free one', PREMIUM is equally free, and choosing it changes the order record.",
+      "suggested_fix": "Add a design preference to the customer script (e.g. 'standard design is fine')."
+    },
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The protocol's Single Flag Escalation rule requires 'supervisor review' whenever any flag scores 3, but no tool performs a supervisor review and the gold never escalates (transfers write nothing). An agent that acts on the rule with a live transfer before the remaining cards are handled ends the episode early.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\"",
+        "Evergreen card B1: declines at 02:14:22-02:17:41 fall in \"2 AM - 6 AM: 3 points (HIGH RISK)\"",
+        "tools.py transfer_to_human_agents writes no DB record"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Correct work that escalates at the end still passes, so the grader cannot see whether the rule was followed; an agent that transfers as soon as the 3-point flag appears never makes the later card writes and fails.",
+      "suggested_fix": "State what 'supervisor review' means for a chat agent (e.g. 'note it in the transfer summary after all cards are handled') or drop the rule for cards that already fall under the CRITICAL closure path."
+    }
+  ],
+  "solution_check": "I scored each card from doc_bank_accounts_bank_accounts_(general)_041 against the seeded card and transaction data. Evergreen: A1 2, A3 1, B1 3, B3 2, C1 2, C2 1, C3 2, C4 2 = 15, CRITICAL (the author's note says 14). With the customer's 'asleep in Boston' answer, the protocol leads to closing as fraud_suspected and a replacement; Evergreen is PREMIUM tier per doc_bank_accounts_bank_accounts_(general)_005, so 'fastest free' is EXPEDITED at $0. Blue: reset to 7294, which also unlocks the card. Green: security_hold, offer a transfer that the customer declines, so nothing is written. The gold replays cleanly and matches itself under the verified scorer.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The task file is unchanged, and only a cosmetic edit to doc_bank_accounts_bank_accounts_(general)_005 appears in the v1.0.1 diff; the Minor issues here were not raised before.",
+  "notes": "There is no dedicated 'unlock PIN' tool: reset_debit_card_pin_6284 sets pin_locked False, and only its result text says so. That is harmless here because D1=2 requires a reset offer anyway. The customer script never gives the Blue card's last 4 digits (which doc_bank_accounts_bank_accounts_(general)_027 says to confirm), but the agent can read card_number_last_4 \"6183\" from get_debit_cards_by_account_id_7823; a mismatched attempt fails without writing, and the tool name is logged by the gold too, so the verified scorer is unaffected. The PIN value is not stored in the DB. Gold-required discoverable reads (accounts, debit cards, transactions) are all needed for the protocol. No relaxed verified-scorer comparison is needed on the gold path. Customer-script lines 18-20 (notifications, closing Blue) are distractors with no matching tool or gold write."
+}

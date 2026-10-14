@@ -1,0 +1,36 @@
+{
+  "task_id": "task_075",
+  "severity": "Major",
+  "headline": "Green Fee-Free is cheapest only if Purple's $2.50 out-of-network fee applies abroad and is not covered by Purple's $30 monthly ATM rebate; the benchmark's own fee-refund tasks assume the opposite on both points.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The gold needs two readings: (a) at a foreign non-Rho ATM, both the out-of-network fee and the foreign fee apply, and (b) Purple's \"Global ATM fee rebates: up to $30 per month\" does not cover Rho-Bank's own fee. Under either alternative, Purple's bank fees for 6 withdrawals a month are $0 (or $15 fully rebated), and Purple also rebates ATM-operator surcharges, which Green Fee-Free does not, so Purple is at least as cheap.",
+      "evidence": [
+        "doc_checking_accounts_green_fee-free_account_005: \"Out-of-network ATM withdrawal fee | $0.00\"; \"Foreign ATM withdrawals are also fee-free: $0.00 per withdrawal. Third-party ATM operator fees may still apply.\"",
+        "doc_checking_accounts_purple_account_001: \"Global ATM fee rebates | Up to $30 per month\"; \"No foreign ATM withdrawal fees: $0.00 per withdrawal (third-party ATM operator fees may still apply)\"",
+        "doc_checking_accounts_purple_account_012: \"You are charged $2.50 per cash withdrawal made at an out-of-network ATM.\"",
+        "doc_checking_accounts_purple_account_004: \"You are eligible for refunds of ATM operator fees up to a monthly cap of $30.\"",
+        "task_074 gold refunds the whole $8.00 foreign fee on a Purple London withdrawal (no $2.50 out-of-network fee kept) and credits a \"missing $2.50 rebate\" on a Purple NON-RHO fee",
+        "gold[2].arguments.account_class = \"Green Fee-Free Account\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Strict docs: GFF $0 vs Purple 18 x $2.50 = $45 (gold). Non-stacking or broad-rebate reading: Purple $0 in bank fees plus up to $30/month of operator-surcharge refunds, so a careful agent can defensibly recommend Purple and fail the accounts table.",
+      "suggested_fix": "State explicitly whether out-of-network and foreign ATM fees stack and whether Purple's rebate covers Rho-Bank's own fee, apply the same rule in tasks 072-074, and add an operator-surcharge statement to the customer script (or tell the customer to count only Rho-Bank fees)."
+    }
+  ],
+  "solution_check": "Under the gold's stacking/strict-rebate reading: GFF $0, Bluest 18 x $2.00 = $36 (plus a $75,000 opening deposit), Purple $45, Light Blue 12 x $2.50 + 12 x $4.00 = $78, Evergreen 18 x ($2.50 + $7.00) = $171, Blue/Green higher; Gold Years (62+), Light Green (13-24), Dark Green (17-26) are age-blocked for a 32-year-old. GFF is the unique minimum there, matching the gold. The prior review's \"three-way $0 tie\" holds only under the non-stacking reading.",
+  "prior_status": "changed",
+  "prior_note": "Prior Blocker claimed a $0 tie among GFF, Purple and Bluest, which ignores Purple/Bluest out-of-network fees under the gold's own reading; the tie returns under the non-stacking or broad-rebate reading, so I rate it Major rather than Blocker.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Gold has no discoverable read, so the agent's lookups are unlogged. The author notes give Dark Green as 17-28 and Gold Years as 60+; the docs say 17-26 and 62+ (no effect). The customer's daily withdrawals ($350) are within every candidate's ATM limit."
+}

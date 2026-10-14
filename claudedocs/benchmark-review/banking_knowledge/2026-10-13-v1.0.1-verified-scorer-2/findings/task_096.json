@@ -1,0 +1,65 @@
+{
+  "task_id": "task_096",
+  "severity": "Minor",
+  "headline": "Both savings corrections ($17.50 Bronze, $15.00 Gold Plus) are derivable, but one needed boost document is missing from the task's list, and the interest-formula and report-grading gaps apply here too.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The Green Fee-Free boost values (Bronze +0.4%, Gold Plus +0.35%) needed to confirm Bluest and Gold Years are the highest boosts are only in green_fee-free_account_005, which is not in required_documents. It can be retrieved under the default configuration.",
+      "evidence": [
+        "doc_checking_accounts_green_fee-free_account_005: \"| APY boost with linked Bronze Savings | 0.4% |\" / \"| APY boost with linked Gold Plus Savings | 0.35% |\"",
+        "required_documents lists green_fee-free_account_001 and _003 only, and neither states the boosts"
+      ],
+      "gold_action_refs": [
+        7,
+        8
+      ],
+      "why_it_matters": "Under required-docs-only retrieval the agent cannot verify that Green Fee-Free's boost is lower; under full-KB retrieval it is findable.",
+      "suggested_fix": "Add doc_checking_accounts_green_fee-free_account_005 to required_documents."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The docs say interest compounds daily from a daily periodic rate, but every seeded interest credit equals balance x APY / 12 exactly, and the gold credit uses that simple monthly convention. The data settles it, but an agent that follows the documented daily compounding computes a different credit.",
+      "evidence": [
+        "doc_savings_accounts_bronze_account_007: \"Interest compounds daily, so each day's interest is based on your current balance plus any previously accrued interest.\"",
+        "btxn_bronze_interest_oct 63.75 = 30000 x 2.55% / 12; btxn_goldplus_interest_oct 327.5 = 60000 x 6.55% / 12",
+        "gold credits 17.50 and 15.00; daily compounding gives 17.85 and 11.08"
+      ],
+      "gold_action_refs": [
+        7,
+        8
+      ],
+      "why_it_matters": "The credit amount is stored (accounts.current_holdings and the credit transaction id/amount), so a daily-compounding computation fails.",
+      "suggested_fix": "State in the interest docs that monthly interest = balance x APY / 12, or seed credits that match daily compounding."
+    },
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "submit_interest_discrepancy_report_7294 writes to an 'interest_discrepancy_reports' table that TransactionalDB does not have. add_to_db returns False silently while the tool reports success, so only the tool name is graded and expected_apy/actual_apy/amount_difference are never compared.",
+      "evidence": [
+        "db_query.py add_to_db: \"table = getattr(db, db_name, None)\" / \"if table is None: return False\"",
+        "tools.py submit_interest_discrepancy_report_7294: add_to_db(\"interest_discrepancy_reports\", ...) with return value ignored",
+        "Replay: model_dump() of the gold DB has no interest_discrepancy_reports key; changing expected_apy alone changes no table"
+      ],
+      "gold_action_refs": [
+        10,
+        11
+      ],
+      "why_it_matters": "A report with a wrong expected or actual APY still passes; the task tests less than its notes claim.",
+      "suggested_fix": "Add interest_discrepancy_reports to TransactionalDB so the report is persisted and graded."
+    }
+  ],
+  "solution_check": "Bronze: 2.0% base + Bluest +0.7% (pairing 13; it beats Green Fee-Free +0.4%) + Platinum Rewards +0.55% (bronze_006; it beats Crypto 0.3, Gold Rewards 0.25, Diamond 0.15) = 3.25% against 2.55% actual, so $17.50. Gold Plus: 6.0% + Gold Years +0.5% (pairing 9; it beats Green Fee-Free +0.35%) + Gold Rewards +0.35% (gold_plus_009) = 6.85% against 6.55%, so $15.00. Both match the gold, which replays cleanly.",
+  "prior_status": "persists",
+  "prior_note": "The prior review noted the missing Green Fee-Free document but rated the task clean. Per calibration a required document missing from the list is Minor, and the formula and report points are added.",
+  "notes": "The Gold Plus investment sweep (balances over $50,000 'may be moved' to an investment account) could make an agent compute on $50,000, but the seeded credit implies the full $60,000 basis. Bluest has no Gold Plus pairing and Gold Years has no Bronze pairing (doc_bank_accounts_bank_accounts_(general)_012)."
+}

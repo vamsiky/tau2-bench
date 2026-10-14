@@ -1,0 +1,88 @@
+{
+  "task_id": "task_085",
+  "severity": "Major",
+  "headline": "The verify-the-customer's-claims test works, but which duplicate gym charge to dispute, the liability amounts, and one provisional-credit flag each depend on a reading the documents do not settle.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "After v1.0.1 swapped the fixture rows, the gold CityFit duplicate btxn_b2c3d4e5f602 is listed second of two identical 11/06 rows. It is 'earliest' only if the agent infers within-day order from the most-recent-first contract.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173: stable sort by date, reverse=True; same-date rows keep stored order (comment: \"identifies the later-listed record as the earlier one\")",
+        "v1.0.0->v1.0.1 diff swaps stored order of btxn_c3d4e5f6g703 and btxn_b2c3d4e5f602",
+        "Tool output for chk_b4d92f7c28 lists btxn_c3d4e5f6g703 then btxn_b2c3d4e5f602 (both 11/06/2025, -89.99)",
+        "gold[10] transaction_id btxn_b2c3d4e5f602",
+        "Replay: disputing btxn_c3d4e5f6g703 -> verified fails, debit_card_disputes differs"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "An agent reading 'earliest (first)' as the first row shown disputes btxn_c3d4e5f6g703 and fails. Under v1.0.0 the gold row was listed first, so this reading used to pass.",
+      "suggested_fix": "Give the duplicates distinct timestamps, or state the within-day tie-break explicitly in doc_031."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "All three gold disputes store liability 50. That includes the ATM shortage noticed 11/05 (7 business days before reporting) and the $14.99 Prime Streaming charge, whose liability cannot exceed the charge if the docstring's 'and the disputed amount' is applied.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability.\"",
+        "No statement dates exist in the DB or the documents; get_now() = 2025-11-14 (Friday)",
+        "gold[9] ATM discovery 11/05/2025 -> 7 business days to 11/14, liability 50",
+        "gold[10] duplicate discovery 11/08/2025 -> 5 business days, liability 50",
+        "gold[12] recurring disputed_amount 14.99, liability 50",
+        "Replay: Prime Streaming liability 14.99 -> debit_card_disputes differs"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        12
+      ],
+      "why_it_matters": "An agent applying the discovery-based tier stores 500 for gold[9] and gold[10]. One capping at the disputed amount stores 14.99 for gold[12]. Either fails the exact debit_card_disputes comparison.",
+      "suggested_fix": "State one deterministic rule in doc_031, for example: liability tier is counted from the discovery date to today in business days, applies to every dispute category, and is capped at the disputed amount. Then regenerate customer_max_liability_amount in every gold dispute."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The CityFit duplicate is set provisional-credit eligible although the customer has not contacted the merchant, which doc_032 lists as 'not required'.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "gold[10] duplicate_charge contacted_merchant false, provisional_credit_eligible true"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "An agent applying the merchant-contact condition stores false and fails.",
+      "suggested_fix": "Make doc_032's lists mutually exclusive."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "transaction_type for the CityFit duplicate ('recurring_payment') and contacted_merchant for Prime Streaming (false, although the customer says they cancelled the subscription) are never scripted. The merchant description 'CITYFIT GYM MONTHLY' points to the gold value.",
+      "evidence": [
+        "gold[10] transaction_type 'recurring_payment'; DB type 'debit_card_purchase', description 'CITYFIT GYM MONTHLY DENVER'",
+        "gold[12] contacted_merchant false; script: \"I cancelled that subscription weeks ago\""
+      ],
+      "gold_action_refs": [
+        10,
+        12
+      ],
+      "why_it_matters": "The simulated user improvises these answers, so an agent that asks may hear something that leads to a different stored value. Most agents reach the gold values from the evidence.",
+      "suggested_fix": "Script both answers."
+    }
+  ],
+  "solution_check": "Reconstructed: Rho-Bank ATM $300 recorded vs $200 dispensed -> $100 dispute; CityFit duplicate; GFF ATM claim rejected because the DB shows a $200 withdrawal (customer then skips it); Prime Streaming corrected from $49.99 to $14.99. Categories, amounts and the skip all match the gold. The duplicate row choice, liabilities and duplicate provisional flag are the points where a defensible alternative fails.",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor (gold picked the naturally first-listed duplicate) is now harder: v1.0.1 reordered the rows so the gold row is listed second. The liability and provisional-credit ambiguities are newly recorded.",
+  "notes": "get_debit_dispute_status_7483 is not in this gold, so an agent's extra call to check the Entry dispute limit is not logged. doc_034 suggests offering a recurring-payment block for Prime Streaming; if the agent sets set_debit_card_recurring_block_7382 the card's recurring_blocked field and the tool row would differ from the gold, but the customer never asks for it."
+}

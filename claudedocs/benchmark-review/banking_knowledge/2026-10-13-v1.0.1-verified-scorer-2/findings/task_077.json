@@ -1,0 +1,34 @@
+{
+  "task_id": "task_077",
+  "severity": "Minor",
+  "headline": "The lost-wallet flow is derivable, but the gold records RUSH shipping and the PREMIUM card design, which the customer specifies only if asked and only as \"the best option that's free\".",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "order_debit_card_5739 requires delivery_option and card_design. For ELITE tier, STANDARD/EXPEDITED/RUSH and CLASSIC/PREMIUM/CUSTOM are all $0, and the customer gives a preference only if asked (\"whatever the best option is that's free\"). RUSH is the clear \"best free\" shipping, but \"best free\" design is PREMIUM or CUSTOM; an agent that does not ask has no documented default.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029: ELITE \"Complimentary shipping on all replacements (delivery_fee: $0 for STANDARD, EXPEDITED, and RUSH)\"; \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"; \"CUSTOM design (uploaded image): design_fee $0 (complimentary)\"",
+        "user_scenario step 8: \"ONLY IF agent asks about shipping speed or card design options: I'd like whatever the best option is that's free with my account.\"",
+        "gold[22].arguments: \"delivery_option\": \"RUSH\", \"card_design\": \"PREMIUM\"",
+        "replay: STANDARD -> \"table 'debit_card_orders' differs\"; CLASSIC -> debit_card_orders and debit_cards differ"
+      ],
+      "gold_action_refs": [
+        22
+      ],
+      "why_it_matters": "An agent that picks defaults (STANDARD/CLASSIC) without asking fails; one that asks will very likely reach RUSH/PREMIUM, since CUSTOM needs an uploaded image.",
+      "suggested_fix": "Have the customer state the shipping and design preference up front, or make doc_029 name a default for ELITE replacements."
+    }
+  ],
+  "solution_check": "Derived: verify; look up accounts and both cards; freeze both (customer unsure, doc_026); check credit cards and replace the Silver Rewards card (doc_030; standard shipping because expedited costs $10 for mid-tier and the customer wants free); check transactions for pending items (doc_025 requirement 4; none pending); unfreeze (close_debit_card_4721 accepts only ACTIVE or PENDING, so a frozen card must be unfrozen; replay shows a failed close-while-frozen attempt leaves the same state); close both as lost; order only the Bluest replacement (ELITE, no wait; Light Green ENTRY has a 48-hour wait); activate with 8292 (issue_reason lost). Matches the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated the task clean; the shipping/design choice is a new minor finding (v1.0.1 added the reads the prior flagged as missing).",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Required reads: get_all_user_accounts_by_user_id_3847, get_debit_cards_by_account_id_7823, get_bank_account_transactions_9173 (replay: skipping the transactions read fails). get_credit_card_accounts_by_user is a base read and is not logged. Ordering the Bluest card before closing the frozen card would succeed with issue_reason first_card and break activation; doc_025 places ordering after closure. doc_025 requirement 4 (no pending transactions) and its lost-card step (\"any pending transactions will still be processed\") pull in different directions; no rows are pending here, so it does not matter. Persona says 22, DOB gives 23 (cosmetic)."
+}

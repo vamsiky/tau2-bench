@@ -1,0 +1,55 @@
+{
+  "task_id": "task_053",
+  "severity": "Blocker",
+  "headline": "The official answer files the dispute with card digits '2791', which only the customer's own lookup tool can supply, yet it leaves out that lookup call, so a run where the customer follows the script and looks the number up can never match.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "The gold gives the customer get_card_last_4_digits (053_13) and files the dispute with card_last_4_digits '2791', the value that tool returns for cc_e9d195fe8e_silver. It omits the customer's call_discoverable_user_tool, which logs a row in user_discoverable_tool_calls. The script tells the customer to make that call, and no other source of '2791' exists.",
+      "evidence": [
+        "gold[13] (053_13) give_discoverable_user_tool get_card_last_4_digits; no requestor=user action in the gold",
+        "gold[15] (053_15).arguments: card_last_4_digits = \"2791\"",
+        "sha256('card_last4:cc_e9d195fe8e_silver') digit extraction = 2791 (KnowledgeUserTools.get_card_last_4_digits)",
+        "user_scenario: \"Card last 4 digits? 'I don't have my card in front of me right now ...' (If the agent provides you with the get_card_last_4_digits tool, use it to retrieve the number.)\"",
+        "tools.py get_card_last_4_digits: self._log_user_tool_call(\"get_card_last_4_digits\", args) -> user_discoverable_tool_calls",
+        "Replay: gold + scripted user call {credit_card_account_id: cc_e9d195fe8e_silver} -> verified=False, table 'user_discoverable_tool_calls' differs (gold: none; predicted: 9a452d6c48d8d07e)"
+      ],
+      "gold_action_refs": [
+        13,
+        15
+      ],
+      "why_it_matters": "A correct run needs '2791' in the dispute record and has no user_discoverable_tool_calls row. The digits are only available through the logged user call. Every agent that follows the documents (doc_013: give the user the tool) and gets the right digits therefore fails, under both upstream and verified grading.",
+      "suggested_fix": "Add a requestor=user call_discoverable_user_tool action for get_card_last_4_digits with {\"credit_card_account_id\": \"cc_e9d195fe8e_silver\"} after gold action 053_13, as task_041 does."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Major",
+      "summary": "The gold processes the credit-limit increase before filing the dispute, because a pending dispute blocks CLI approval. The customer asks for the dispute first, and no document tells the agent to reorder concurrent requests to avoid the dispute check.",
+      "evidence": [
+        "user_scenario opening: \"State BOTH requests upfront, but the dispute first\"",
+        "doc_credit_cards_credit_card_account_logistics_007 Step 2: \"3. No Pending Disputes: Verify the account has no active disputes.\"",
+        "tools.py approve_credit_limit_increase_5847 rejects when the user has a dispute with status SUBMITTED/UNDER_REVIEW/PENDING",
+        "Replay: dispute filed first, then approve -> \"Error: Credit limit increase request cannot be approved at this time.\"; dispute first + deny(pending_disputes) -> verified=False (missing approve, extra deny, credit_card_accounts and credit_limit_increase_requests differ)"
+      ],
+      "gold_action_refs": [
+        10,
+        12,
+        15
+      ],
+      "why_it_matters": "An agent that handles requests in the customer's order, which the documents allow, files the dispute, finds a pending dispute, and denies the CLI per policy. That is a documented outcome, but it fails. Passing requires noticing the interaction and sequencing the CLI first, which the author notes call the test but which no document states.",
+      "suggested_fix": "Add a rule to logistics_007 or the dispute doc on handling a CLI and a new dispute in the same contact (for example, 'process the CLI before filing a new dispute'), or have the customer ask for the CLI first."
+    }
+  ],
+  "solution_check": "CLI: Silver Rewards is Mid tier, $7,500 is 50% of $15,000 (the cap), utilization $4,500/$15,000 = 30% is under 80%, opened 11/15/2024, no history, 3 on-time payments, so submit 7500 and approve 22500. Dispute: GNR purchased 10/10/2025 (35 days ago), merchant contacted, $1,247.99 within the $5,000 mid-tier cap, no prior disputes, so eligible_for_provisional_credit true, noticed 10/31/2025, full_refund, keep_active, last-4 from the customer's tool. The arguments match the gold, but reaching the gold state requires the user tool call the gold omits.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. The omitted user call makes the gold unreachable under v1.0.1's exact user-side comparison (and the verified scorer, which compares user_discoverable_tool_calls exactly), and the CLI-before-dispute ordering is a separate new Major finding.",
+  "notes": "payment_history includes ph_e9d195fe8e_silver_006 dated 2025-11-15, after the fixed clock (2025-11-14). It is ON_TIME, like the three before it, so the 3-month on-time check comes out the same either way and the gold does not depend on it. Gold 053_15 carries compare_args, but reward_basis is DB only, so it has no effect."
+}

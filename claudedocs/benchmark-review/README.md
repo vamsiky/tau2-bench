@@ -27,8 +27,8 @@ benchmark-review/
 ```
 
 Runs of the same version that differ in one setting (a scorer variant) sit side by side
-with a suffix, and share a `reconciliation-<date>-<version>.json` and a
-`comparison-<date>-<version>.{json,md,html}` in the domain folder.
+with a suffix, and share a `comparison-<date>-<version>.{json,md,html}` in the domain
+folder, plus a `reconciliation-<date>-<version>.json` when the runs were reconciled.
 
 The folder name says when the review ran and which benchmark version it reviewed, for
 example `banking_knowledge/2026-10-13-v1.0.1`. The benchmark version is the upstream
@@ -38,9 +38,10 @@ release tag (`git tag`), and `run.json` records the exact commit.
 |---|---|---|
 | [`banking_knowledge/2026-06-25-v1.0.0`](banking_knowledge/2026-06-25-v1.0.0/review.html) | v1.0.0 | First review. Graded against a locally modified scorer, not upstream grading. |
 | [`banking_knowledge/2026-10-13-v1.0.1`](banking_knowledge/2026-10-13-v1.0.1/review.html) | v1.0.1 | Upstream scoring. Compared task by task with the v1.0.0 review. |
-| [`banking_knowledge/2026-10-13-v1.0.1-verified-scorer`](banking_knowledge/2026-10-13-v1.0.1-verified-scorer/review.html) | v1.0.1 | Same as above under the first version of this branch's verified scorer (any extra discoverable call allowed, `closure_reason` ignored everywhere). The scorer was tightened afterwards; see `prompts/scorers/verified.md`. Its frozen `prompts/` copy describes the version this run used. |
+| [`banking_knowledge/2026-10-13-v1.0.1-verified-scorer`](banking_knowledge/2026-10-13-v1.0.1-verified-scorer/review.html) | v1.0.1 | Superseded. Same as above under the first version of this branch's verified scorer (any extra discoverable call allowed, `closure_reason` ignored everywhere). The scorer was tightened afterwards; see `prompts/scorers/verified.md`. Its frozen `prompts/` copy describes the version this run used. |
+| [`banking_knowledge/2026-10-13-v1.0.1-verified-scorer-2`](banking_knowledge/2026-10-13-v1.0.1-verified-scorer-2/review.html) | v1.0.1 | Fresh review under the revised verified scorer (extra discoverable calls allowed only when rejected for bad input, `closure_reason` ignored on bank accounts only). Reviewer and verifier verdicts as given, not reconciled. |
 | [`banking_knowledge/2026-10-13-v1.0.1-draft-1`](banking_knowledge/2026-10-13-v1.0.1-draft-1/) | v1.0.1 | Superseded, unverified first attempt with upstream scoring; kept as a same-scorer repeat to measure run-to-run noise. |
-| [`banking_knowledge/comparison-2026-10-13-v1.0.1.html`](banking_knowledge/comparison-2026-10-13-v1.0.1.html) | v1.0.1 | Upstream vs verified scorer, agreement at each stage, and what the scorer alone changes. |
+| [`banking_knowledge/comparison-2026-10-13-v1.0.1.html`](banking_knowledge/comparison-2026-10-13-v1.0.1.html) | v1.0.1 | Upstream run vs the revised verified-scorer run, using each run's own reviewer and verifier verdicts, with a same-scorer repeat as the noise baseline. |
 
 ## Reading a report
 
@@ -90,4 +91,5 @@ scrollbar is always on screen.
    tag (`benchmark_ref` in `run.json`), so the report always shows the exact task that
    was reviewed. The reported severity is the reconciled one, else the verifier's, else
    the reviewer's. `--allow-partial` renders before every task has findings. Compare two
-   runs with `compare_runs.py <domain>/comparison-<date>-<version>.json`.
+   runs with `compare_runs.py <domain>/comparison-<date>-<version>.json`; the reconciliation
+   file in the spec is optional.

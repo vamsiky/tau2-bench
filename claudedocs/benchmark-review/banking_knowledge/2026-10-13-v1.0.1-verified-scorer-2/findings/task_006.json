@@ -1,0 +1,35 @@
+{
+  "task_id": "task_006",
+  "severity": "Minor",
+  "headline": "The answer (EcoCard) is correct and unique, but the deciding fact, that Crypto-Cash Back needs a 660 credit score, is printed as a dollar amount ('$660').",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Only EcoCard and Crypto-Cash Back pass the customer's FTF, minimum-payment and virtual-card filters. His 540 credit score is what separates them, and Crypto-Cash Back's minimum score is written as a dollar amount, as is every other card's minimum except EcoCard's.",
+      "evidence": [
+        "doc_credit_cards_crypto-cash_back_009: \"What is the minimum credit score to apply for the card to earn crypto rewards? $660.\"",
+        "doc_credit_cards_crypto-cash_back_008: \"What is the foreign transaction fee if I use the card abroad? 0%.\" / \"What is the minimum monthly payment? 1.5% of the outstanding balance.\" / \"Can I use virtual cards and still earn rewards? Yes.\"",
+        "doc_credit_cards_ecocard_001: \"Minimum credit score required to apply: 0 (0 indicates no credit score requirement).\"",
+        "doc_credit_cards_ecocard_008: \"Your minimum monthly payment is 1.0%\" / \"Foreign transaction fee on international purchases: 1.0%.\" / \"Virtual card management features are available: Yes.\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\"; silver_001: \"$680\"; gold_001: \"$720\"; platinum_001: \"$750.\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "The value is still readable as 660 and the correct final state does not change, but a careless reading of '$660' as something other than a score threshold would leave Crypto-Cash Back as a second qualifying card with no tie-breaker.",
+      "suggested_fix": "Replace '$660' (and the other '$NNN' credit-score minimums) with plain integers, e.g. 'Minimum credit score: 660'."
+    }
+  ],
+  "solution_check": "Filters: FTF <= 1.5%, minimum payment <= 1.5%, virtual card management. Bronze (2.75% FTF), Silver (2.75% FTF without premium), Gold (needs Rho-Bank+; 2.0% minimum payment), Platinum (2.5% minimum payment) and Diamond Elite (3.0% minimum payment; invitation-only) fail. Crypto-Cash Back and EcoCard pass, and the 540 credit score rules out Crypto-Cash Back ($660 minimum), leaving EcoCard (no score requirement). That matches gold[0] (EcoCard, Bob Nakamoto, 95000, false), and the gold replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "Prior review called this clean. Under the calibration rule, a credit score printed as a dollar amount is Minor when it is the deciding fact, as it is here for Crypto-Cash Back vs EcoCard.",
+  "notes": "Omitting rho_bank_subscription stores False, which equals the gold, so it does not matter. All four earlier Opus trials passed. The required_documents list leaves out the Crypto-Cash Back docs that decide the exclusion (crypto-cash_back_008/009), but they are retrievable."
+}

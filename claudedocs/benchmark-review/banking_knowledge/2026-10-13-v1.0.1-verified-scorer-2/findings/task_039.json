@@ -1,0 +1,77 @@
+{
+  "task_id": "task_039",
+  "severity": "Major",
+  "headline": "Which disputes get provisional credit depends on whether disputes filed earlier in the same call count toward the 'no more than 2 in 12 months' rule, which the documents never settle, and on filing order.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "The customer has 0 disputes on file, and four of the eight disputes have a provisional-eligible reason. The gold gives credit to the first three filed and denies the fourth ($129.45 fraud). That only follows if disputes filed earlier in this conversation count as 'filed ... in the past 12 months'. Doc_015 does not say whether they do.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"Eligibility Criteria — Customer is ELIGIBLE for provisional credit if ALL of the following are true: ... 4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "Replay: get_user_dispute_history_7291(01f21c9970) before filing -> \"No transaction disputes found for this user.\"",
+        "gold[6..8] eligible true for txn_f7ce44574766 ($312.87 dup), txn_a450807f1148 ($234.56 fraud), txn_182e896e1c97 ($215.67 dup); gold[9] eligible false for txn_2f16599b9075 ($129.45 fraud, contacted_merchant false, which fraud does not need)",
+        "Every other doc_015 criterion holds for all four: cc_01f21c9970_gold opened 06/15/2024; amounts are within $25 to $10,000 (Premium Tier); the two duplicates have contacted_merchant true",
+        "tools.py file_credit_card_transaction_dispute_4829 stores eligible_for_provisional_credit verbatim and sets provisional_credit_given to the same value",
+        "Replay: gold with gold[9] eligible true (snapshot reading, 0 prior disputes) -> verified match False: table 'transaction_disputes' differs"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "There are two readings of criterion 4. The cumulative one, under which in-session filings count (the gold's), is arguably the literal one. The snapshot one, which counts only history from the dispute-history tool, is equally natural. An agent that decides eligibility from the history it looked up marks all four true and fails.",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the same interaction count toward criterion 4, or set all four reason-eligible disputes to true."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Major",
+      "summary": "Under the gold's cumulative reading, the first three disputes filed in the session use up the allowance, including those with ineligible reasons. So the gold flags appear only if the agent files the three largest fraud/duplicate disputes before all the others. No document sets a filing order. The tie-breaker is the customer's 'biggest charges first' line, which the script releases only if the agent brings up provisional credit.",
+      "evidence": [
+        "user script step 8: \"If there's any limit on provisional credit, I want it applied to the biggest charges first... Do not mention this if the agent does NOT bring provisional credit up.\"",
+        "Gold filing order: gold[6] 312.87, gold[7] 234.56, gold[8] 215.67, then gold[9] 129.45 and the four non-eligible-reason disputes",
+        "Computation: filing in the customer's listed order (Costco 234.56, 312.87, 267.34, 198.23, then Amazon 129.45, 215.67, 162.54, 56.78) under the cumulative reading gives eligible = {234.56, 312.87} only; $215.67 becomes false, unlike gold[8]"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "why_it_matters": "An agent that applies the gold's own reading but files in the natural (listed or chronological) order produces different provisional flags and fails.",
+      "suggested_fix": "Have the customer state the priority unconditionally, or document that when a cap applies, credit goes to the largest eligible disputes."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The script never scripts the replacement shipping speed or the resolution type for any dispute; the steps on these are missing from its numbering. The gold records expedited_shipping true, full_refund for seven disputes, and partial_refund $50 for the incorrect-amount dispute.",
+      "evidence": [
+        "gold[15] order_replacement_credit_card_7291 \"expedited_shipping\": true; doc replacements_001: fraud -> \"strongly recommend expedited shipping\"; Gold Rewards is Premium tier, expedited \"$0.00 (complimentary)\"",
+        "gold[11] resolution_requested \"partial_refund\", partial_refund_amount 50; script: \"You were supposed to be charged $148.23 but they charged you $50 extra\"",
+        "doc_credit_cards_credit_cards_(general)_014: \"resolution_requested (string) - Ask user what resolution they want.\""
+      ],
+      "gold_action_refs": [
+        11,
+        15
+      ],
+      "why_it_matters": "The customer simulator must improvise these answers. The stated facts (free expedited shipping recommended for fraud; a known $50 overcharge; full refunds for fraud and duplicates) point to the gold values, so the risk is small.",
+      "suggested_fix": "Add explicit lines: 'accept expedited shipping', 'full refund for all except a $50 partial refund on the $198.23 charge'."
+    }
+  ],
+  "solution_check": "Verify with DOB, phone and email. Look up dispute history (none; this is gold read 2 and a required discoverable read under the allowlist). Give get_card_last_4_digits (cc_01f21c9970_gold gives 1652). File the 8 disputes with the scripted reasons and merchant-contact answers, card_action cancel_and_reissue, and noticed 11/14/2025. Then order a fraud_suspected replacement to the home address with expedited shipping. Every field except the provisional flags is determined. The flags match the gold only under the cumulative reading of criterion 4 and only if the three largest fraud/duplicate disputes are filed first.",
+  "prior_status": "persists",
+  "prior_note": "The defect the prior review found persists unchanged in the data. I rate it Major, not Blocker: the gold follows a reading doc_015 supports (counting the disputes just filed), and the customer's priority line supplies the order. This fits the calibration's 'two document-supported readings' case, not 'no supported reading'.",
+  "notes": "Under the verified scorer, the agent must call get_user_dispute_history_7291 (gold[2]); replaying without it gives 'missing required discoverable calls'. partial_refund_amount 50 and 50.00 both store as 50.0. Cosmetic: the 'duplicate' charges $312.87 (Costco 10/23) and $215.67 (Amazon 10/26) have no twin row in the DB, so the agent cannot see the duplicate and has to take the customer's word. Author notes describe the cap as 'maximum 3 disputes can receive provisional credit', which is the cumulative reading."
+}

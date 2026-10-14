@@ -1,0 +1,17 @@
+{
+  "task_id": "task_100",
+  "severity": "None",
+  "headline": "Clean: from the on-file open date (65 days of tenure) Hunter Green ($175) is the best referral the customer qualifies for, and World Blue's 90-day tenure rule correctly blocks the account she owns.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Earliest checking is World Blue, opened 09/10/2025, which gives 65 days of tenure (doc_bank_accounts_bank_accounts_(general)_047: 'calculated from ... the date your earliest checking account was opened'). Programs within 65 days and $31,000: Hunter Green $175 (60 days, $10k), Cobalt Blue $150 (60 days), Sky Blue $150 (45 days, new LLC), Navy Blue $100. Lime Green, World Blue and True Blue need 90 days, Beige needs 120. That matches gold[3], and the gold replays cleanly.",
+  "prior_status": "resolved",
+  "prior_note": "The data is unchanged since the prior review. I reclassify its Minor (customer vague about tenure) as an intended DB-verification trap: the gold's required accounts read shows the 09/10/2025 date, so it is a note rather than a validity defect.",
+  "notes": "The customer claims 'mid-July' (about 120 days), which if believed would unlock World Blue at $300. The DB holds no earlier account for ti87k4x9m2, in the task data or in the seed db.json."
+}

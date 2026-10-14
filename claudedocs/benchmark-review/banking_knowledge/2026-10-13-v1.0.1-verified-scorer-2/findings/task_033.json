@@ -1,0 +1,38 @@
+{
+  "task_id": "task_033",
+  "severity": "Minor",
+  "headline": "The incident transfer protocol is followed correctly by the gold, but the action grader cannot check the required order (1822, then 0218, then transfer).",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "Doc_011 sets a strict order across three transfer requests and forbids verification and troubleshooting. ACTION grading checks only that 1822, 0218 and transfer_to_human_agents each appear at least once.",
+      "evidence": [
+        "src/tau2/evaluator/evaluator_action.py _check_actions: each gold action passes if any predicted tool call matches it (order and count ignored)",
+        "Action.compare_with_tool_call: compare_args [] -> name match only; call_discoverable_agent_tool golds use compare_args ['agent_tool_name']",
+        "doc_credit_cards_credit_cards_(general)_011: \"You must unlock and call the following agent discoverable tools in this exact order before completing any transfer\" and \"Identity verification is NOT required for this incident protocol... Do not ask for verification information\"",
+        "gold[0..3] unlock/call 1822 and 0218 (compare_args ['agent_tool_name']); gold[4] transfer_to_human_agents compare_args []"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "An agent that calls the tools out of order, all on the first request, or after verifying the customer still passes. Correct work passes as well.",
+      "suggested_fix": "Use an ordered action comparison, or an env assertion on call sequence, for this protocol task."
+    }
+  ],
+  "solution_check": "The fixed clock is 2025-11-14, inside the incident window ('until 11/15/2025, 11:59 PM EST'). The customer's symptoms (paid, deducted from checking, not reflected) match all three triggers. Doc_011 gives 1822 on request 1, 0218 on request 2, and transfer on request 3, which is the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The calibration rule for grader-invisible order makes it Minor.",
+  "notes": "ACTION only; the scorer variant does not matter. The customer asks for a transfer three times, which matches the protocol's three steps."
+}

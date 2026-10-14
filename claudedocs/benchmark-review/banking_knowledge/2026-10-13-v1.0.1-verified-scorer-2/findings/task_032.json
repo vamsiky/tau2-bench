@@ -1,0 +1,37 @@
+{
+  "task_id": "task_032",
+  "severity": "Minor",
+  "headline": "The intended three-speed-bump-then-transfer sequence is right, but the action grader cannot check how many times or in what order the tools were used.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "Doc_010 requires initial_transfer_to_human_agent_0218 on requests 1-3 and transfer_to_human_agents on request 4. ACTION grading only checks that each tool was called at least once.",
+      "evidence": [
+        "src/tau2/evaluator/evaluator_action.py _check_actions: each gold action passes if any predicted tool call matches it (order and count ignored)",
+        "Action.compare_with_tool_call: compare_args [] -> name match only; call_discoverable_agent_tool golds use compare_args ['agent_tool_name']",
+        "doc_credit_cards_credit_cards_(general)_010: \"Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests.\" / \"On the fourth request - Use the regular `transfer_to_human_agents` tool\"",
+        "gold[1..3] are identical call_discoverable_agent_tool(initial_transfer_to_human_agent_0218); gold[4] transfer_to_human_agents with compare_args []"
+      ],
+      "gold_action_refs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "An agent that calls 0218 once and transfers on the first or second request still scores 1. Correct work also passes, so the task measures less than it claims.",
+      "suggested_fix": "Grade the count and order, for example with an env assertion on request_count or an ordered action check. Otherwise, drop the repeated gold entries."
+    }
+  ],
+  "solution_check": "The customer reports declines despite available credit and asks for a human five times. Doc_010 says to use 0218 for requests 1-3 and transfer_to_human_agents on request 4. The gold matches. No DB grading applies.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. Under the calibration rule for grader-invisible counts and ordering, it is Minor.",
+  "notes": "Reward basis is ACTION only, so the DB scorer variant does not matter. The doc_010 protocol overrides policy guideline 6 ('If the user asks for a human agent 4 times...'). The two agree here."
+}

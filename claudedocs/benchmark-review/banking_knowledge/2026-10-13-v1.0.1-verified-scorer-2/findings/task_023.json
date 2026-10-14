@@ -1,0 +1,34 @@
+{
+  "task_id": "task_023",
+  "severity": "Minor",
+  "headline": "Solvable: measured in the documented anniversary-day windows, the customer cleared $7,500 in all 12 months and qualifies, so she applies for the Diamond card. Her stated card-open date (Nov 2024) conflicts with the database (11/10/2022).",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The customer says she opened the Platinum card in November 2024, but the DB says 11/10/2022. Taken at her word, the 2024 opening would fall inside the first-year fee-waiver promo, and doc _010 says the rebate does not apply to a promotionally waived first year, so the answer would flip to 'does not qualify'.",
+      "evidence": [
+        "db.json credit_card_accounts[cc_224959b99e_plat].date_of_account_open = \"11/10/2022\"",
+        "task_023 instructions: \"you opened it in November 2024\"",
+        "doc_credit_cards_platinum_rewards_card_009: \"Start date: 2024-06-01 / End date: 2024-12-31\"",
+        "doc_credit_cards_platinum_rewards_card_010: \"If your first cardmember year's annual fee is waived under a promotional offer, the rebate does not apply to that year.\""
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "An agent that trusts the account record (the expected behavior) evaluates the third cardmember year, 11/10/2024-11/09/2025, and finds the customer qualifies. An agent that trusts the customer's date could apply the waiver clause and tell her she does not qualify, after which she applies for the Silver Rewards Card. The DB value is authoritative, so a careful agent resolves this.",
+      "suggested_fix": "Change the instructions to 'you've had the card for a few years', or align the account open date with the customer's statement and drop the waiver interaction."
+    }
+  ],
+  "solution_check": "Monthly windows are anchored on the 10th (open date 11/10/2022; doc _010 says windows begin on the monthly anniversary and end the day before the next). For the cardmember year 11/10/2024-11/09/2025 the 12 window totals are 7594.18, 7635.92, 7721.49, 7763.29, 7845.26, 7873.15, 7713.77, 7598.04, 7601.91, 7617.16, 7917.61, 7672.23, all at or above the $7,500 threshold in doc _007. So she qualifies, and her script applies for the Diamond Elite Card (95000, no subscription), matching gold[1]. Calendar-month totals would fail 5 months (e.g. Feb 2025 $4,589.27), and shifting windows to the 11th-10th fails 3 windows, so the documented window rule decides the outcome. The gold replays match, and annual_income 95000.0 hashes the same as 95000 because the tool casts to float.",
+  "prior_status": "persists",
+  "prior_note": "Same Minor as the prior review (customer misstates the open date), re-derived with window totals. The two required docs changed since v1.0.0 only cosmetically ('$135 days' -> '135 days'; _002 title '4%' -> '10%').",
+  "notes": "The task is deliberately tight: window 1 clears by $94.18 and window 8 by $98.04, and only the exact anniversary-day boundaries pass every month. The documents state that boundary explicitly, so this is hard but valid. The agent's only write is log_verification; the DB outcome otherwise depends on what the agent tells the customer. No relaxed comparison in the verified scorer applies."
+}

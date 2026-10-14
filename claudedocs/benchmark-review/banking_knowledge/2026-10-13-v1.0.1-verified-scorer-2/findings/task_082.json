@@ -1,0 +1,92 @@
+{
+  "task_id": "task_082",
+  "severity": "Blocker",
+  "headline": "Fraud on the Green Fee-Free card calls for closing it, and the customer asks for a reissue, but the gold never closes that card, so an agent that follows the rules is marked wrong.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "The CryptoGems dispute on the GFF card is recorded as close_and_reissue, the rules say to carry out the most severe action per card, and the customer asks for the GFF card to be reissued. The gold never closes dbc_mc47a2b9e1_gff.",
+      "evidence": [
+        "gold[15] CryptoGems dispute on dbc_mc47a2b9e1_gff: \"card_action\": \"close_and_reissue\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"This parameter records metadata only; the agent must separately perform the indicated card action after filing the dispute.\" and \"when performing the actual card action after filing all disputes, use the MOST SEVERE action across all disputes\"",
+        "user_scenario step 7: \"Green Fee-Free card: I'd like to keep using this card but maybe with a new number? Can you reissue it?\"",
+        "gold[17] closes only dbc_mc47a2b9e1_blue; no close/order for dbc_mc47a2b9e1_gff",
+        "Replay: gold + close_debit_card_4721(dbc_mc47a2b9e1_gff, fraud_suspected) -> verified and exact both fail, debit_cards row dbc_mc47a2b9e1_gff status CLOSED vs gold ACTIVE"
+      ],
+      "gold_action_refs": [
+        15,
+        16,
+        17
+      ],
+      "why_it_matters": "An agent that follows doc_031 and the customer's request closes the GFF card. The 48-hour ENTRY wait in doc_029 blocks only the reorder, not the close. The closed card leaves debit_cards different from the gold, so correct work scores 0.",
+      "suggested_fix": "Add close_debit_card_4721(card_id=dbc_mc47a2b9e1_gff, reason=fraud_suspected) to the gold, with no reorder because of the ENTRY 48-hour wait, or change the scenario so the GFF card is not compromised."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Provisional-credit flags follow no single rule. FitLife (a 'not required' category) is set true. ElectroniX meets every 'required' condition but is set false because the PIN was 'yes_shared'. Sibling tasks set the not-required categories false.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "doc_032 NOT REQUIRED list item 1 includes 'recurring_charge_after_cancellation'",
+        "gold[13] FitLife recurring_charge_after_cancellation: provisional_credit_eligible true",
+        "gold[12] ElectroniX card_present_fraud: pin_compromised 'yes_shared', provisional_credit_eligible false",
+        "task_083/084/086 gold set goods_services_not_received / incorrect_amount (same NOT REQUIRED list) to false",
+        "Replay: FitLife provisional false -> debit_card_disputes differs"
+      ],
+      "gold_action_refs": [
+        12,
+        13
+      ],
+      "why_it_matters": "An agent applying 'not required, so not eligible' sets FitLife false, which is the convention used in the sibling tasks, and fails debit_card_disputes. The ElectroniX value depends on which of two overlapping lists wins.",
+      "suggested_fix": "Make doc_032 decisive (for example: eligible only when every REQUIRED condition holds and no NOT REQUIRED condition applies) and set FitLife to false."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Several judgment values recorded in the dispute and card tables have two reasonable answers: pin_compromised for a PIN written on a note in a lost wallet, the Blue card closure reason (lost or fraud_suspected), and the Blue replacement shipping speed, which the script never states.",
+      "evidence": [
+        "tool docstring pin_compromised: \"'yes_shared': Customer shared PIN with someone; 'yes_observed': Customer believes PIN was observed/skimmed\"; script: \"I had my PIN written on a sticky note in my wallet\"; gold[12] 'yes_shared'",
+        "doc_025 closing reasons include 'lost' and 'fraud_suspected'; doc_031 maps card_present_fraud -> close_and_reissue; gold[17] reason 'lost'; replay with 'fraud_suspected' fails (closure_reason and new card issue_reason 'fraud' vs 'lost')",
+        "doc_023 step 4: \"Ask customer for preferred delivery option (STANDARD, EXPEDITED, or RUSH) and explain fees\"; script gives no shipping answer; gold[19] STANDARD (MID tier also allows EXPEDITED $15); no documented default delivery option"
+      ],
+      "gold_action_refs": [
+        12,
+        17,
+        19
+      ],
+      "why_it_matters": "Each of these values is stored and compared exactly, so a defensible alternative fails the task.",
+      "suggested_fix": "Script the shipping speed and the PIN answer explicitly, and state in doc_025 which closure reason to use when a lost card was used fraudulently."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "customer_max_liability_amount is 50 for every dispute, including the ATM shortage noticed 11/09 and the FitLife charge noticed 11/11, both reported 11/14. Counting from when the customer noticed, as doc_031 says, gives the $500 tier.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability.\"",
+        "No statement dates exist in the DB or the documents; get_now() = 2025-11-14 (Friday)",
+        "ATM noticed 11/09/2025 (Sun) -> 5 business days to 11/14; FitLife noticed 11/11/2025 -> 3 business days",
+        "gold[13], gold[14] customer_max_liability_amount 50"
+      ],
+      "gold_action_refs": [
+        13,
+        14
+      ],
+      "why_it_matters": "An agent counting business days from discovery stores 500 for these disputes. An agent that treats Reg E tiers as applying only to unauthorized transfers may store 0. Either differs from the gold's 50 in debit_card_disputes.",
+      "suggested_fix": "State one deterministic rule in doc_031, for example: liability tier is counted from the discovery date to today in business days, applies to every dispute category, and is capped at the disputed amount. Then regenerate customer_max_liability_amount in every gold dispute."
+    }
+  ],
+  "solution_check": "Reconstructed the four disputes and found the categories, amounts, dates, and transaction ids uniquely derivable. The card actions are not: after the CryptoGems close_and_reissue on GFF, the documented flow closes GFF and the gold does not. Replay confirms that closing GFF, setting FitLife provisional false, or closing Blue as fraud_suspected each fails the verified comparison. Nothing in this task depends on the verified scorer's relaxations.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker (GFF card never closed or reissued) is unchanged in v1.0.1; the gold only gained reads, and the FitLife provisional-credit inconsistency also persists.",
+  "notes": "Instruction step 8 says the CryptoGems discovery date is \"today, January 9th\" while the gold uses 11/14/2025; an agent can resolve it from \"today\" and get_current_time, but a literal transcription fails (Minor, folded here). Seed card dbc_mc47a2b9e1_blue has expiration_date 06/30/2025 yet status ACTIVE (expired card in use); cosmetic. The opening line asks for a human agent once; policy allows helping first, and the transfer writes nothing."
+}

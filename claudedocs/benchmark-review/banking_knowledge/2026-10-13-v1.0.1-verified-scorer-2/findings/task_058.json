@@ -1,0 +1,17 @@
+{
+  "task_id": "task_058",
+  "severity": "None",
+  "headline": "Clean: EcoCard plus Silver Account is the unique best net yield on $20,000 ($1,190 against $1,170 for the next pair), and both gold writes follow from it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Computed interest minus card annual fee for every savings account the $20,000 can hold and every card available without a subscription or invitation (apy.py). Results: Silver (4.0% tier at $10k+) + EcoCard (+2.2%, silver_006; $50 fee, ecocard_001) = $1,190; Gold + EcoCard (+0.6%) = $1,170; Gold + Silver Rewards (+0.2%) = $1,140; Gold + Bronze Rewards = $1,130; Gold + Green Rewards (business, $100) = $1,070. Gold Rewards Card requires Rho-Bank+ (and the customer applies with rho_bank_subscription=false), Diamond Elite is invitation-only, and Platinum's first-year fee waiver ran 2024-06-01 to 2024-12-31. The gold (customer applies for EcoCard, agent opens 'Silver Account') matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated this clean; still clean.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). initial_state.initialization_data uses top-level keys 'users'/'accounts' rather than agent_data/user_data, so InitializationData ignores them; db.json already contains tb58a3c9d2 and chk_tb58a3c9d2 with the same values, so there is no effect. get_all_user_accounts is not in this gold, so an agent's eligibility read is not logged. Cosmetic doc defects not deciding here: gold_account_013 \"Total APY with the bonus: 6.0%\" for 5.5% + 0.025% (Gold + Gold Rewards at 6.0% would be $1,200 minus Rho-Bank+ $59.88 = $1,140, still below $1,190); silver_account_002 shows an unrendered \"[[linked_checking_apy_bonus]]\". The 0.025% relationship bonus applies equally to Silver and Silver Plus and does not change the ranking. The customer gives no credit score; EcoCard has no score requirement."
+}

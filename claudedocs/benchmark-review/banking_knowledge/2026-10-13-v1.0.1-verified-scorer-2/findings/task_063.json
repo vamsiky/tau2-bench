@@ -1,0 +1,36 @@
+{
+  "task_id": "task_063",
+  "severity": "Blocker",
+  "headline": "Bronze Rewards and Silver Rewards add the same +0.15% to the recommended Silver Plus Account, and both meet the customer's conditions, but the gold accepts only Silver Rewards.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "On the best eligible account (Silver Plus, Tier 1 3.0%), Bronze Rewards and Silver Rewards give identical +0.15% bonuses. Both have a $0 fee and both run a credit check with a minimum at or below the customer's 700, so the customer's sole metric is tied and nothing breaks the tie.",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_009: \"| Bronze Rewards Card | +0.15% |\" and \"| Silver Rewards Card | +0.15% |\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\", \"Annual fee: $0.00\", \"Consent to a credit pull\"",
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\", \"Annual fee: $0.00\", \"Consent to a credit check\"",
+        "Computation: $8,000 x (3.0% + 0.15%) = $252.00 for either card; next best Silver Plus + Green Rewards (business, +0.1%) = $248, Silver + Crypto-Cash Back (+0.5%) = $240",
+        "gold[1].arguments.card_type = \"Silver Rewards Card\"",
+        "Replay with card_type 'Bronze Rewards Card': _verified_db_match False, \"table 'credit_card_applications' differs\" (application_id hashes card_type)"
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "A correct agent picks one of two equally good cards. Half of correct recommendations fail on credit_card_applications, so the result is chance.",
+      "suggested_fix": "Make the Silver Plus bonuses differ (e.g., Bronze Rewards +0.1%), or give the customer a stated preference that only Silver Rewards satisfies."
+    }
+  ],
+  "solution_check": "Paper statements exclude Green savings (paperless required). $8,000 is below Gold's $10,000 minimum. A 700 score excludes Gold Rewards (720), Platinum (750) and Diamond (invitation, 780). The 'checks credit' requirement excludes EcoCard (minimum 0). Among Bronze, Silver and Silver Plus with the eligible cards (apy.py), Silver Plus at 3.15% ($252) ties between Bronze Rewards and Silver Rewards. The gold picks Silver Rewards with no documented tie-breaker. The account write 'Silver Plus Account' is consistent.",
+  "prior_status": "persists",
+  "prior_note": "Same tie as the prior Blocker; the v1.0.1 data is unchanged for these cards and accounts.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). Possible tie-breakers checked and rejected: both cards earn 1% on the customer's groceries and gas (Silver's 4% is travel/software only); Silver's $500 signup promo window was 2025-01-01 to 2025-06-30 and has expired; Bronze's 0% APR promo does not affect savings return; the 0.025% relationship bonus applies equally; general_045 applies only the highest single card bonus. A further reading: gold_account_001 frames the $10,000 as a balance below which \"you may incur the monthly charge\" ($10/month). Gold + Silver Rewards at 5.7% on $8,000 minus $120 = $336 would beat $252, but gold_002/009 call $10,000 the \"Minimum balance to maintain the account\" and warn the rate may not apply below it, so excluding Gold is the better-supported reading."
+}

@@ -1,0 +1,17 @@
+{
+  "task_id": "task_010",
+  "severity": "None",
+  "headline": "Clean: the Platinum referral was auto-denied by the documented 2-per-rolling-7-days cap, that window has long passed, so after verifying the customer the agent explains he can retry and he resubmits the Platinum referral.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The customer gives email and phone, which match db.json users[76ad9cc60e] on 2 of 4 fields, so the agent verifies and logs with the DB values and time '2025-11-14 03:40:00 EST' (gold[0]). get_referrals_by_user, a regular read that writes nothing, shows Bronze COMPLETE 10/20, Gold COMPLETE 10/22, Platinum REJECTED 10/25 and Silver IN_PROGRESS 11/05. doc_credit_cards_credit_cards_(general)_002 explains the rejection ('at most 2 referral bonuses in any rolling 7-day window') and the fix ('wait until enough time has passed to drop under the cap before attempting another'). By 11/14 the window has passed, so the customer runs submit_referral(76ad9cc60e, 'Platinum Rewards Card') (gold[1]). Replaying with extra reads gives the gold DB under both comparisons.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and re-derivation agrees.",
+  "notes": "All four earlier Opus trials failed, because the agent told the customer the rejected referral 'cannot be reinstated' and stopped there, which misreads '...cannot be reinstated within the same 7-day window' together with 'before attempting another'. That is an agent reasoning error, not a document defect. log_verification needs the address and DOB copied from the DB even though the customer never states them; that is standard for this domain."
+}

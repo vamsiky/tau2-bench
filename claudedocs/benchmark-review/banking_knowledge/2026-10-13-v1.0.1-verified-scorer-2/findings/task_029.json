@@ -1,0 +1,70 @@
+{
+  "task_id": "task_029",
+  "severity": "Blocker",
+  "headline": "The agent is expected to catch a customer lying that her disputes were approved, but it has no tool to check, and the twin task 028 rewards believing the same words.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "The gold has no update_transaction_rewards_3847 calls, because the disputes are hidden in status SUBMITTED. The agent cannot read cash_back_disputes. It sees the same 'they've all been approved and resolved' claim that task_028 expects it to act on.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: the only reference to cash_back_disputes is the add_to_db write inside KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool (base or discoverable) reads that table. Agent tool list (no_knowledge variant): call_discoverable_agent_tool, change_user_email, get_credit_card_accounts_by_user, get_credit_card_transactions_by_user, get_current_time, get_referrals_by_user, get_user_information_by_*, give_discoverable_user_tool, list_discoverable_agent_tools, log_verification, transfer_to_human_agents, unlock_discoverable_agent_tool (+ KB search/shell over documents only)",
+        "submit_cash_back_dispute_0589 result (status line) is returned to the user simulator only, never to the agent",
+        "task_028 initial_state task_config.dispute_settings.auto_resolve_disputes = true -> replayed dispute status RESOLVED; task_029 auto_resolve_disputes = false -> status SUBMITTED",
+        "task_028 Phase 2 and task_029 Phase 2 scripts use the identical customer line: \"Great, I've submitted all the disputes. I just got a notification that they've all been approved and resolved! Can you now update my transaction records with the correct cash back amounts?\"",
+        "description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED (not RESOLVED).\"",
+        "Replay: gold + unlock/call update_transaction_rewards_3847(txn_57ecc6da56c2, '95 points') -> verified match False: extra discoverable calls ['update_transaction_rewards_3847'], table 'credit_card_transaction_history' differs"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "The verification the notes require cannot be done. An agent passes only if it happens to distrust the customer, and the same disposition fails task_028. The result measures trust disposition, not correct behaviour.",
+      "suggested_fix": "Give the agent a documented read of cash_back_disputes, such as a discoverable status tool, and make that read a gold action in both 028 and 029."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The task needs the floor rounding rule in doc_credit_cards_credit_cards_(general)_007, which is missing from required_documents here although task_028 lists it.",
+      "evidence": [
+        "task_029 required_documents omits \"doc_credit_cards_credit_cards_(general)_007\"; task_028 required_documents includes it",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number.\"",
+        "Floor reproduces exactly the 6 gold dispute transactions; round-half-up flags 28"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "why_it_matters": "The default 'alltools' retrieval can still reach the doc. A golden_retrieval run would not include it, and an agent rounding half-up would dispute 22 extra transactions.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Unlike task_028, this script never says what the customer does if the agent suggests leaving the overpaid transaction (txn_e647e242ce96, 1875 points stored vs 750 correct) undisputed. The gold disputes it.",
+      "evidence": [
+        "task_028 script step 4: \"If the agent shows an overpaid transaction but suggests not disputing it: Ask them to dispute it anyway...\"; task_029 has no such step",
+        "gold[7] submit_cash_back_dispute_0589 transaction_id txn_e647e242ce96",
+        "doc_credit_cards_credit_cards_(general)_003: \"Use this process when a customer believes there is a discrepancy between the cash back they received for a particular transaction and the cash back they should have received.\""
+      ],
+      "gold_action_refs": [
+        7
+      ],
+      "why_it_matters": "If the agent frames the overpayment as a bonus, the simulated customer may skip that dispute and the user_discoverable_tool_calls and cash_back_disputes tables will differ. Doc 003's 'discrepancy' default (dispute it) matches the gold, so a doc-faithful agent passes.",
+      "suggested_fix": "Copy task_028's step 4 into the task_029 script."
+    }
+  ],
+  "solution_check": "Phase 1 has the same data as task_028: flooring per doc_007 gives exactly the 6 gold dispute transactions. The gold stops after the six user dispute submissions. Replaying that reproduces the gold DB (disputes in status SUBMITTED). Any rewards update breaks the match. Whether an agent stops correctly cannot be decided from what it can see.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round-down rule') does not hold: doc_..._007 documents flooring and the default retrieval can reach it, so only a Minor required_documents gap remains. The real defect is the unverifiable dispute status, which is a Blocker.",
+  "notes": "The verified scorer does not change this result: an extra update_transaction_rewards_3847 call succeeds rather than being rejected for bad input, and credit_card_transaction_history is compared exactly. The run grader builds the env with read_log_allowlist = {} here, since the gold has no call_discoverable_agent_tool."
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "task_021",
+  "severity": "Minor",
+  "headline": "Solvable: after applying the documented round-down rule and the WeWork/ThredUp exceptions, exactly two transactions are wrong, matching the gold. Only the rounding document is missing from the required list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rounding rule that decides which rows count as errors lives in doc_credit_cards_credit_cards_(general)_007, which is not listed in required_documents. The agent can still find it with KB search or grep in the default alltools configuration.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_021.required_documents = [\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_006\", \"doc_business_credit_cards_business_bronze_rewards_card_001\", \"doc_business_credit_cards_business_bronze_rewards_card_002\", \"doc_business_credit_cards_business_bronze_rewards_card_003\", \"doc_credit_cards_ecocard_001\", \"doc_credit_cards_ecocard_002\", \"doc_credit_cards_ecocard_004\"] (no _007)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under a retrieval configuration that only shows required_documents (golden_retrieval / required_docs prompt), the agent never sees the rounding rule, so whether a row counts as a 1-point error depends on whichever convention the agent assumes.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 17 transactions for d2e5bc4124. Rules: Business Bronze 1%, WeWork 0% (doc _003); EcoCard 5x Green except the doc_ecocard_004 exclusions (ThredUp -> 1x), Tesla Supercharger is a certified network so 5x; floor. Floor gives exactly the 2 gold rows: ccbb94 (Chipotle $369.55 Bronze -> 369, stored 184) and 5b30a5 (Everlane $270.42 Green -> 1352, stored 270). Round-half-up adds 6 one-point false positives (ThredUp 50/51, HBO Max 142/143, Spotify 439/440, Tesla 240/241, Patagonia 805/806, DTE 282/283). The gold replay matches itself.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major assumed floor rounding was undocumented. Doc _007 documents it, so only the Minor required_documents omission remains.",
+  "notes": "The customer is told to accept explanations about coworking spaces and thrift stores, which matches WeWork at 0 points and ThredUp at 1x. No relaxed comparison in the verified scorer applies."
+}

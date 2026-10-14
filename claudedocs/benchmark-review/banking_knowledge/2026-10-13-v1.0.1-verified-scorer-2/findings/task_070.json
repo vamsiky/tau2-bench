@@ -1,0 +1,33 @@
+{
+  "task_id": "task_070",
+  "severity": "Minor",
+  "headline": "Sky Blue is the correct pick under the active November promotion, but the script never confirms the business meets Sky Blue's 4-year startup age limit.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Sky Blue is a startup account restricted to companies within 4 years of formation, and the customer script never says how old the business is. The promotion only applies among accounts the customer qualifies for, so the gold silently assumes eligibility.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "doc_business_checking_accounts_sky_blue_008: \"Eligibility criteria tied to company age are evaluated when you open the account; the threshold is 4.\"",
+        "user_scenario.instructions: no formation date or company age is given"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "A careful agent that asks the company age gets an improvised answer; if the simulated customer says more than 4 years, the agent correctly falls back to Lime Green and fails the gold. Most agents will not ask, so the effect is limited.",
+      "suggested_fix": "Add a line to the script stating the business was formed within the last 4 years (e.g., \"I started the agency 2 years ago\")."
+    }
+  ],
+  "solution_check": "Requirements: ATM rebates >= $15/month, $0 overdraft fee, minimum balance < $10,000, APY >= 1%. Qualifiers: Sky Blue (rebates 15, overdraft $0, funding requirement 0, APY 1.25%), Lime Green (rebates $25, $0, $5,000, 1.5%), Hunter Green (rebates $20, $0, $5,000 waiver, 1.0%). Clock 11/14/2025 falls in the November promotion (11/01-11/30, Sky Blue first) and after the October one (ended 11/12). Eligibility per doc_003 holds (personal Green checking OPEN, $2,850, no CLOSED accounts). Gold Sky Blue matches; skipping get_all_user_accounts_by_user_id_3847 fails as a missing required read.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated the task clean; the company-age gap is a new, minor finding.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Business checking account_class \"Sky Blue\" (no \"Account\" suffix) follows doc_bank_accounts_bank_accounts_(general)_003 (\"options include Navy Blue, Cobalt Blue, True Blue\"). v1.0.1 changes to Sky Blue docs 001/002/009 were cosmetic ($120 -> 120 regions, \"6.\" -> \"6 months.\")."
+}

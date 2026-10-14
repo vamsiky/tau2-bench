@@ -1,0 +1,56 @@
+{
+  "task_id": "task_020",
+  "severity": "Major",
+  "headline": "This customer's stored rewards were rounded the opposite way from the documented round-down rule, so an agent that follows the rule sees nine extra 1-point errors the gold does not dispute.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Amara's seed rewards are rounded half-up, which contradicts the documented always-floor rule. Following doc _007, nine correctly categorized transactions are over-credited by 1 point each. The gold disputes none of them, so it only matches an agent that rounds half-up or ignores 1-point differences on its own initiative.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "txn_a8f1c2d3e402 Adobe Creative Cloud $54.99, Business Silver Software 10% x2 promo (opened 02/13/2025) = 1099.80 -> floor 1099, stored 1100",
+        "txn_a8f1c2d3e404 Microsoft 365 $79.99, Business Silver excluded 1% x2 = 159.98 -> 159, stored 160",
+        "txn_a8f1c2d3e406 Whole Foods $127.43, 1% x2 = 254.86 -> 254, stored 255",
+        "txn_a8f1c2d3e409 Amazon $156.78, 1% x2 = 313.56 -> 313, stored 314",
+        "txn_a8f1c2d3e414 Coursera $49.99, excluded 1% = 49.99 -> 49, stored 50",
+        "txn_b7e2d4c5f503 Slack $44.99, Silver 4% = 179.96 -> 179, stored 180",
+        "txn_b7e2d4c5f507 Netflix $22.99, 1% -> 22, stored 23",
+        "txn_b7e2d4c5f509 Costco $143.56, 1% -> 143, stored 144",
+        "txn_b7e2d4c5f512 Nordstrom $187.50, 1% -> 187, stored 188",
+        "Replay (task_020 data): gold plus disputes on these 9 rows -> verified match False (cash_back_disputes and user_discoverable_tool_calls differ)"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "why_it_matters": "A doc-faithful agent that recomputes every row finds 13 discrepancies: 4 gross and 9 one-point overcredits. The customer is told to follow the agent's lead, so if the agent presents all 13 she disputes all 13 and the task fails. Customers in sibling tasks 018/022 are told to dispute overpaid rows, so flagging overcredits is the benchmark's own convention. The gold is reached only by rounding half-up (against _007) or by an unstated materiality threshold. The verified scorer compares both affected tables exactly.",
+      "suggested_fix": "Re-seed Amara's (755bcb4d5d) non-error rows with floored values (e.g. a8f1c2d3e402 -> 1099, b7e2d4c5f503 -> 179, ...), so the documented rule reproduces the gold set; or change _007 to round half-up and re-seed the floor-convention tasks 017-019/021/022."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rounding rule that decides which rows count as errors lives in doc_credit_cards_credit_cards_(general)_007, which is not listed in required_documents. The agent can still find it with KB search or grep in the default alltools configuration.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_020.required_documents = [\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_006\", \"doc_business_credit_cards_business_silver_rewards_card_001\", \"doc_business_credit_cards_business_silver_rewards_card_002\", \"doc_business_credit_cards_business_silver_rewards_card_005\", \"doc_business_credit_cards_business_silver_rewards_card_012\", \"doc_credit_cards_silver_rewards_card_001\", \"doc_credit_cards_silver_rewards_card_002\"] (no _007)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under a retrieval configuration that only shows required_documents (golden_retrieval / required_docs prompt), the agent never sees the rounding rule, so whether a row counts as a 1-point error depends on whichever convention the agent assumes.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 25 transactions for 755bcb4d5d. Rules: Business Silver 10% Travel/Software with the doc _005 exclusions (Microsoft, Coursera -> 1%); 2x promo for 6 months from opening 02/13/2025 (doc _012 window 2024-11-14..2025-11-14), so through 08/13/2025; Silver 4%/1%. Gold disputes: e403 JetBlue $315 (03/22/2025, inside the 2x promo window) 20% -> 6300, stored 3150; f506 GitHub $255 Silver 4% -> 1020, stored 2550; e410 Southwest $380 (08/25/2025, after the promo ended 08/13/2025) 10% -> 3800, stored 1520; e411 Zoom $149.99 (09/15/2025) 10% -> 1499.9, stored 600. Round-half-up reproduces exactly these 4 with no false positives. Floor, the documented rule, gives these 4 plus 9 one-point overcredits. The gold replay matches itself, and adding the 9 disputes fails the verified comparison.",
+  "prior_status": "changed",
+  "prior_note": "The prior review called this Minor because it assumed rounding was undocumented and half-up was 'natural'. Doc _007 documents floor, and this user's seed contradicts it, so the defect is now a Major document-vs-data contradiction.",
+  "notes": "Sibling tasks 026 and 027 use the same user and seed rows and have the same defect. Tasks 017-019/021/022 are seeded with floor, consistent with doc _007, so the benchmark uses two rounding conventions. No relaxed comparison in the verified scorer applies: the agent makes no discoverable writes."
+}

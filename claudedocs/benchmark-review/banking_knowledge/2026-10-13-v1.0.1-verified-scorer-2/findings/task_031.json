@@ -1,0 +1,17 @@
+{
+  "task_id": "task_031",
+  "severity": "None",
+  "headline": "Clean: every value in the single Marriott dispute follows from what the customer says, the transaction data, and the dispute documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Verify the customer with phone and email (log_verification uses DB values and the get_current_time stamp). The only Marriott transaction for 890389b165 is txn_adea68821a1d ($167.34, 11/07/2025, Silver). Give get_card_last_4_digits; the customer runs it with cc_890389b165_silver and gets 5320 on replay. Then file with keep_active, contacted_merchant true, goods_services_not_as_described, full_refund, issue_noticed_date 11/14/2025, and eligible_for_provisional_credit false, since doc_015 lists 'goods_services_not_as_described' under NOT Eligible. This matches the gold, and the gold replays without errors.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "The script's 'about two weeks ago' and 'around 160 dollars' are loose (actual 11/07, $167.34), but Marriott appears only once, so the transaction is unambiguous. Doc_014 lists 'reversal_of_charge', which the tool rejects; that does not matter here because the customer asks for a full refund. card_last_4_digits must be passed as the string \"5320\" (doc_014 says string). A JSON number would be stored as 5320.0 and fail the match. The verified-scorer relaxations do not apply."
+}

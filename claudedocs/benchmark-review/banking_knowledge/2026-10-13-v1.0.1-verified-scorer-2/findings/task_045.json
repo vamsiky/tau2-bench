@@ -1,0 +1,34 @@
+{
+  "task_id": "task_045",
+  "severity": "Minor",
+  "headline": "The Business Silver closure flow (pay $125, recommend Business Platinum, then apply a $20 retention credit) is derivable, but the customer gives two closure reasons and only one is accepted.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The customer's opening line gives two closure reasons that map to different log categories, and the scenario adds a third motive. The gold logs found_better_card.",
+      "evidence": [
+        "user_scenario opening: \"I found a better card at another bank and I don't really use this one much anymore.\"",
+        "user_scenario situation: \"You don't use your Rho-Bank business card that much anymore and want to simplify your finances.\"",
+        "doc_credit_cards_credit_card_account_logistics_003 Step 3: closure_reason \"One of: 'annual_fee', 'not_using_card', 'found_better_card', 'unhappy_with_rewards', 'simplifying_finances', 'negative_experience', 'other'\"",
+        "gold[12] (045_6).arguments.closure_reason = \"found_better_card\""
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "credit_card_closure_reasons is compared exactly. An agent that logs not_using_card fails, although the first-stated reason and the conversation that follows (the competitor card's features) point to found_better_card.",
+      "suggested_fix": "Have the customer name one main reason, for example 'Mainly, I found a better card elsewhere.'"
+    }
+  ],
+  "solution_check": "Step 1: no disputes, no replacement orders, Business Silver opened 03/15/2023, balance $125.00. Paying $125 from checking '05' ($2,850) per logistics_009 matches gold[8] (045_2). Step 2: no history. Step 3: found_better_card. Step 4: Business Platinum is the only business card with media/advertising rewards and a 0% foreign fee (business_platinum_002: \"Travel, software, and media advertising purchases earn 4.0%\"; _008: \"Foreign transaction fee on international purchases: 0%\"). After the customer declines, the Step 5 mid-tier offer applies (replacements_002 lists Business Silver as mid-tier): $20 statement credit with reason retention_offer, which matches gold[14] (045_8).",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. The closure-reason ambiguity is a new Minor finding.",
+  "notes": "The customer also holds a personal Platinum Rewards Card (10% on everything, 0% foreign fee). An agent that suggests using that card would trigger the script's 'other card' branch, under which the customer hangs up. Business Platinum is the natural business-card answer, so I did not treat this as a defect. Retention-tier mapping comes from replacements_002, which is in required_documents. No finding depends on the verified scorer's relaxations."
+}

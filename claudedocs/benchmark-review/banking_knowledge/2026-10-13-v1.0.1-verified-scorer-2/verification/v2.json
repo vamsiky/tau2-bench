@@ -1,0 +1,336 @@
+{
+  "verifier_id": "v2",
+  "fact_checks": [
+    {
+      "fact": "Upstream DB grading replays the gold actions on a fresh environment and requires exact agent-side and user-side DB hash matches",
+      "status": "Confirmed",
+      "evidence": "snapshot src/tau2/evaluator/evaluator_env.py:118-123 (get_db_hash()/get_user_db_hash() equality after replaying task.evaluation_criteria.actions)"
+    },
+    {
+      "fact": "Verified scorer (this run): gold discoverable tool names must be a subset of the agent's; an extra name passes only if every call to it matched _INPUT_ERROR_RE; closure_reason is stripped from `accounts` only; every other table (incl. credit_card_closure_reasons, user_discoverable_tool_calls, human_transfer_requests) is compared exactly; applied to both agent and user DB",
+      "status": "Confirmed",
+      "evidence": "working repo src/tau2/evaluator/evaluator_env.py: _FREE_TEXT_ANNOTATION_FIELDS = {'accounts': {'closure_reason'}}, _verified_db_match, calculate_reward(use_verified_scorer) runs _verified_db_match on tools.db and user_tools.db. Copied verbatim into scratch harness vs2_verify_v2/h.py; gold-vs-gold replay matches for all 16 DB tasks in this group"
+    },
+    {
+      "fact": "_INPUT_ERROR_RE does not exempt status/eligibility/balance rejections",
+      "status": "Confirmed",
+      "evidence": "regex alternatives are Missing required parameter|Invalid |Unexpected parameter|... is required|must be ...| not found. ; 'Error: Insufficient funds in checking account...' (pay_credit_card_from_checking_9182) and 'Error: Credit limit increase request cannot be approved at this time.' do not match"
+    },
+    {
+      "fact": "Discoverable reads are logged only when the gold calls that tool (read_log_allowlist); the log row is keyed by tool name alone",
+      "status": "Confirmed",
+      "evidence": "snapshot runner/build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool line 693 `if underlying_mutates or agent_tool_name in self._read_log_allowlist`; utils.generate_agent_discoverable_tool_id(tool_name) uses the name only. Replay: task_046 gold + extra pending-replacement and closure-history reads -> verified match True"
+    },
+    {
+      "fact": "Unlocking writes nothing; give_discoverable_user_tool writes a row keyed by tool name; a user's discoverable call is logged per distinct argument set",
+      "status": "Confirmed",
+      "evidence": "tools.py unlock_discoverable_agent_tool (in-memory state only); give_discoverable_user_tool -> generate_user_discoverable_tool_id(name); KnowledgeUserTools._log_user_tool_call -> generate_user_discoverable_tool_call_id(tool_name, args), called before the account lookup so a bad ID is still logged"
+    },
+    {
+      "fact": "Integers in call_discoverable_agent_tool / call_discoverable_user_tool JSON are parsed as floats",
+      "status": "Confirmed",
+      "evidence": "json.loads(arguments, parse_int=float) in both wrappers. Replays: task_039 partial_refund_amount 50 vs 50.0 match; task_043 amount 75 vs 75.0 match. Caveat: string fields are not normalised, so card_last_4_digits 5320 (number) is stored as 5320.0 and fails (task_031 replay)"
+    },
+    {
+      "fact": "ACTION grading matches each gold action by name and compare_args, ignoring order, repetition, extra calls and requestor",
+      "status": "Confirmed",
+      "evidence": "snapshot data_model/tasks.py Action.compare_with_tool_call (compare_args [] -> name only); evaluator_action._check_actions (any predicted call); extract_tool_calls includes UserMessage tool calls"
+    },
+    {
+      "fact": "NL_ASSERTION reward is multiplied in when in reward_basis",
+      "status": "Confirmed",
+      "evidence": "snapshot evaluator/evaluator.py reward *= nl_reward_info.reward; none of the 20 tasks here use NL_ASSERTION (032-035 are ACTION only, the rest DB only)"
+    },
+    {
+      "fact": "Agent and user toolkits share one DB; a discoverable write is logged even if it returns an error string; rejection before execution (unknown/locked tool, invalid JSON, TypeError) logs nothing; transfer_to_human_agents writes nothing",
+      "status": "Confirmed",
+      "evidence": "environment.get_environment passes the same db to build_tools and KnowledgeUserTools(db); call_discoverable_agent_tool returns early on unknown/locked/JSONDecodeError/TypeError and logs after method() returns otherwise; transfer_to_human_agents only returns a string"
+    },
+    {
+      "fact": "The clock is fixed",
+      "status": "Confirmed",
+      "evidence": "utils.get_now() = datetime(2025, 11, 14, 3, 40, 0); get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'"
+    },
+    {
+      "fact": "Some reads are always available, others are discoverable",
+      "status": "Confirmed",
+      "evidence": "@is_tool(READ): get_credit_card_accounts_by_user, get_credit_card_transactions_by_user, get_user_information_by_*; @is_discoverable_tool(READ): get_user_dispute_history_7291, get_pending_replacement_orders_5765, get_closure_reason_history_8293, get_credit_limit_increase_history_4829, get_payment_history_6183, get_all_user_accounts_by_user_id_3847 (the only tool that exposes checking-account IDs/balances)"
+    },
+    {
+      "fact": "approve_credit_limit_increase_5847 enforces only part of the documented CLI rules",
+      "status": "Confirmed",
+      "evidence": "blocks on any user dispute in SUBMITTED/UNDER_REVIEW/PENDING and on account orders in PENDING/PROCESSING/SHIPPED, not on ORDERED (what order_replacement_credit_card_7291 writes); the approval record reuses the submit request_id, so add_to_db silently fails and only the PENDING row remains (gold replays of 050/051 confirm)"
+    }
+  ],
+  "task_verdicts": {
+    "task_031": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "db.json credit_card_transaction_history txn_adea68821a1d: Marriott Hotels, $167.34, 11/07/2025, Silver Rewards Card (the only Marriott row for user 890389b165)",
+        "doc_credit_cards_credit_cards_(general)_015 NOT Eligible: \"Dispute reason is 'incorrect_amount', 'goods_services_not_as_described', ...\"",
+        "gold[4] eligible_for_provisional_credit=false, dispute_reason goods_services_not_as_described, issue_noticed_date 11/14/2025 (= get_current_time), card_last_4_digits \"5320\" (user tool output for cc_890389b165_silver)",
+        "Replay: gold with card_last_4_digits as number 5320 -> verified False, table 'transaction_disputes' differs (doc_014 says the field is a string)"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. Every stored field follows from the script (contact merchant yes, today, full refund, keep active, account ID given), the single Marriott transaction, and doc_015. The gold replays cleanly; the only fragility is passing last-4 as a JSON string, which doc_014 specifies. Clean."
+    },
+    "task_032": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_010: \"Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests.\" / \"### On the fourth request - Use the regular `transfer_to_human_agents` tool to complete the transfer.\"",
+        "gold[1..3] call_discoverable_agent_tool compare_args ['agent_tool_name']; gold[4] transfer_to_human_agents compare_args []; reward_basis ['ACTION']",
+        "tasks.py compare_with_tool_call + evaluator_action._check_actions: any-match, order and count ignored"
+      ],
+      "citation_problems": [
+        "Doc_010 quote joins the '### On the fourth request' heading and its bullet into one line; wording otherwise verbatim."
+      ],
+      "note": "Reproduced: one 0218 call plus any transfer satisfies all five gold actions, so the count and timing rule is ungraded while correct work passes. Calibration 'rules the grader cannot see' gives Minor."
+    },
+    "task_033": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_011: \"until 11/15/2025, 11:59 PM EST\"; \"You must unlock and call the following agent discoverable tools in this exact order before completing any transfer\"",
+        "get_now() = 2025-11-14 03:40, inside the window",
+        "gold[0..3] compare_args ['agent_tool_name']; gold[4] transfer_to_human_agents compare_args []"
+      ],
+      "citation_problems": [],
+      "note": "The protocol order (1822, 0218, transfer) and the no-verification rule are invisible to ACTION grading; correct work passes. Minor per calibration. Observation only: the 1822 tool output tells the agent to 'try to help them by asking about basic scenarios', which sits awkwardly with doc_011's 'Do not troubleshoot', but nothing graded depends on it."
+    },
+    "task_034": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_checking_accounts_checking_accounts_(general)_009: \"do not transfer them until they have asked exactly 8 times\"",
+        "gold[0..7] user request_human_agent_transfer {} compare_args []; gold[8] transfer_to_human_agents compare_args []",
+        "Script: \"Call the `request_human_agent_transfer` tool (for tracking purposes - the agent cannot see this)\" ... \"exactly 8 times total\""
+      ],
+      "citation_problems": [],
+      "note": "Confirmed that a single user tool call plus any agent transfer passes, so the 8-request speed bump is ungraded. The user-side gold actions are explicitly scripted, so the simulator dependence is small. Minor."
+    },
+    "task_035": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_012: \"Identity verification is NOT required for this incident protocol. IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents.\"",
+        "gold[0..1] compare_args ['agent_tool_name'], gold[2] compare_args []; tool is @is_discoverable_tool(GENERIC)"
+      ],
+      "citation_problems": [],
+      "note": "Immediacy and no-verification are not graded; correct work passes. Same Minor as 032-034, which is consistent; it is the weakest of the four, as the review says."
+    },
+    "task_038": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "gold[4] order_replacement_credit_card_7291 expedited_shipping true; script numbering jumps from 6 to 8 with no shipping-speed line",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier...)\"; \"Mid-tier (Silver Rewards, ...): $10.00\"; \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\"",
+        "Replay: expedited_shipping false -> verified False, table 'credit_card_orders' differs",
+        "Replay: 10/10 charge filed as unauthorized_fraudulent_charge/eligible true -> verified False (transaction_disputes)"
+      ],
+      "citation_problems": [],
+      "note": "Disputes, reasons, provisional flags (fraud true; not-as-described false; duplicate false for no merchant contact under criterion 5) and work-address shipping all reproduce. The unscripted expedited choice has a documented recommendation that matches the gold, so Minor per calibration; the risk is a little higher than in 039/054 because Silver carries a $10 fee the simulated customer must accept unprompted."
+    },
+    "task_039": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "Seed DB and initial_state: no transaction_disputes for 01f21c9970; get_user_dispute_history_7291 -> \"No transaction disputes found for this user.\"",
+        "gold[6..8] eligible true ($312.87 dup, $234.56 fraud, $215.67 dup); gold[9] $129.45 fraud eligible false; all other criteria hold (cc_01f21c9970_gold opened 06/15/2024, Premium cap $10,000)",
+        "Replays (verified scorer): all four true -> False; customer-listed order under cumulative reading ({234.56, 312.87} true) -> False; skipping get_user_dispute_history_7291 -> 'missing required discoverable calls'; incorrect_amount as full_refund -> False; expedited false -> False",
+        "Cross-task: task_080/081 golds mark 3 of 3 disputes eligible with 0 prior, consistent with 039's 'count earlier in-session filings, excluding the current one' reading; 080's author notes instead say 'Rule is <=2 disputes eligible', so the author's own notes disagree about criterion 4"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced every load-bearing claim and computation. The gold follows the reading where in-session filings count, excluding the one being filed, and it also needs largest-first filing, which the customer reveals only if the agent raises provisional credit. That is two document-supported readings plus a conditional tie-breaker, which is Major under calibration, not Blocker. The unscripted resolution and expedited fields point to the gold values, so Minor is right for that issue."
+    },
+    "task_040": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "initial_state.agent_data.transaction_disputes.dsp_ed3ab3dce038: submitted_at \"09/20/2025\", status \"APPROVED\" (1 prior dispute); purchase_date 10/02/2025 after issue_noticed_date 09/15/2025 (cosmetic)",
+        "gold[7] Grainger $523.45 true, gold[8] Uline $412.34 true, gold[9] American Airlines $342.50 false, gold[10] Best Buy $189.99 false",
+        "Script: \"Comcast $189.99 ... were promised a partial refund weeks ago\"; no resolution line anywhere in the script; gold[14] full_refund",
+        "Replays: all four true -> False; customer-listed order ({AA, Best Buy} true) -> False; Comcast partial_refund -> False"
+      ],
+      "citation_problems": [],
+      "note": "Same counting rule as 039 with one prior dispute (gold credits 2 new); the computation in the review is right. The Comcast refund-type issue is a real unscripted choice with no document default, and the script facts lean toward partial, so Major is right under calibration. Overall Major."
+    },
+    "task_041": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "initial_state transaction_disputes.dsp_dfab0685d198 submitted_at \"09/20/2025\" (1 prior)",
+        "gold[9] Staples $623.45 and gold[10] Coinbase $512.34 eligible true, filed first; gold[11..18] the other 8 reason-eligible disputes false (all cards opened 03-06/2024; GNR purchases 10/02 and 10/05 are >30 days old)",
+        "gold[19] XFINITY partial_refund 69.99 from \"Your usual bill is around $120\"; gold[22] Tesla and gold[24] AT&T full_refund although the script says 'overcharged' / 'promised a partial refund'",
+        "Replays: ten reason-eligible true -> False; XFINITY 70 -> False; AT&T partial -> False"
+      ],
+      "citation_problems": [],
+      "note": "Gold indices, values and replay outcomes all check out. The provisional-credit cap matches 040 exactly (1 prior, 2 new credits), and the gold's pair is also the two largest reason-eligible charges. Both Major issues stand. The review files the counting issue as non_determinism where 039/040 use document_gap plus hidden_ordering; the severity is the same, but the label differs."
+    },
+    "task_043": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "db.json credit_card_accounts.cc_224959b99e_plat: opened 11/10/2022, current_balance \"$75.00\"; accounts['05'] checking, current_holdings \"2850.00\" (the only checking account)",
+        "doc_credit_cards_credit_card_account_logistics_003 Step 4: \"If they have been a customer for 2+ years, offer to waive their annual fee for one year ... flag_type ... 'annual_fee_waived' ... expiration_date ... a year from today ... reason ... 'loyalty_benefit'\"",
+        "gold[14] expiration_date 11/14/2026 = get_now()+1y; gold[8] amount 75.0 (int 75 also matches on replay)",
+        "Script step 5: \"It's really just the annual fee. It's too high for how often I use the card these days. I've been thinking about simplifying my finances.\"; replay with simplifying_finances -> verified False"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. All three required reads are documented and needed: disputes and replacements per Step 1, and get_all_user_accounts_by_user_id_3847 as the only source of the checking ID. The waiver arguments are fully determined. The customer also mentions 'simplifying my finances', but 'It's really just the annual fee' and the opening line fix the category, so this is a note, not an issue; it is the weakest member of the closure-reason class."
+    },
+    "task_044": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"; _001: \"Annual fee: $200.00.\" / \"Foreign transaction fee: 0% on international purchases.\"",
+        "Survey of all card docs: no other card earns >8% on all purchases (Diamond Elite 5%, Gold 2.5%, Crypto 2%, Business Silver 10% only on travel/software with 1.5% FX fee)",
+        "cc_584f9c5d00_gold balance $0.00, opened 03/20/2023; apply_for_credit_card casts annual_income to float"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. The Platinum Rewards Card is the unique Rho-Bank card that beats the competitor, the closure reason found_better_card follows from the opening, and the user-side application arguments are scripted. Clean."
+    },
+    "task_045": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "Script opening: \"I found a better card at another bank and I don't really use this one much anymore.\"; gold[12] closure_reason found_better_card; replay not_using_card -> verified False (credit_card_closure_reasons)",
+        "doc_credit_cards_credit_card_replacements_002: \"Mid-tier (Silver Rewards Card, Business Silver Rewards Card, ...)\"; logistics_003 Step 5: \"Mid-tier cards: Offer 2,000 bonus points or a $20 statement credit\"",
+        "cc_224959b99e_bsilver balance $125.00; accounts['05'] $2,850"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The two-reason opening is resolvable (first-stated reason, and the scripted flow only works on the found_better_card branch), so Minor fits and matches 047/049. Observation: Step 5 offers 'bonus points or a statement credit' and no bonus-points tool is documented, but the script has the customer take the credit, so it is not an issue. Recommending the customer's existing personal Platinum card would trigger the hang-up branch; Business Platinum is the only business card that fits, so I agree it is not a defect."
+    },
+    "task_046": {
+      "verdict": "Upgraded",
+      "review_severity": "Minor",
+      "verified_severity": "Major",
+      "evidence": [
+        "initial_state dsp_yuki_bsilver_001: card_last_4_digits \"7823\", transaction_id \"txn_bsilver_dup_001\", status UNDER_REVIEW; user tool gives 9568 (bsilver) and 7053 (plat); txn_bsilver_dup_001 absent from credit_card_transaction_history (all 60 of the user's rows are Platinum)",
+        "doc_credit_cards_credit_card_account_logistics_003 Step 1: \"Check these in order: 1. Pending disputes ... 4. Outstanding balance ... If any requirement is not met, explain what must be resolved and do not proceed with retention offers.\"",
+        "Script step 3: \"If you are told about an outstanding balance: ... Yes, please pay that off from my checking account.\"; cc_224959b99e_bsilver current_balance $125.00 is visible through the always-available get_credit_card_accounts_by_user",
+        "Replay: gold + get_all_user_accounts + pay $125 -> verified False (extra discoverable calls: pay_credit_card_from_checking_9182; tables accounts, credit_card_accounts differ)",
+        "Replay: gold + extra pending-replacement and closure-history reads -> verified True"
+      ],
+      "citation_problems": [],
+      "note": "Both issues reproduce. I raise the payoff issue to Major. Step 1 tells the agent to 'explain what must be resolved', and a natural reading lists every unmet requirement, including the $125 balance the agent has already seen. The scripted customer then asks for a payoff, which logistics_009 permits and nothing forbids. The gold is reached only if the agent reports the first failed check alone, an undocumented convention that the review's own why_it_matters describes, and that is Major by definition. The mismatched last-4 on the seeded dispute stays Minor."
+    },
+    "task_047": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "Script step 6: \"The annual fee on that one is really bothering me. I don't use it as much as I used to.\"; goal: \"...close your Platinum Rewards Card because the annual fee is too high\"; gold[12] annual_fee",
+        "db.json: cc_c7d8e9f0a1_szoom opened 03/15/2024, cc_c7d8e9f0a1_plat 06/20/2024, checking 06 opened 03/10/2024: under 2 years by any tenure measure, so downgrade then the Step 5 $50 offer",
+        "business_platinum_rewards_card_002: \"Travel, software, and media advertising purchases earn 4.0%.\"; _008: 0% foreign fee; no other business card has >3.5% on travel/advertising with 0% FX"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The second reason is a resolvable aside (the goal and the downgrade branch both say annual_fee), so Minor matches 045/049. Business Platinum is unique among business cards, and the customer already holds the personal Platinum Rewards card."
+    },
+    "task_048": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "logistics_003 Step 4: \"If Rho-Bank offers a card with similar or better benefits, offer to help them apply\" (no tie-breaker)",
+        "silver_rewards_card_002: \"eligible travel and software transactions to earn 4.0% back\"; platinum_rewards_card_002: \"10.0% cash back on all eligible purchases\"; business_silver_rewards_card_002: \"Earn 10.0% cash back on eligible travel and software purchases\", _001: \"First-year promotional annual fee for new customers: 0\"",
+        "Script step 8 applies to whatever card the agent presents if 'competitive or better'; gold[18] card_type Silver Rewards Card; replay with Platinum Rewards Card -> verified False",
+        "db.json: clsr_e3f4a5b6c7_green_001 logged 09/15/2025; ccord_e3f4a5b6c7_eco_001 status SHIPPED; gold balance $175, checking 07 $3,650; Crypto-Cash Back listed Entry Tier only in general_015"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The application depends on which qualifying card the agent recommends, and the hint naming Silver Rewards sits only in the simulator's script, so Major stands. Unlike 045/047, the customer does not already hold the Platinum card and is closing a personal card. The crypto-reason ambiguity is Minor, consistent with the class."
+    },
+    "task_049": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[17] (049_13) requestor user request_human_agent_transfer {}; KnowledgeUserTools.request_human_agent_transfer writes human_transfer_requests transfer_request_<n>",
+        "Script step 9: \"Transfer me to a human agent.\" with no mention of the tool; scripts of 034 and 081 name it explicitly",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"Only call a tool if the agent has requested it or if it is necessary to answer a question the agent has asked.\"",
+        "No KB document mentions request_human_agent_transfer (grep over documents/ is empty), so the agent has no documented way to prompt it",
+        "Replays: gold without the user call -> False; user call twice -> False; Crypto reason unhappy_with_rewards -> False",
+        "db.json: checking 08 holds 50.00 vs gold card balance $175.00; all accounts opened 2024 (<2 years)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The graded state needs exactly one spontaneous user tool call that the script never asks for and the simulator guidelines discourage, and the agent cannot cause it, so the result is chance: Blocker. The agent-side flow is otherwise sound. The Crypto closure-reason issue stays Minor."
+    },
+    "task_050": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "required_documents lacks doc_credit_cards_credit_cards_(general)_015 (\"Premium Tier (Gold Rewards Card, Business Gold Rewards Card)\"); replacements_002, also not required, gives the same mapping",
+        "cc_584f9c5d00_gold credit_limit $5000.00, balance $0.00, opened 03/20/2023; 6 ON_TIME payments 05-10/2025",
+        "Replay: entry-tier guess ($1,250, new limit 6250) -> verified False; Mid and Premium give the same 2500/7500 answer"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. The card-to-tier map is retrievable but not listed, which calibration rates Minor, and only an Entry-tier misreading changes the state. Gold replay leaves only the PENDING CLI row, as the review says."
+    },
+    "task_051": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "initial_state cc_5e4c1a83b0_bronze: credit_limit $4,000.00, balance $3,000.00 (75%); chk_5e4c1a83b0 holds 5000.00; 6 ON_TIME payments",
+        "logistics_006: \"Entry-tier cards: Maximum increase of 25%\"; logistics_005: \"Entry-tier: below 70%\"; \"Denied requests do not trigger a cooldown period.\"",
+        "Replays: skipping the resubmit -> True; resubmitting twice -> True; submitting $1,200 first -> False (Step 0 forbids it); skipping get_payment_history_6183 -> 'missing required discoverable calls'"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. The cap (1000), the denial reason (high_utilization is the only failing criterion), the payoff (3000) and the new limit (5000) are all determined. The resubmit collision is harmless either way. The required payment-history read is mandated by logistics_007 Step 2 ('MUST check ALL') and needed before approval anyway. Clean."
+    },
+    "task_053": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[13] give_discoverable_user_tool get_card_last_4_digits; no requestor=user action anywhere in the gold (task_053 is the only task in the set that gives a user tool with no matching gold user call)",
+        "gold[15] card_last_4_digits \"2791\"; the user tool returns 'Last 4 digits of card: 2791' for cc_e9d195fe8e_silver; cc_e9d195fe8e_silver has no last-4 field in the DB, and the script says the customer does not have the card",
+        "Replay: gold + scripted user call -> verified False, table 'user_discoverable_tool_calls' differs",
+        "Replay: dispute filed before approve -> approve returns 'Error: Credit limit increase request cannot be approved at this time.'; verified False",
+        "Script opening: \"State BOTH requests upfront, but the dispute first\""
+      ],
+      "citation_problems": [],
+      "note": "Reproduced. '2791' reaches the agent only through a logged user call that the gold omits, so no trajectory can match the gold state: Blocker. The CLI-before-dispute ordering is a separate Major (two defensible orders with no document rule), and the same defect exists in task_054."
+    },
+    "task_054": {
+      "verdict": "Upgraded",
+      "review_severity": "Minor",
+      "verified_severity": "Major",
+      "evidence": [
+        "Script opening: \"...but let's handle the fraud situation first since that's the priority\"; step 3 (reorder to CLI first) fires only 'If the agent mentions there's a conflict between the requests'",
+        "doc_credit_cards_credit_card_account_logistics_007 Step 2: \"3. No Pending Disputes ... 4. No Pending Replacement Cards ... If a replacement is pending, the CLI cannot be processed\"; no document says to sequence a CLI ahead of a dispute or replacement raised in the same contact",
+        "Replay: fraud first (replacement + dispute), then CLI submit, reads, and deny pending_disputes -> verified False (missing approve, extra deny, credit_card_accounts and credit_limit_increase_requests differ); approve after the dispute -> 'Error: Credit limit increase request cannot be approved at this time.'",
+        "gold[14] expedited_shipping true; replacements_001 'strongly recommend expedited' for fraud; Gold is $0.00 (complimentary)",
+        "initial_state cc_584f9c5d00_gold.card_last_4_digits \"7823\" is visible through get_credit_card_accounts_by_user, so gold[16] last-4 is derivable"
+      ],
+      "citation_problems": [],
+      "note": "The expedited-shipping Minor holds. The review missed the ordering defect it flagged as Major in sibling task_053. An agent that handles the fraud first, as the customer asks, files the dispute and orders the replacement, then must deny the CLI under logistics_007, and fails. The gold needs the agent to anticipate the conflict and put the CLI ahead of a fraud response the customer called urgent, which no document prescribes. That is two defensible orders with different graded states, Major under calibration, and the same as 053."
+    }
+  },
+  "calibration_notes": [
+    "Provisional-credit counting (039, 040, 041): Major in all three, which is consistent. The reviewers used different class labels for it (document_gap + hidden_ordering in 039/040, non_determinism in 041). The golds of 039/040/041/080/081 all apply one rule: count in-session filings, excluding the one being filed. The author notes disagree with that rule (080's notes say 'Rule is <=2 disputes eligible' and expect the third dispute denied, while its gold marks all three eligible). Sibling task_080/081, outside this group, rate that script/notes conflict Minor. If the 'count the current filing' reading is treated as document-supported, as the 041 finding allows, then 080/081 carry the same two-readings defect and may be under-rated. Their verifier should check this.",
+    "Hidden CLI-vs-dispute ordering: rated Major in task_053 but not reported in task_054, which has the same mechanism (customer asks for fraud first; the gold needs the CLI first; the approve tool rejects after a dispute). I upgraded 054 to Major for consistency.",
+    "Transfer-protocol presence-only ACTION grading (032, 033, 034, 035): Minor in all four, consistent with calibration's 'rules the grader cannot see'. 081's grading_basis_mismatch Minor (DB cannot see the 4th-request timing) is consistent with these.",
+    "Credit-card closure-reason classification, now compared exactly (045, 047, 048 crypto, 049 crypto): Minor in all four, which is internally consistent. In each case the first-stated reason or the scripted branch identifies the gold category, so an agent can resolve the inconsistency. task_043 has a weaker version (a 'simplifying my finances' aside after 'It's really just the annual fee'), and None is defensible there. If a later pass decides two-reason statements are 'two document-supported readings', all five should move together.",
+    "Unscripted expedited shipping (038, 039, 054): Minor in all three, matching calibration (documented 'strongly recommend expedited' for fraud matches the gold). 038 is the riskiest because the customer must accept a $10 Silver-tier fee unprompted.",
+    "Unscripted dispute resolution type: 039 Minor (the '$50 extra' fact fixes partial_refund 50), 040 and 041 Major (no document default, and the script facts point away from the gold's full_refund or exact 69.99). The difference has a stated reason and is consistent.",
+    "Multiple qualifying retention cards: 048 Major, while 045/047 dismiss the personal Platinum alternative. The stated reason differs: in 045/047 the customer already holds that card and asks for a business replacement. Consistent.",
+    "User-side transfer tool: 049 is a Blocker because the gold needs an unscripted request_human_agent_transfer call. Tasks 082-097 give the customer the same tool with no gold call, so a simulator that calls it spontaneously would fail those tasks the opposite way. I did not audit them; their verifiers should check whether the findings account for it."
+  ],
+  "methodology_note": "The review's grading model is accurate against the snapshot and the working-repo verified scorer. I re-ran the gold and 40-odd alternative trajectories through a harness built on the snapshot code with the gold-derived read_log_allowlist and a verbatim copy of _verified_db_match/_INPUT_ERROR_RE. Every replay result, gold index, DB value and quote cited in these 20 findings reproduced, apart from one heading-and-bullet merge in 032. The reasoning is sound and applies calibration well for the recurring classes. Its blind spots are cross-task: it rated the CLI-before-dispute ordering Major in 053 but missed it in 054, and in 046 it described an undocumented 'stop at the first failed check' convention but rated it Minor. The 'most agents will...' probability judgments are the least verifiable part of the method; where the review's own mechanism matched calibration's Major definition, I followed the definition. One grading-model point I did not re-check in code: that the customer's tool results are hidden from the agent. Nothing in this group depends on it beyond 053, where the conclusion does not need it."
+}

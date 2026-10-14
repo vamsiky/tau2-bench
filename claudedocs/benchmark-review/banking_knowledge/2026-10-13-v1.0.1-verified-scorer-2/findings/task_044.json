@@ -1,0 +1,17 @@
+{
+  "task_id": "task_044",
+  "severity": "None",
+  "headline": "A Gold card holder leaving for an 8% competitor card should be steered to the Platinum Rewards Card (10% cash back, no foreign fee), which is the only Rho-Bank card that beats the offer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Step 1 eligibility checks pass (balance $0.00, no disputes, no replacement orders) and closure history is empty, so the agent logs 'found_better_card' and asks what drew the customer to the competitor (8% on everything, 0% foreign fee, $195 fee). I surveyed every credit-card doc. Only the Platinum Rewards Card earns more than 8% on all purchases with a 0% foreign fee (platinum_rewards_card_002: \"10.0% cash back on all eligible purchases\"; _001: \"Foreign transaction fee: 0%\", \"Annual fee: $200.00\"). Business Silver earns 10% only on travel/software, and Diamond Elite earns 5% and is invitation-only. The customer then applies with income 145000 and no subscription, which matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found this task clean. The v1.0.1 fix to platinum_rewards_card_002 leaves the rate at 10.0%, which strengthens the unique recommendation.",
+  "notes": "apply_for_credit_card normalizes annual_income to float, so 145000 and 145000.0 hash the same. The Gold card stays open, so no Step 5 retention offer or closure is graded."
+}

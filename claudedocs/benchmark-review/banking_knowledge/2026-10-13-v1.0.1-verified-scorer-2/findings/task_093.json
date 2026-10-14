@@ -1,0 +1,49 @@
+{
+  "task_id": "task_093",
+  "severity": "Minor",
+  "headline": "The Silver interest correction ($33.00) is derivable, but the documented daily compounding does not match the system's simple monthly interest, and the discrepancy report's content is never graded.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The docs say interest compounds daily from a daily periodic rate, but every seeded interest credit equals balance x APY / 12 exactly, and the gold credit uses that simple monthly convention. The data settles it, but an agent that follows the documented daily compounding computes a different credit.",
+      "evidence": [
+        "doc_savings_accounts_silver_account_006: \"Interest accrues on your daily balance and is compounded daily. We calculate a daily periodic rate from your APY and apply it to the balance for each day of the cycle.\"",
+        "txn_int_oct_2025_silver amount 480.0 = 144000 x 4.0% / 12",
+        "gold[6].arguments.amount = 33.00 = 144000 x 0.275% / 12",
+        "daily compounding over 31 days: 144000 x ((1.04275)^(31/365) - 1) = 512.88, so 32.88"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "The credit amount is stored (accounts.current_holdings and the credit transaction id/amount), so a daily-compounding computation fails.",
+      "suggested_fix": "State in the interest docs that monthly interest = balance x APY / 12, or seed credits that match daily compounding."
+    },
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "submit_interest_discrepancy_report_7294 writes to an 'interest_discrepancy_reports' table that TransactionalDB does not have. add_to_db returns False silently while the tool reports success, so only the tool name is graded and expected_apy/actual_apy/amount_difference are never compared.",
+      "evidence": [
+        "db_query.py add_to_db: \"table = getattr(db, db_name, None)\" / \"if table is None: return False\"",
+        "tools.py submit_interest_discrepancy_report_7294: add_to_db(\"interest_discrepancy_reports\", ...) with return value ignored",
+        "Replay: model_dump() of the gold DB has no interest_discrepancy_reports key; changing expected_apy alone changes no table"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "A report with a wrong expected or actual APY still passes; the task tests less than its notes claim.",
+      "suggested_fix": "Add interest_discrepancy_reports to TransactionalDB so the report is persisted and graded."
+    }
+  ],
+  "solution_check": "Balance $144,000 is in the 4.0% tier; Green checking + Silver is pairing 11 (+0.25% per green_account_(checking)_001); the multi-product relationship bonus is +0.025% (silver_002/005); there are no credit cards. Expected 4.275% against an actual 480*12/144000 = 4.0%, so the credit is 144000 x 0.275%/12 = $33.00. That matches gold[6]/[8], and the gold replays cleanly and matches itself.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The data is unchanged; the two Minor issues are new observations.",
+  "notes": "doc_savings_accounts_silver_account_009 ties a 0.025% relationship bonus to linking a Platinum Rewards Card, which an agent could read as the only way to qualify (that reading gives 4.25% and $30.00). Silver_002/005 and doc_bank_accounts_bank_accounts_(general)_044 ('Missing Relationship Bonus: Customer maintains multiple Rho-Bank products') support the gold, and doc_009 itself calls the bonus 'existing'. Contrast task_097, which omits the same bonus. Credit before report is required by doc_044 but invisible to DB grading."
+}

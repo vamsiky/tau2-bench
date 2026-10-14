@@ -1,0 +1,53 @@
+{
+  "task_id": "task_048",
+  "severity": "Major",
+  "headline": "In the four-card closure task, the gold expects the customer to apply for the Silver Rewards Card, but other Rho-Bank cards (Platinum Rewards, Business Silver) also beat the competitor's 3.25% offer, so the card applied for depends on which one the agent recommends.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Retention Step 4 says to offer 'a card with similar or better benefits' with no tie-breaker. For a competitor paying 3.25% on travel and software, Silver Rewards (4% travel/software, $0 fee), Platinum Rewards (10% on everything, $200 fee, 0% foreign fee) and Business Silver (10% travel/software, first-year fee $0) all qualify. The gold records an application for Silver Rewards.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_003 Step 4: \"Found a better card: Ask what features attracted them. If Rho-Bank offers a card with similar or better benefits, offer to help them apply\"",
+        "user_scenario step 6: \"I found a card at another bank that offers 3.25% back those [travel, software]\"",
+        "doc_credit_cards_silver_rewards_card_002: \"eligible travel and software transactions to earn 4.0% back\"",
+        "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"",
+        "doc_business_credit_cards_business_silver_rewards_card_002: \"Earn 10.0% cash back on eligible travel and software purchases\"",
+        "gold[18] (048_10, user apply_for_credit_card).arguments.card_type = \"Silver Rewards Card\"",
+        "user_scenario step 8: apply if \"the card details ... [are] competitive or better than the competitor\""
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "An agent that recommends the card with the highest rewards (Platinum Rewards) or the strongest category match (Business Silver for a self-employed consultant) gets a customer who, under step 8, applies for that card. credit_card_applications then differs from the gold.",
+      "suggested_fix": "Make the customer's constraints rule out the other cards (for example 'no annual fee, personal card'), or name the Silver Rewards Card explicitly as the only acceptable recommendation in the script."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The Crypto-Cash Back closure reason is logged as unhappy_with_rewards, but the author notes and the user script follow the 'not using the card' retention path (subscriptions, credit score), which suggests not_using_card.",
+      "evidence": [
+        "user_scenario step 9: \"The crypto rewards program isn't really worth it for me anymore. I don't use cryptocurrency much.\"",
+        "user_scenario step 10: \"If the agent reminds you about keeping the card active for credit score or setting up subscriptions\"",
+        "doc_credit_cards_credit_card_account_logistics_003 Step 4: \"Not using the card: ... suggest setting up a recurring subscription to keep the card active.\"",
+        "gold[21] (048_13).arguments.closure_reason = \"unhappy_with_rewards\""
+      ],
+      "gold_action_refs": [
+        21
+      ],
+      "why_it_matters": "The literal statement supports unhappy_with_rewards (the gold), but the scripted conversation is built around the not_using_card branch. An agent that picks not_using_card fails on credit_card_closure_reasons.",
+      "suggested_fix": "Remove 'I don't use cryptocurrency much', or align the step-10 branch with the unhappy-with-rewards protocol."
+    }
+  ],
+  "solution_check": "Green: clean on Step 1, but closure history has clsr_e3f4a5b6c7_green_001 logged 09/15/2025 (within a year), so per Step 2 skip to Step 6 and close without logging a reason. Eco: replacement order ccord_e3f4a5b6c7_eco_001 has status SHIPPED, so it cannot close. Gold: $175 balance paid from checking '07' ($3,650), reason found_better_card, customer applies for a recommended card. Crypto: no history, reason logged, Step 5 entry-tier offer (doc_015 lists Crypto-Cash Back as Entry) of a $5 statement credit. Everything matches the gold except that the applied-for card depends on the recommendation.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. Both the multiple-qualifying-card problem and the crypto-reason ambiguity are new findings.",
+  "notes": "The author notes say the competitor offers 3.5% and Silver offers 4%; the script says 3.25%. Neither figure changes the analysis. An agent that logs a reason for the Green card after seeing prior history (Step 3 is skipped per Step 2) adds a new closure-reason row, because generate_closure_reason_id differs from the seeded ID, and fails. That rule is documented, so I did not treat it as a defect. No finding depends on the verified relaxations."
+}

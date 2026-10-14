@@ -1,0 +1,30 @@
+{
+  "task_id": "task_018",
+  "severity": "Minor",
+  "headline": "Solvable: applying the documented round-down rule to all 49 transactions yields exactly the six gold disputes, but the rounding document is missing from the task's required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rounding rule that decides which rows count as errors lives in doc_credit_cards_credit_cards_(general)_007, which is not listed in required_documents. The agent can still find it with KB search or grep in the default alltools configuration.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_018.required_documents = [\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_006\", \"doc_credit_cards_crypto-cash_back_001\", \"doc_credit_cards_crypto-cash_back_002\", \"doc_business_credit_cards_business_platinum_rewards_card_001\", \"doc_business_credit_cards_business_platinum_rewards_card_002\", \"doc_credit_cards_ecocard_001\", \"doc_credit_cards_ecocard_002\", \"doc_credit_cards_silver_rewards_card_001\", \"doc_credit_cards_silver_rewards_card_002\"] (no _007)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under a retrieval configuration that only shows required_documents (golden_retrieval / required_docs prompt), the agent never sees the floor rule. An agent that rounds half-up instead flags many correctly floored rows as 1-point errors and over-disputes.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 49 transactions for 890389b165 in Python, using Silver 4%/1%, Crypto 2%, Business Platinum 4% Travel/Software/Media else 1.5%, EcoCard 5x Green except Target/Walmart/Amazon/ThredUp else 1x, with floor rounding per doc _007. Floor gives exactly 6 mismatches with no false positives or misses: 57ecc6 (Trader Joe's $47.83 Crypto -> 95, stored 47), d80aef (United $347.62 BPlat Travel -> 1390, stored 521), 896ac6 (Patagonia $128.47 Eco Green -> 642, stored 128), adea68 (Marriott $167.34 Silver Travel -> 669, stored 167), 0be1cc (LinkedIn Ads $512.47 BPlat Media -> 2049, stored 768), and e647e2 (Google Ads $187.56 -> 750, stored 1875, overpaid). Round-half-up would add 22 one-point false positives, e.g. txn_e45e7acb56a0 Amazon $89.99 -> 90 vs stored 89. The gold replay matches itself.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major rested on the rounding rule being undocumented. Doc _007 documents floor rounding and was present in v1.0.0, so the only remaining defect is its absence from required_documents (Minor).",
+  "notes": "The customer is told to insist on disputing an overpaid row (Google Ads e647e2), which matches the gold. Her script says she cannot use technology, yet the gold has her run call_discoverable_user_tool herself. She is also told to use any tool the agent passes her, so this is a note only. Microsoft 365 on the personal Silver card earns 4% (stored 319 = floor of 319.96): the Apple/Microsoft/Dell exclusion list belongs to the Business Silver card only. No relaxed comparison in the verified scorer applies."
+}

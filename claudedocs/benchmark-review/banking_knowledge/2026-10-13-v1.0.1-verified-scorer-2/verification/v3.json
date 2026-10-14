@@ -1,0 +1,312 @@
+{
+  "verifier_id": "v3",
+  "fact_checks": [
+    {"fact": "Upstream DB grading replays the gold actions on a fresh environment and compares agent-side and user-side DB hashes exactly", "status": "Confirmed", "evidence": "snapshot src/tau2/evaluator/evaluator_env.py lines 118-121 and 325-328 compare get_db_hash()/get_user_db_hash() of the gold and predicted environments"},
+    {"fact": "Discoverable reads are logged only when the gold makes the same read; log rows are keyed by tool name, so one call with any arguments satisfies the read and repeats change nothing", "status": "Confirmed", "evidence": "tools.py call_discoverable_agent_tool: logs if underlying_mutates or agent_tool_name in self._read_log_allowlist; record_id = generate_agent_discoverable_tool_id(agent_tool_name) (utils.py: name only); add_to_db returns False on an existing id; build.py _derive_read_log_allowlist collects gold call_discoverable_agent_tool names"},
+    {"fact": "Unlocking writes nothing; give_discoverable_user_tool writes a row keyed by tool name; a user's discoverable call is logged per distinct argument set", "status": "Confirmed", "evidence": "unlock_discoverable_agent_tool stores only _agent_discoverable_tools_state; give_discoverable_user_tool -> generate_user_discoverable_tool_id(name); _log_user_tool_call -> generate_user_discoverable_tool_call_id(tool_name, args)"},
+    {"fact": "Arguments through call_discoverable_agent_tool / call_discoverable_user_tool are parsed with parse_int=float", "status": "Confirmed", "evidence": "json.loads(arguments, parse_int=float) in both wrappers; replay: task_072 credit amount 14 vs 14.00 match, task_057 check_amount 2000 vs 2000.00 match"},
+    {"fact": "A discoverable write is logged once the tool runs even if it returns an error string; calls rejected before that (unknown/locked tool, invalid JSON, wrong argument names) log nothing", "status": "Confirmed", "evidence": "call_discoverable_agent_tool returns early on unknown tool, not-unlocked, JSONDecodeError, TypeError; otherwise logs after method(**args_dict) regardless of the returned string"},
+    {"fact": "Agent and user toolkits share one database; transfer_to_human_agents writes nothing", "status": "Confirmed", "evidence": "environment.py get_environment: tools = build_tools(variant, db, ...), user_tools = KnowledgeUserTools(db); transfer_to_human_agents only validates the reason and returns a string"},
+    {"fact": "The clock is fixed", "status": "Confirmed", "evidence": "utils.py get_now() returns datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"The current time is 2025-11-14 03:40:00 EST.\""},
+    {"fact": "Verified scorer: agent_discoverable_tools compared as a set of tool names (gold subset of agent, extras allowed only if every call matched _INPUT_ERROR_RE); accounts.closure_reason stripped; every other table exact; same comparison applied to the user-side DB", "status": "Confirmed", "evidence": "working repo evaluator_env.py _verified_db_match, _strip_free_text, _input_rejected_discoverable_tools, and the use_verified_scorer branch that calls _verified_db_match for both tools.db and user_tools.db"},
+    {"fact": "open_bank_account_4821 hashes account_type and account_class into the new account id and stores account_class verbatim", "status": "Confirmed", "evidence": "tools.py: seed = f\"account:{user_id}:{account_type}:{account_class}\"; account_id = _deterministic_id(seed); replays of 'savings' vs 'business_savings' and 'Green Account' vs 'Green Account (savings)/(checking)' all fail with \"table 'accounts' differs\""},
+    {"fact": "get_bank_account_transactions_9173 returns every stored row, including rows dated after the fixed clock, and prints each record id", "status": "Confirmed", "evidence": "tools.py get_bank_account_transactions_9173 has no date filter; replay output for chk_ar72c5d8e3_1 lists 11/15-11/18 rows and 'Record ID: btxn_ar_purple_..'"}
+  ],
+  "task_verdicts": {
+    "task_056": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004 (Tool: open_bank_account_4821, How to call): \"Set account_type to 'savings'.\"",
+        "open_bank_account_4821 docstring: \"Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "gold[5].arguments: {\"account_type\": \"business_savings\", \"account_class\": \"Silver Plus Saver Account\"}",
+        "db.json accounts chk_b5e8f2a1c9: class checking, level 'Green Account', date_opened 09/10/2023, so the personal-savings eligibility check passes",
+        "replay (my harness): account_type 'savings' -> 'Bank account opened successfully! Account ID: 3e54498f671ab53f ... Account Type: savings'; with the transfer retargeted to that id, _verified_db_match False, \"table 'accounts' differs\"",
+        "Selection: Cobalt Blue is the only business checking with $0 overdraft, fee < $50, rebates >= $15 (Navy Blue 10), waiver at $2,500 and general 1.0% debit cashback (Sky Blue has no cashback, Hunter Green 2% eco-only); Silver Plus Saver has same-day ACH, $5,000 minimum, 20 free withdrawals and the 0.025% multi-product bonus; Gold Saver documents no withdrawal allowance and no multi-account bonus, Gold Plus Saver needs $25,000"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the doc_004 contradiction and the replay failure, including the exact account id the review cites. The product choices and the $3,200 transfer amount follow from the documents and the script. Two document-supported readings (procedure text vs tool docstring) with the gold following one: Major per calibration, same as task_071."
+    },
+    "task_057": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "description.notes: \"Agent MUST call get_current_time to verify time has NOT passed, and deny the request AGAIN.\"",
+        "open_bank_account_4821 savings branch: requires a checking with get_account_age_days >= 14, else \"Error: Account eligibility requirements not met.\"",
+        "db.json: no accounts for user_id a8c4e2f7b3; the only checking is gold[4]'s Blue Account opened 11/14/2025",
+        "replay: gold + extra open_bank_account_4821 savings attempt -> tool returns the eligibility error; _verified_db_match True and exact hash equal",
+        "doc_checking_accounts_blue_account_001: \"Early direct deposit: 1 day(s) before payday\", \"No overdraft fees\", waiver $625; blue_account_003: overdraft protection transfers $12.50"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. Blue is the only adult account with $0 overdraft fees, opt-in overdraft protection, 1+ day early deposit and a waiver near $500-700 (Light Blue/Green Fee-Free 0 days, Green declines instead of covering, Evergreen documents no overdraft terms, Purple waiver $3,750, Dark Green 17-26, Gold Years 62+). The adversarial refusal is invisible to DB grading because the tool itself refuses and the tool name is already in the gold set, so Minor (rule the grader cannot see). The script's 'one year old checking account' contradicts the DB but get_all_user_accounts (gold-required) shows none."
+    },
+    "task_058": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_savings_accounts_silver_account_003: \"At or above threshold | At least $10,000 | 4.0%\"; silver_account_006: \"EcoCard: +2.2%\"",
+        "doc_credit_cards_ecocard_001: \"Annual fee: $50.00.\"",
+        "doc_savings_accounts_gold_account_014: EcoCard +0.6%, Silver Rewards +0.2%, Green Rewards +0.35%, Diamond Elite +0.3%",
+        "Computation on $20,000: Silver+EcoCard 6.2% = $1,240 - $50 = $1,190; Gold+EcoCard 6.1% = $1,170; Gold+Green Rewards 5.85% = $1,170 before any fee; Gold+Silver Rewards $1,140; Silver Plus tier 2 4.5%+0.45% - $50 = $940; Gold Plus needs $25,000; Gold Rewards needs Rho-Bank+",
+        "doc_bank_accounts_bank_accounts_(general)_012: Light Blue is in no pairing, so no checking boost"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch and reached the same unique maximum (EcoCard + 'Silver Account'), with the 0.025% Silver relationship bonus only widening the margin. The initialization_data uses top-level keys that InitializationData ignores, but db.json already holds identical records, so no effect. Clean."
+    },
+    "task_059": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "Green savings documents use 'Green Account (savings)' 13 times and the bare 'Green Account' once (green_account_(savings)_009); all 9 green savings doc titles carry the qualifier",
+        "gold[5].arguments: {\"account_type\": \"savings\", \"account_class\": \"Green Account\"}",
+        "replay: 'Green Account (savings)' -> _verified_db_match False, \"table 'accounts' differs\"",
+        "Computation on $5,000: Green 4.0% + Silver Rewards 0.45% ($0 fee) = $222.50; Green + Green Rewards 0.4% = $220; Silver tier 1 2.5% + EcoCard 2.2% - $50 = $185; Green + EcoCard - $50 = $175; Gold needs $10,000 ongoing"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the product optimum and the class-string failure. Two document-supported spellings with the gold following one: Major per calibration. Gold also requires get_all_user_accounts_by_user_id_3847 (task_058, the same scenario at $20,000, does not); a careful agent checks the 14-day tenure, so that is a note, not an issue."
+    },
+    "task_060": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_001: minimum $2,500, \"Free withdrawals per month | 15\", daily compounding; silver_plus_004/005: \"Built-in savings goals tracking | Yes\"; silver_plus_003: rebates up to 25; silver_plus_002: 0.025% relationship bonus",
+        "Silver Account: 10 free withdrawals, no goals feature; Gold $10,000 minimum; Green savings 8 withdrawals; Bronze 6",
+        "db.json: 58d57780cc15e32d Green Account opened 07/17/2025 balance 0.00; 38a2c5f77504be6c Blue Account opened 11/04/2025 (10 days)",
+        "replay: closing Green first -> savings open returns \"Error: Account eligibility requirements not met.\" and the accounts table differs; closing with a custom reason passes verified, fails exact",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"MID TIER (Blue Account, Green Account (checking)) - Early closure fee: $25 if closed within 60 days - Notice period: 3 days\""
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch: Silver Plus is the only product meeting all six needs and the 14-day rule forces savings first; no debit cards or pending rows block the closure. The task depends on the verified scorer's closure_reason relaxation if the agent supplies a reason. The undefined MID-tier 'Notice period: 3 days' could make an agent defer the closure; with no scheduling tool and the procedure going straight to close_bank_account_7392, I keep it as a note (as the review did)."
+    },
+    "task_062": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "open_bank_account_4821 business_checking: rejects if any account has status CLOSED; savings: needs a checking >= 14 days (Evergreen 61a8b7c6d5e4f321 opened 03/15/2025; Light Blue 61b2c3d4e5f6a789 opened 11/02/2025)",
+        "Navy Blue business checking: \"Monthly maintenance fee: $0.00\", \"No minimum balance requirement\"; Sky Blue \"The monthly maintenance fee becomes $25.00\" after 6 months",
+        "Silver Plus: $2,500 minimum, 15 withdrawals, daily, 0.025% bonus, 25 rebates; Silver has 10 withdrawals for a 10-15 need",
+        "replay: opening savings before business checking reaches the gold state (verified and exact)",
+        "db.json: no debit cards or pending rows on 61a8b7c6d5e4f321 or 61c9d8e7f6a5b432; transfers 150 and 2,500 + 1,000 leave both at $0"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch: product picks and the forced partial order hold, and other valid orders reach the same state. Relies on the closure_reason relaxation only if the agent passes a reason. Evergreen's 'Notice period: 7 days' is the same undefined-notice wording as task_060 (note only)."
+    },
+    "task_063": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_009: \"| Bronze Rewards Card | +0.15% |\" and \"| Silver Rewards Card | +0.15% |\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\", \"Annual fee: $0.00\", \"Consent to a credit pull\"; silver_rewards_card_001: \"Minimum credit score: $680\", \"Annual fee: $0.00\"",
+        "Computation on $8,000: Silver Plus tier 1 3.0% + 0.15% = $252 with either card; Silver + Crypto-Cash Back 0.5% = $240 before its $75 fee",
+        "gold[1].arguments.card_type = \"Silver Rewards Card\"",
+        "replay: card_type 'Bronze Rewards Card' -> _verified_db_match False, \"table 'credit_card_applications' differs\""
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the exact tie on the customer's only metric between two credit-checking, no-fee cards both within a 700 score; nothing in the documents breaks it. Tie with no documented tie-breaker: Blocker per calibration."
+    },
+    "task_065": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_checking_accounts_evergreen_account_001: \"Link a Green Account (savings): +0.55% APY boost\"",
+        "Alternatives within $6,000: Blue + Silver Plus 3.0% + 0.35% (blue_account_003) = 3.35%; Green (checking) + Silver 2.5% + 0.25%; Dark Green + Bronze +0.85% is age-capped 17-26; Gold Years 62+",
+        "gold[2].arguments: {\"account_type\": \"savings\", \"account_class\": \"Green Account\"}",
+        "replay: 'Green Account (savings)' -> verified False, \"table 'accounts' differs\"; opening Evergreen before the savings reaches the gold state"
+      ],
+      "citation_problems": [],
+      "note": "Evergreen + Green savings (4.55%) is the unique optimum and the savings-before-closure order is documented. The only defect is the Green class-string ambiguity shared with 059/066/068, Major per calibration."
+    },
+    "task_066": {
+      "verdict": "Upgraded",
+      "review_severity": "Minor",
+      "verified_severity": "Major",
+      "evidence": [
+        "gold[4].arguments = {\"account_type\": \"savings\", \"account_class\": \"Green Account\"}",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"(e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"3. Evergreen Account (checking) + Green Account (savings)\"",
+        "replay: 'Green Account (savings)' -> verified False, \"table 'accounts' differs\"",
+        "Computation on $6,000: Green 4.0% + Evergreen 0.55% + Silver Rewards 0.45% = 5.00% ($300); EcoCard variant 5.05% - $50 = $253; Diamond Elite is invitation-only ($495)"
+      ],
+      "citation_problems": [],
+      "note": "The evidence is identical to task_059 and task_065 (same gold string, same documents, same failing replay), which the reviewers rated Major. The finding's own summary describes two document-supported spellings that lead to different accounts records, which calibration rates Major; I found no stated reason for Minor (the task_068 reviewer's remark that doc_002 has no contradicting example applies equally to 059 and 065). The product combination itself checks out."
+    },
+    "task_068": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"MID TIER (Blue Account, Green Account (checking))\"",
+        "Support for the gold spelling: green_account_(checking)_001 \"Refer friends and family to open a Green Account\"; general_046 \"only the Green Account boost of +0.75%\"",
+        "gold[3].arguments = {\"account_type\": \"checking\", \"account_class\": \"Green Account\"}",
+        "replay: 'Green Account (checking)' -> verified False, \"table 'accounts' differs\"",
+        "Computation on $25,000: Gold 5.5% + Green checking 0.75% + Silver Rewards 0.2% = 6.45%; Gold Plus 6.0% + 0.1% with no eligible pairing; only Silver Rewards documents travel insurance (silver_rewards_card_005) among personal cards"
+      ],
+      "citation_problems": [],
+      "note": "This is the strongest case of the Green class-string defect: the checking procedure's only worked example is the parenthesised form, so a literal agent fails. I keep Major rather than Blocker because the gold spelling is still document-supported (the 'ending with Account' rule and bare 'Green Account' usage for the checking product), and calibration reserves Blocker for golds that follow no supported reading."
+    },
+    "task_069": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "doc_savings_accounts_gold_account_003: \"ATM fee rebate cap per month: $30\"; gold_account_013: \"Combined with the existing 30 ATM fee rebates\"",
+        "doc_savings_accounts_silver_account_005: \"Do you rebate ATM fees? - Yes. You can receive ATM fee rebates up to 15 each month.\"",
+        "doc_savings_accounts_gold_account_014: \"| Silver Rewards Card | +0.2% |\"; Gold minimum $10,000 = the customer's $10,000",
+        "Computation: Gold 5.5% + 0.2% = 5.70% (Blue checking, no Gold pairing); Silver tier 2 4.0% + 0.1% + 0.025% = 4.125%; gold Silver Plus tier 1 3.0% + Blue 0.35% + 0.15% = 3.50%",
+        "description.notes: \"blocks Gold Account, Silver Account, Green Account (savings), Bronze Account\"",
+        "replay: opening 'Gold Account' instead -> verified False, \"table 'accounts' differs\""
+      ],
+      "citation_problems": [],
+      "note": "Confirmed: the author's premise that Gold and Silver savings lack ATM rebates is contradicted by the knowledge base, and Gold beats the gold's Silver Plus on every stated criterion. No document supports the gold's exclusion of Gold, so Blocker."
+    },
+    "task_070": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_013: \"ACTIVE FROM 11/01/2025 TO 11/30/2025 ... (1) Sky Blue account should be recommended first\"; general_014 ran 10/12/2025-11/12/2025",
+        "Qualifiers: Sky Blue (rebates up to 15, overdraft $0.00, funding requirement 0, APY 1.25%), Lime Green ($25 rebates, $0, 1.5%), Hunter Green ($20, $0, 1.0%); Cobalt 0.5% APY, Navy rebates 10, True Blue $25 and World Blue $30 overdraft",
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "db.json account 05: 224959b99e Green Account opened 11/10/2022, $2,850, so business-checking eligibility holds"
+      ],
+      "citation_problems": [],
+      "note": "Audited: Sky Blue under the active promotion matches the gold. The unstated company age is a real but low-impact gap (most agents will not ask), Minor, consistent with task_071."
+    },
+    "task_071": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004: \"Set account_type to 'savings'.\"",
+        "gold[5].arguments = {\"account_type\": \"business_savings\", \"account_class\": \"Gold Saver Account\"}",
+        "replay: account_type 'savings' -> 'Account ID: b8329f69ab675fe5 ... Account Type: savings' (personal-savings check passes via chk_yt71c9e4f2 opened 03/15/2022); verified False, \"table 'accounts' differs\"",
+        "Savings qualifiers: Gold Saver (same-day ACH Yes, wire fee 15), Silver Plus Saver (Yes, $5,000, 15), Gold Plus Saver (Yes, $25,000, $10); general_015 puts Gold Saver first in November",
+        "Checking qualifiers: Sky Blue ($25,000 mobile), Lime Green, Hunter Green ($10,000); general_013 puts Sky Blue first"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced both picks and the doc_004 failure; same defect and severity as task_056. The Sky Blue company-age gap is Minor as in task_070."
+    },
+    "task_072": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "db.json btxn_fcd7ef3a24ed: 11/20/2025 atm_fee -2.5 (Bluest, US BANK #7890), rebate +2.0 (btxn_28f01ff82384)",
+        "db.json btxn_49c0c0b3b8c1: 11/15/2025 atm_fee -4.0 on a $200 SANTANDER MADRID withdrawal (Light Green tier 2 = $3.50)",
+        "Through 11/14: Bluest London $8.00 + Tokyo $3.50 + missing 11/14 rebate $2.00 = $13.50; Light Green 11/05 3rd withdrawal charged +1.50, 11/09 5th not charged -1.50, 11/13 $80 at tier 3 +3.00 = $3.00",
+        "gold[7].arguments.amount = 14.00; gold[8].arguments.amount = 3.50",
+        "replay: 13.50 and 3.00 -> verified False (\"accounts\" and \"bank_account_transaction_history\" differ); 14 vs 14.00 matches"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced both pre-clock totals and the gold totals that need the 11/15 and 11/20 rows; Major per the post-clock calibration. Two further readings touch this task without changing its severity: the 11/14 'missing' Bluest rebate assumes the rebate covers Rho-Bank's own fee (bluest_003 'third-party ATM fees' vs bluest_007 'aggregate ATM fees'), and under the fee-stacking reading that tasks 075/076 need, the Light Green foreign withdrawals would count toward the 4 free out-of-network uses and change the Light Green net."
+    },
+    "task_073": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "db.json btxn_kj18k9l0m1n3 and btxn_kj18k9l0m1n4: both 11/15/2025 atm_fee -3.0 for one $250 PNC withdrawal",
+        "Green through 11/14: RHO-BANK 11/07 fee +3.00, Woori $400 charged 15 vs 3% = 12 +3.00 = $6.00; gold[9].amount = 9.00",
+        "Blue: Wells $300 4.50 vs 3.00 +1.50, Shinhan $500 20 vs 15 +5.00, RHO-BANK 11/13 +3.00 = $9.50 (all pre-clock) = gold[8]",
+        "Light Green: +1.50 pre-clock; post-clock +1.50 (11/15 tier) and -1.50 (11/17 uncharged 7th) cancel = gold[10] 1.50",
+        "replay: Green 6.00 -> verified False"
+      ],
+      "citation_problems": [],
+      "note": "Recomputed all three accounts. Only the Green credit depends on a post-clock row, which is enough for Major per calibration."
+    },
+    "task_074": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "db.json btxn_ar_purple_15f_dup: 11/15/2025 NON-RHO ATM FEE -2.5 (post-clock duplicate)",
+        "doc_checking_accounts_purple_account_004: \"You are eligible for refunds of ATM operator fees up to a monthly cap of $30.\"; purple_account_010: \"Confirm that the charge is labeled as an ATM operator fee\"",
+        "db.json btxn_ar_purple_11f: 11/11/2025 NON-RHO ATM FEE -3.5 with no rebate row, while 05f/06f/12f each pair with an equal ATM FEE REBATE",
+        "Purple: 2.50 + 8.00 + 10.50 + 1.00 + 2.50 (rebate) + 2.50 (dup) = 27.00; through 11/14 = 24.50; narrow rebate and through 11/14 = 22.00",
+        "Light Blue 14.50, Dark Green 4.75, Evergreen 3.70 recomputed, all pre-clock",
+        "get_bank_account_transactions_9173 output prints 'Record ID: btxn_ar_purple_..' so ids such as btxn_ar_lb_05f_err are agent-visible",
+        "replay: Purple 24.50 or 22.00 -> verified False"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced every account total and both Major issues (post-clock duplicate; Purple rebate scope where the docs say operator fees but the seeded rows rebate Rho-Bank's fee), plus the Minor id leak and the Minor required-documents gap for purple_account_012. The gold here assumes the broad Purple rebate and no fee stacking abroad; task_075 needs the opposite on both points, so the gold set is internally inconsistent."
+    },
+    "task_075": {
+      "verdict": "Adjusted",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_checking_accounts_purple_account_012: \"You are charged $2.50 per cash withdrawal made at an out-of-network ATM.\"",
+        "doc_checking_accounts_purple_account_001: \"No foreign ATM withdrawal fees: $0.00 per withdrawal (third-party ATM operator fees may still apply)\"",
+        "doc_checking_accounts_purple_account_004: \"refunds of ATM operator fees up to a monthly cap of $30\"",
+        "doc_checking_accounts_green_fee-free_account_005: \"Foreign ATM withdrawals are also fee-free: $0.00 per withdrawal.\"",
+        "Stacking + operator-only rebate (gold reading): GFF $0, Bluest 18 x $2.00 = $36 (+$75,000 deposit), Purple 18 x $2.50 = $45, Light Blue $78, Evergreen $171",
+        "Non-stacking reading: Purple $0 = GFF $0, and Purple also rebates operator surcharges up to $30/month",
+        "replay: 'Purple Account' -> verified False, \"table 'accounts' differs\""
+      ],
+      "citation_problems": [],
+      "note": "Severity holds, reasoning narrowed. Within this task the load-bearing alternative is non-stacking, which purple_001's parenthetical supports and the seeded 072-074 histories practise. The broad-rebate reading is weak here because purple_004/010 limit the rebate to operator fees, and the task_074 gold is not visible to an agent in this task, so it shows the benchmark is inconsistent rather than supporting a reading. The customer's own 'out of network ATMs abroad' favours the gold's stacking reading, so Major (not Blocker)."
+    },
+    "task_076": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_001: \"Minimum opening deposit | $75,000\", \"Early direct deposit | 2 day(s) before payday\"",
+        "doc_checking_accounts_bluest_account_010: \"Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal\"; bluest_003: \"Foreign ATM withdrawal fee | $0.00\"",
+        "8 x $300: Bluest $16 vs Purple $20 under stacking; both $0 without stacking; Evergreen 8 x ($2.50 + $6.00) = $68",
+        "user_scenario.instructions: no statement of available funds",
+        "replay: 'Bluest Account' -> verified False"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced: Bluest is never worse than Purple on ATM fees, and Purple wins only by assuming the customer cannot fund $75,000, which the script never says. Major as an unstated customer constraint with no default; the stacking ambiguity adds a Purple/Bluest tie but does not change the severity."
+    },
+    "task_077": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_023: \"4) Ask customer for preferred delivery option ... 5) Ask customer for preferred card design\"; \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 ELITE: \"delivery_fee: $0 for STANDARD, EXPEDITED, and RUSH\"; PREMIUM and CUSTOM design_fee $0",
+        "user_scenario step 8: \"I'd like whatever the best option is that's free with my account.\"",
+        "gold[22]: RUSH / PREMIUM; replay: STANDARD -> debit_card_orders differs; CLASSIC or CUSTOM -> debit_card_orders and debit_cards differ",
+        "doc_025 requirement 3 (card must be ACTIVE or PENDING) forces unfreeze before close; replay of a close-while-frozen attempt returns 'Current status: FROZEN' and leaves the gold state reachable"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the flow and the choice points. doc_023 tells the agent to ask both preferences, and the customer's answer pins RUSH; PREMIUM over CUSTOM (which needs an uploaded image) is the natural 'best free' design, so Minor holds. An agent that skips the questions and takes the documented CLASSIC default fails, which is the residual risk."
+    },
+    "task_079": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "initialization_data btxn_d0b8b00ed468: chk_cr89a2b3c4_3, 11/11/2025, 'REFUND - AMAZON.COM RETURN', type 'refund', status 'pending'",
+        "doc_bank_accounts_bank_accounts_(general)_025 req 4: \"No pending transactions\"; req 5: \"or acknowledge in writing that the refunds will be credited to the linked checking account instead\"",
+        "debit_cards: dbc_cr89a2b3c4_lb issued 08/10/2025 'lost', dbc_cr89a2b3c4_lb_old1 04/05/2025 'lost' -> ENTRY limit of 2 reached; general_029 ENTRY \"48-hour waiting period after card closure\"",
+        "general_029 PREMIUM tier: \"Rush shipping available (delivery_fee: $35)\", PREMIUM design $0; MID tier PREMIUM design $10, so the Green card is CLASSIC"
+      ],
+      "citation_problems": [],
+      "note": "Reconstructed the full gold: Evergreen RUSH/PREMIUM, Light Blue closed without an order, Green closed after the refund acknowledgment and reordered STANDARD/CLASSIC. The requirement 4 vs 5 tension resolves to the specific rule, so Minor."
+    }
+  },
+  "calibration_notes": [
+    "Green class string (059, 065, 066, 068): the reviewers rated 059/065/068 Major and 066 Minor on identical evidence (same gold 'Green Account', same documents, same failing replay). Calibration's 'two document-supported readings' rule gives Major for all four; I upgraded 066. 068 is the strongest instance (the checking procedure's own example is 'Green Account (checking)') but stays Major because the gold spelling remains document-supported.",
+    "doc_004 'savings' vs gold 'business_savings' (056, 071): both Major and consistent. These are the only two tasks in the benchmark whose gold opens a business savings account, and the only four Green opens are 059/065/066/068, so no sibling outside this group carries either defect.",
+    "Post-clock gold values (072, 073, 074): all Major, consistent with calibration.",
+    "ATM rebate scope: 072 treats Bluest's rebate of Rho-Bank's own fee as well supported (note only), while 074 rates Purple's as a Major document_contradiction. The split is justified by the wording (Bluest: 'third-party ATM fees' / 'aggregate ATM fees'; Purple: 'refunds of ATM operator fees' and 'confirm that the charge was coded as an ATM operator fee'). But the 074 gold (broad Purple rebate) and the 075 gold (Purple's $2.50 not rebated) cannot both be right, so the gold set is inconsistent.",
+    "ATM fee stacking abroad: the 072-074 golds and seeded histories charge foreign withdrawals only the foreign fee (no out-of-network fee, e.g. Bluest Banamex 11/16 has no fee at all), while 075/076 need the out-of-network fee to stack. No personal-checking document states either rule (only the business Navy Blue doc says both apply). 075 and 076 are rated Major for it; in 072 (Light Green allowance count) and 074 (Light Blue allowance count, Purple foreign rows) the same ambiguity would change the nets under the stacking reading, but the agent sees the bank's non-stacking practice in the data, so I did not raise their severity. A fix should pick one rule and apply it to all five tasks.",
+    "Undefined closure 'Notice period' (060: 3 days, 062: 7 days) is treated as a note in both, which is consistent; if another group rated it as an issue, that is miscalibrated relative to these.",
+    "Sky Blue company-age gap (070, 071): Minor in both, consistent."
+  ],
+  "methodology_note": "The review's grading model and the verified-scorer description match the snapshot and the working-repo scorer code. I rebuilt the replay harness independently (retrieval_variant 'no_knowledge', gold-derived allowlist, verbatim copies of the scorer helpers) and reproduced every replay the findings cite, including the exact account ids. The reviewers' arithmetic (APY tables, fee nets) and quotes all checked out: an automated pass over every quoted document string found no misquotes, and the gold indexes and DB paths are correct. Two blind spots: (1) the same-class severity drift on the Green class string (066), which a cross-task consistency pass would have caught; (2) cross-task golds that are visible only to the benchmark author (074's Purple rebate, 072-074's non-stacking) were cited as in-task evidence for 075. The benchmark inconsistency is real, but an agent in 075 never sees those golds, so severity should rest on in-task document readings, which is what I did. The unflagged sample (057, 058, 060, 062) holds up under a from-scratch audit: no missed defects beyond the notes recorded."
+}

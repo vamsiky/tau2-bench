@@ -1,0 +1,74 @@
+{
+  "task_id": "task_092",
+  "severity": "Minor",
+  "headline": "The four-card PIN-lock case reaches the gold through the customer's answers, but the 'escalate to supervisor' rule, the missing unlock tool, and an unscripted shipping choice leave room for drift.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The protocol's Single Flag Escalation rule requires 'supervisor review' whenever any flag scores 3, but no tool performs a supervisor review and the gold never escalates (transfers write nothing). An agent that acts on the rule with a live transfer before the remaining cards are handled ends the episode early.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\"",
+        "Blue card: \"ATM WITHDRAWAL DECLINED - BANCOMER ATM TIJUANA MX\" gives A1 \"Different country: 3 points (CRITICAL)\"; B1 03:08-03:12 = 3",
+        "Green card: declines at 11:42:15, 11:42:32, 11:42:51 (17 s and 19 s apart) give B3 \"Less than 1 minute apart: 3 points\"",
+        "user_scenario 11: \"Oh, okay. How long will that take? I have a lot of showings today.\"",
+        "Replay: gold truncated after Card 1 fails (missing reset_debit_card_pin_6284; debit_card_orders/debit_cards differ)",
+        "tools.py transfer_to_human_agents writes no DB record"
+      ],
+      "gold_action_refs": [
+        8,
+        10,
+        13,
+        14,
+        20
+      ],
+      "why_it_matters": "Correct work that escalates at the end still passes, so the grader cannot see whether the rule was followed; an agent that transfers as soon as the 3-point flag appears never makes the later card writes and fails.",
+      "suggested_fix": "State what 'supervisor review' means for a chat agent (e.g. 'note it in the transfer summary after all cards are handled') or drop the rule for cards that already fall under the CRITICAL closure path."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The Green-card replacement has no scripted shipping or design preference, and the closure reason is not scripted. The gold uses STANDARD/CLASSIC, which are the defaults and the only free choices for Mid tier, and fraud_suspected, the only security-related category, even though the customer says the attempts were hers.",
+      "evidence": [
+        "user_scenario 21: \"Fine, I'll take a new card then. Close it and send me a replacement.\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 MID TIER: \"Standard (delivery_fee: $0) or expedited shipping available (delivery_fee: $15)\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: ... (default, no fee)\"",
+        "gold[13].arguments.reason = \"fraud_suspected\"; gold[14] STANDARD/CLASSIC",
+        "Replay: reason no_longer_needed changes debit_cards"
+      ],
+      "gold_action_refs": [
+        13,
+        14
+      ],
+      "why_it_matters": "The defaults match the gold, so most agents land there; an agent that picks another closure category or asks and gets a different shipping answer fails.",
+      "suggested_fix": "Script the customer's shipping preference for the Green card and name the closure reason the protocol expects for a single-flag escalation."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "Evergreen scores LOW or MEDIUM depending on the B3 boundary (gaps of 93 s and 121 s). Both outcomes unlock, but no unlock tool exists, so the agent has to offer a PIN reset (the customer gives 8127), and D1=1 asks only for a notification offer, not a reset.",
+      "evidence": [
+        "initial_state txns 07:28:42, 07:30:15, 07:32:16 (SHELL COLORADO BLVD DENVER CO)",
+        "doc_bank_accounts_bank_accounts_(general)_041: \"1 prior lock: After unlock, MUST offer: 'Would you like me to enable PIN lock notifications...'\"",
+        "tools.py reset_debit_card_pin_6284 sets pin_locked False",
+        "gold[18] reset_debit_card_pin_6284 new_pin 8127"
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "The reset that unlocks the card is not documented as the unlock path; most agents will offer it, but one that looks for an 'unlock' action may leave the card locked.",
+      "suggested_fix": "Document that a PIN reset is how a chat agent clears a PIN lock."
+    }
+  ],
+  "solution_check": "Blue: A1 3, A3 1, B1 3, B3 1-2, C1 2, C2 1, C3 2, C4 2 = 15-16, CRITICAL, and the customer was asleep in Denver, so close as fraud_suspected and order a replacement; the customer asks for 'fastest free', which is STANDARD in Mid tier. Green: B3=3 plus D3=2 (Blue's fraud_alert_active) = 5, but the single-flag rule blocks unlocking; the customer chooses close and replace. Evergreen: 4-5, unlock via reset to 8127. Light Blue: security_hold, transfer with fraud_or_security_concern (transfers are ungraded). The gold replays cleanly and matches itself; my reconstruction matches it.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Minor for fuzzy fraud thresholds that the customer's answers settle. That still holds, and I add the escalation-timing and unlock-tool points at the same severity.",
+  "notes": "Customer line 23 offers PIN 4567, which _validate_pin rejects as sequential; that only matters if the agent offers a reset for Green. The required documents include doc_bank_accounts_bank_accounts_(general)_005, so tier lookups are covered. The verified-scorer relaxations are not exercised on the gold path."
+}

@@ -1,0 +1,17 @@
+{
+  "task_id": "task_004",
+  "severity": "None",
+  "headline": "Clean: the customer matches only 1 of 4 identity fields, so verification fails, and the Tier-1 code 'account_ownership_dispute' explicitly covers 'identity verification failures requiring specialist'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "db.json users[6680a37184] has email 'kenji.tanaka@outlook.com' and phone '206-555-0293'. The customer gives kenji.tanaka@gmail.com plus the phone and withholds DOB and address, so only 1 of the 2 required fields matches and the email cannot be changed. When he demands a human, doc_bank_accounts_bank_accounts_(general)_042 says 'always select from the highest tier that applies', and its Tier-1 row 'account_ownership_dispute | ... identity verification failures requiring specialist' fits ahead of the Tier-3 'customer_frustrated_demands_human'. That matches gold[0] (compare_args=['reason']).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and re-derivation agrees.",
+  "notes": "ACTION-only grading compares just 'reason'. Leaving out reason defaults it to 'other' (tools.py transfer_to_human_agents signature), which fails; two of the four earlier Opus trials failed that way and one chose kb_search_unsuccessful_customer_requests_transfer. These are agent errors. ACTION grading cannot see whether the agent wrongly changed the email, but the script ends the call if the email is changed ('If the agent helps you change your email, thank them and end the conversation'), so that path never reaches a transfer and fails anyway."
+}

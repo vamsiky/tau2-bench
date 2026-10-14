@@ -1,0 +1,36 @@
+{
+  "task_id": "task_024",
+  "severity": "Major",
+  "headline": "The gold picks the Business Bronze card ($900 back), but the Silver Zoom card's triple-cash-back promo pays at least $1,200 on the truck, if a landscaping company can hold that logistics-oriented card.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Comparing every business card on a $40,000 truck: Business Bronze 1% ($400) plus the $500 new-customer credit = $900 (gold). Silver Zoom's triple promo, claimable until 2025-12-31, pays 3 x 1.0% = 3% on non-transport purchases = $1,200 ($1,125.50 net of the fee), or 9% = $3,600 if a work truck counts as transportation. The gold is right only if Silver Zoom is off-limits to a non-logistics business, and the documents describe its target customer without stating that restriction.",
+      "evidence": [
+        "doc_business_credit_cards_business_bronze_rewards_card_010: \"This offer is available from 2025-10-01 through 2026-03-31\" / \"Make net new purchases totaling $10,000 within the first 2 months ... a $500 statement credit\"",
+        "doc_business_credit_cards_silver_zoom_card_012: \"You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31\" / \"The triple cash back earning period lasts 9 months from account opening once properly claimed\" / \"All other eligible purchases earn 3 × 1.0% during the promo period\"",
+        "doc_business_credit_cards_silver_zoom_card_001: \"Who this card is built for - Established transportation and logistics operators\" ; doc_..._silver_zoom_card_008: \"must be at or above 57 on the PAYDEX scale for logistics business approval\"; annual fee $74.50",
+        "Other cards: Business Platinum 1.5% = $600 (first-year fee waived, doc _011); Business Silver 1% = $400 ($800 with the 2x promo if opened by 2025-11-14); Business Gold 1% (truck is not operations spend) = $400 minus $200 fee; Green Rewards 1% = $400 minus $100 fee",
+        "task_024 instructions: \"looking to expand your fleet\"; required_documents list only Business Bronze and Business Silver docs",
+        "gold[0] apply_for_credit_card card_type = \"Business Bronze Rewards Card\"; replay with \"Silver Zoom Card\" -> verified match False (credit_card_applications differs)"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "The customer applies for whatever single card the agent recommends. An agent that surveys all business cards finds Silver Zoom's promo, which beats Bronze under every category reading. Unless it concludes the card is closed to a landscaping business, it recommends Silver Zoom and the credit_card_applications row differs from gold. The documents say who the card is 'built for' but never say other businesses are ineligible.",
+      "suggested_fix": "State in the Silver Zoom docs that applicants must be transportation/logistics businesses, or end the triple-cash-back claim window before 2025-11-14, or make the purchase too small for Silver Zoom to win."
+    }
+  ],
+  "solution_check": "Computed the payout of every business card for a $40,000 non-category purchase, as of 2025-11-14. Bronze $900, Platinum $600, Silver $400/$800, Gold $400 (minus a $200 fee), Green $400 (minus a $100 fee), Silver Zoom $1,200 at 3% (minus a $74.50 fee) or $3,600 at 9%. The gold (Bronze) is the best answer only once Silver Zoom is excluded on eligibility grounds. The gold replay matches itself, and a Silver Zoom application fails.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. It compared only the cards in required_documents and missed the Silver Zoom triple-cash-back promo (doc_business_credit_cards_silver_zoom_card_012).",
+  "notes": "There is no user verification and no agent write; only the customer's application is graded. No relaxed comparison in the verified scorer applies. The Business Silver 2x promo ends 2025-11-14, the fixed 'today', but even if it applied ($800) Bronze still beats it."
+}

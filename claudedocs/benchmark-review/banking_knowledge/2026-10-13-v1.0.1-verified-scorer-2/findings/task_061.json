@@ -1,0 +1,17 @@
+{
+  "task_id": "task_061",
+  "severity": "None",
+  "headline": "Clean: same savings choice and ordering as task_060, plus a documented $25 early-closure fee that the customer covers with a scripted $25 check deposit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The savings choice is Silver Plus Account, with the same six criteria and table as task_060. The second checking (61e5f6a7b8c9d012) is 10 days old, so savings must open while Green 61d4e5f6a7b8c901 (opened 10/01/2025, 44 days) is open. general_005 gives Green (checking) a \"$25 if closed within 60 days\" fee and says \"the account balance must be at least the fee amount... there is no alternative payment method\". The $0.00 Green account therefore needs $25, which the script supplies: the agent gives deposit_check_3847 and the customer deposits 25 into 61d4e5f6a7b8c901. Closing with waive_early_closure_fee=false then succeeds. This matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated this clean; still clean.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). Funding the $25 by a transfer from the other checking would fail (replay: extra transfer tool, accounts and user-tool tables differ). The script has the customer volunteer the check as soon as the fee is mentioned, and general_010 requires customer authorization for transfers, so a competent agent ends on the gold path. waive_early_closure_fee is an undocumented tool flag; no document authorizes waiving. The closure_reason relaxation applies as in task_060. Seed oddity: the second checking is stored with level \"Silver Account\", which is not a checking product in the KB (cosmetic; the tool only reads class 'checking')."
+}

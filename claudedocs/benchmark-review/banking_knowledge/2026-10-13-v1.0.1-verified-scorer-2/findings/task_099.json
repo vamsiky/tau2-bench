@@ -1,0 +1,17 @@
+{
+  "task_id": "task_099",
+  "severity": "None",
+  "headline": "Clean: World Blue ($300 to the referrer) is the unique highest referrer bonus that a $30,000 business deposit qualifies for.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Earliest checking opened 11/10/2023, so tenure exceeds every threshold. Referrer bonuses within $30,000: World Blue $300 ($25k), Lime Green $200 ($15k), Hunter Green $175, Sky Blue $150, Cobalt Blue $150, Navy Blue $100. True Blue ($50k) and Beige ($100k) are out. The last referral (10/30) is outside the 9-day window, and World Blue's annual cap of 12 is unused. That matches gold[4], and the gold replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean; the v1.0.1 edits to beige_012, sky_blue_001 and true_blue_002 are cosmetic placeholder fixes that do not change the answer.",
+  "notes": "doc_business_checking_accounts_world_blue_007 says 'refer other international businesses to World Blue', but world_blue_001's referral eligibility has no international requirement, so a careful agent may hesitate without changing the answer. The script tells the user not to question the name. get_all_user_accounts_by_user_id_3847 is a gold-required discoverable read, which the tenure check needs anyway."
+}

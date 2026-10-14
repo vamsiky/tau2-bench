@@ -1,0 +1,17 @@
+{
+  "task_id": "task_012",
+  "severity": "None",
+  "headline": "Clean: the KB has no procedure for travel notifications, so the agent should say it has no information, and when the customer then asks for a human it transfers with 'kb_search_unsuccessful_customer_requests_transfer'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "A full-text search finds only passing mentions with no procedure: gold_rewards_card_004 'Enable travel notifications if your risk controls require it.', diamond_elite_card_008 'Enable travel alerts so legitimate international activity is recognized.', and credit_cards_(general)_023 'Some cards have restrictions on international transactions that need to be lifted before traveling abroad.' No tool sets a travel notice. After the agent admits the gap, the customer asks for a transfer, and doc 042 Tier 2 'kb_search_unsuccessful_customer_requests_transfer' is the exact match. That matches gold[0] (compare_args=['reason']).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and re-derivation agrees.",
+  "notes": "ACTION-only. The vague 'enable travel notifications' lines could tempt an agent to make up app steps, which the script rewards with no transfer, but that would be the agent fabricating. All four earlier Opus trials passed."
+}

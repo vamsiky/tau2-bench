@@ -1,0 +1,17 @@
+{
+  "task_id": "task_051",
+  "severity": "None",
+  "headline": "The entry-tier credit-limit flow (cap a 30% request at 25%, deny for 75% utilization, pay off $3,000, approve $5,000) is fully derivable.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze is Entry tier (doc_015). The 30% request exceeds the 25% cap (logistics_006), so per Step 0 the customer adjusts to $1,000 (25% of $4,000) before submission. Submit 1000. Checks: age (opened 05/10/2023), no history, 6 consecutive on-time payments, no disputes or orders, but utilization $3,000/$4,000 = 75%, which is at least 70%, so deny with high_utilization. On request, pay $3,000 from chk_5e4c1a83b0 ($5,000). Resubmit 1000 (denials trigger no cooldown) and approve new_credit_limit 5000. This matches gold[2..19].",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found this task clean, and the verdict holds under v1.0.1. The logistics_005 v1.0.1 change only removes stray '$' signs from the entry-tier row.",
+  "notes": "The second submit (gold[17]) returns 'Error: A similar request may already exist.' because the request ID depends only on (account, user, amount), so it writes nothing. An agent that skips the resubmit, or retries it, ends in the same state. The approve record also collides with the first PENDING record, so no APPROVED row is written in gold or agent runs. Submitting a request at the original 30% ($1,200) would add a row and fail, which Step 0 explicitly forbids."
+}

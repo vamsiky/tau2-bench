@@ -1,0 +1,48 @@
+{
+  "task_id": "task_046",
+  "severity": "Minor",
+  "headline": "Closure correctly stops at a pending dispute, but the dispute record cannot be tied to the Business Silver card from tool data, and an agent that also pays the balance the customer asks about fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The seeded pending dispute meant to block the Business Silver closure carries card_last_4_digits 7823, which matches neither of the user's cards, and refers to a transaction that does not exist. Only the ID string 'txn_bsilver_dup_001' links it to the account.",
+      "evidence": [
+        "initial_state transaction_disputes.dsp_yuki_bsilver_001: card_last_4_digits = \"7823\", transaction_id = \"txn_bsilver_dup_001\", status = \"UNDER_REVIEW\"",
+        "get_card_last_4_digits hash: cc_224959b99e_bsilver -> 9568, cc_224959b99e_plat -> 7053",
+        "db.json credit_card_transaction_history['txn_bsilver_dup_001'] does not exist; all 60 of the user's transactions are 'Platinum Rewards Card'",
+        "doc_credit_cards_credit_card_account_logistics_003 Step 1: \"The account must not have any active or pending transaction disputes.\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "The policy is per account. An agent that checks which card the dispute is on, or gives the user get_card_last_4_digits to compare, can conclude the dispute is on another card and proceed (pay balance, log reason, offer retention). That fails, and so does giving the tool, which writes user_discoverable_tools.",
+      "suggested_fix": "Set card_last_4_digits to \"9568\" and add txn_bsilver_dup_001 to the Business Silver transaction history."
+    },
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The script tells the customer to agree to a balance payoff whenever the balance is mentioned, but the gold contains no payment. An agent that reports all unmet requirements, including the $125 balance, and pays it on the customer's request fails.",
+      "evidence": [
+        "user_scenario step 3: \"If you are told about an outstanding balance: ... Yes, please pay that off from my checking account.\"",
+        "db.json credit_card_accounts.cc_224959b99e_bsilver.current_balance = \"$125.00\"",
+        "doc_credit_cards_credit_card_account_logistics_003 Step 1: \"If any requirement is not met, explain what must be resolved and do not proceed with retention offers.\"",
+        "Replay: gold + pay_credit_card_from_checking_9182 $125 -> verified=False (extra discoverable call; tables accounts, credit_card_accounts differ)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "A payoff the customer requested and doc logistics_009 permits changes accounts and credit_card_accounts. The gold quietly expects the agent to stop at the first failed check (disputes come first in Step 1) and not raise the balance.",
+      "suggested_fix": "Remove step 3 from this script, or say in the protocol that later requirements are not resolved while an earlier one blocks closure."
+    }
+  ],
+  "solution_check": "Following Step 1 in order, get_user_dispute_history_7291 shows dsp_yuki_bsilver_001 UNDER_REVIEW, so closure is blocked. The agent informs the customer, who accepts and leaves. The graded state is verification plus the required dispute-history read, which matches gold[0..2]. Extra reads (replacement orders, accounts) are not logged, and a replay with them still matches.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. Both the dispute-data inconsistency and the payoff trap are new Minor findings.",
+  "notes": "Doc logistics_002 says \"No pending disputes\" without naming an account, so most agents will block on any pending dispute regardless of the mismatched last-4. Both issues fail under upstream exact-hash grading too; neither depends on the verified relaxations."
+}

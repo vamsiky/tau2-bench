@@ -1,0 +1,50 @@
+{
+  "task_id": "task_049",
+  "severity": "Blocker",
+  "headline": "The official answer records the customer pressing a 'request human transfer' tool that the script never tells the simulated customer to use, so correct agent work fails whenever the customer simply asks out loud.",
+  "ratings": {
+    "instructions_sufficient": "Insufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Blocker",
+      "summary": "Gold action 049_13 is a user-side call to request_human_agent_transfer, which writes a row to human_transfer_requests. The script only has the customer say 'Transfer me to a human agent.' and never names the tool, unlike tasks 034 and 081, which explicitly tell the simulator to call it. The simulator guidelines also say to call tools only when the agent requests them.",
+      "evidence": [
+        "gold[17] (049_13) = {name: request_human_agent_transfer, requestor: user, arguments: {}}",
+        "user_scenario step 9: \"Transfer me to a human agent.\" / step 10: \"After the agent transfers you, end the conversation.\" (no mention of request_human_agent_transfer)",
+        "task_034 / task_081 scripts: \"Call the `request_human_agent_transfer` tool (for tracking purposes — the agent cannot see this)\"",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"Only call a tool if the agent has requested it or if it is necessary to answer a question the agent has asked.\"",
+        "tools.py KnowledgeUserTools.request_human_agent_transfer: add_to_db(\"human_transfer_requests\", \"transfer_request_<n>\", ...)",
+        "Replay: gold without the user call -> verified=False, table 'human_transfer_requests' differs; user call made twice -> verified=False"
+      ],
+      "gold_action_refs": [
+        17
+      ],
+      "why_it_matters": "The agent cannot create this row (transfer_to_human_agents writes nothing), and no document tells it to have the customer call the tool. The reward therefore depends on whether the simulated customer spontaneously calls a tool its guidelines tell it not to call, and calls it exactly once.",
+      "suggested_fix": "Add 'Call the request_human_agent_transfer tool, then ask for a human' to the script, as tasks 034 and 081 do, or drop gold action 049_13."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "For the Crypto-Cash Back card the customer gives two reasons, the fee and poor rewards. The gold logs annual_fee.",
+      "evidence": [
+        "user_scenario step 7: \"The annual fee is too high for what I'm getting. The crypto rewards aren't worth it anymore.\"",
+        "gold[14] (049_10).arguments.closure_reason = \"annual_fee\""
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "credit_card_closure_reasons is compared exactly. unhappy_with_rewards is a defensible label that fails, though the first-stated reason and the scripted downgrade branch support annual_fee.",
+      "suggested_fix": "Drop the second sentence or have the customer name the fee as the main reason."
+    }
+  ],
+  "solution_check": "Green: history shows a 'not_using_card' record from 08/20/2025, so close immediately. Eco: replacement order SHIPPED, so refuse closure despite the customer's lie. Gold: $175 balance against $50 in checking 08, so no payment and no closure. Crypto: no history; customer since 02/01/2024 (under 2 years), so offer a downgrade (refused), then the entry-tier $5 credit, refusing the fake Platinum claim. Agent-side actions match the gold. The only unreachable element is the user-side transfer-request row.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. The gold's dependence on an unscripted user tool call is new and holds under both upstream and verified grading, since human_transfer_requests is compared exactly in both.",
+  "notes": "An agent that tries pay_credit_card_from_checking_9182 for $175 without first checking funds gets 'Error: Insufficient funds ...' and fails, because the write is logged and a balance rejection is not an input error under the verified relaxation. logistics_009 requires confirming sufficient funds first, so that rule is fair. required_documents includes doc_(general)_010, a purchase-decline transfer protocol that does not apply; its tool initial_transfer_to_human_agent_0218 is GENERIC and unlogged, so using it would not change the DB."
+}

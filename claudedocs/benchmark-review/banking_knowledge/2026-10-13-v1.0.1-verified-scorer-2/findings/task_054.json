@@ -1,0 +1,36 @@
+{
+  "task_id": "task_054",
+  "severity": "Minor",
+  "headline": "The customer never says whether she wants expedited shipping for the replacement card, but the gold records expedited; the documents' strong recommendation for fraud cases makes it the likely default.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The gold replacement order sets expedited_shipping=true, a stored field, yet the customer script only says to send the card to the address on file. The replacement procedure tells the agent to ask, and strongly recommends expedited (free on Gold) for fraud, so the documented default matches the gold.",
+      "evidence": [
+        "gold[14].arguments: \"expedited_shipping\": true",
+        "user_scenario step 9: \"Yes, please send me a new card with a new number... Just send it to my address on file.\"",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier; see Shipping selection).\"",
+        "doc_credit_cards_credit_card_replacements_001: \"Premium-tier and above (Gold, Platinum, Diamond Elite): $0.00 (complimentary).\" and \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\"",
+        "tools.py order_replacement_credit_card_7291 stores \"expedited_shipping\": expedited_shipping (default False) in credit_card_orders",
+        "Replay: gold with expedited_shipping=false -> _verified_db_match False, \"table 'credit_card_orders' differs\""
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "An agent that asks neutrally and gets no preference, or that relies on the tool default, orders standard shipping and fails on credit_card_orders even though the rest of the work is correct.",
+      "suggested_fix": "Add a line to the customer script accepting expedited shipping (e.g., \"Yes, expedited please since it's free\")."
+    }
+  ],
+  "solution_check": "Reconstructed from logistics_004-007, general_014-016 and replacements_001/005: verify, recognize from logistics_007 Step 2 that a pending dispute or replacement blocks a CLI, cap the request at 50% of $5,000 = $2,500 (logistics_006), submit 2500, run the documented reads (CLI history, dispute history, pending replacements, payment history: 6 ON_TIME payments), approve new_credit_limit 7500, then order the fraud replacement and file the dispute with card_action cancel_and_reissue, contacted_merchant false, purchase_date 11/11/2025, issue_noticed_date 11/12/2025, provisional credit true (account open since 03/20/2023, fraud reason, $487.50 within $25-$10,000, no prior disputes). This matches the gold except for the unstated shipping speed. Replay confirms ordering the replacement before or after filing the dispute gives the same DB.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this clean; the unstated shipping choice is flagged here as Minor per the calibration rule for unstated customer choices with a matching documented default.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). The four gold reads (get_user_dispute_history_7291, get_pending_replacement_orders_5765, get_credit_limit_increase_history_4829, get_payment_history_6183) are allowlisted, so skipping any of them fails (replay: skipping the pending-replacement read -> \"missing required discoverable calls\"). Each is documented: logistics_007 Step 2 says \"You MUST check ALL of the following eligibility criteria\" and lists the disputes and replacement checks; the tool names come from general_016, replacements_005 and logistics_006. The months argument of get_payment_history_6183 is not graded (row keyed by tool name). Tool facts: approve_credit_limit_increase_5847 blocks only on disputes with status SUBMITTED/UNDER_REVIEW/PENDING; a replacement order (status ORDERED) and the replacement's account status write ('status': 'CLOSED' rather than 'account_status') do not block it, so the documented replacement rule is enforced by the agent alone. The approval record reuses the submit request_id (same hash for 2500 and 2500.0), so add_to_db silently fails and credit_limit_increase_requests keeps only the PENDING row; this is deterministic. 7500 vs 7500.0 gives identical state (replay). logistics_007 Step 3 body is just \".\" (cosmetic; logistics_006 covers payment history). The v1.0.1 change to logistics_005 only removed '$' from table values."
+}

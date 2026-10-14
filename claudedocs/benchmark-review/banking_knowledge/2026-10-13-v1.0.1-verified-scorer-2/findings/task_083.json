@@ -1,0 +1,72 @@
+{
+  "task_id": "task_083",
+  "severity": "Blocker",
+  "headline": "Every gold dispute call leaves out a field the tool requires, and the task is graded by exact string match on those calls, so no correct agent can get credit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "All four gold file_debit_card_transaction_dispute_6281 calls omit the required customer_max_liability_amount. On replay each one fails with a missing-argument error. ACTION grading compares the inner arguments JSON as a raw string.",
+      "evidence": [
+        "tools.py file_debit_card_transaction_dispute_6281 signature: customer_max_liability_amount: float (no default)",
+        "Replay of gold[6..9]: \"Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'\"",
+        "evaluation_criteria.reward_basis = ['ACTION'], compare_args unset on gold[6..9]",
+        "data_model/tasks.py Action.compare_with_tool_call: compares tool_call.arguments to action arguments with == (inner 'arguments' is a JSON string)",
+        "gold[6] inner string contains \"disputed_amount\": 150.00 (two-decimal literal)"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "A working dispute call must include customer_max_liability_amount, so its arguments string can never equal the gold string. Matching would also require identical key order, spacing, and the literal '150.00'. Reward is 0 for every competent agent.",
+      "suggested_fix": "Regenerate the four gold calls with customer_max_liability_amount, and set compare_args to the semantic keys (for example agent_tool_name only, or switch to DB grading) so JSON spelling does not decide the score."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The duplicate Austin Coffee Roasters charges share a date. Picking btxn_d937eaa1d21d depends on reading the second-listed row as the earlier one under the most-recent-first contract, while 'earliest (first)' also reads naturally as the first one listed.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173: stable sort by date, reverse=True; same-date rows keep stored order (comment: \"identifies the later-listed record as the earlier one\")",
+        "Tool output for chk_dk83f5c2a1_gff: row 2 btxn_ff7d3926dee0 11/11/2025 -67.25, row 3 btxn_d937eaa1d21d 11/11/2025 -67.25",
+        "gold[8] transaction_id btxn_d937eaa1d21d"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "An agent that takes the top-listed duplicate picks btxn_ff7d3926dee0 and misses gold[8].",
+      "suggested_fix": "Give the duplicates distinct timestamps, or say in doc_031 that among same-date duplicates in most-recent-first output the lower-listed row is the earliest."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The duplicate charge is set provisional-credit eligible although the customer has not contacted the merchant, a case the 'not required' list covers. The PIN-shared dispute resolves the same overlap the other way.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "gold[8] duplicate_charge contacted_merchant false, provisional_credit_eligible true",
+        "gold[9] unauthorized_transaction pin_compromised yes_shared, provisional_credit_eligible false"
+      ],
+      "gold_action_refs": [
+        8,
+        9
+      ],
+      "why_it_matters": "With compare_args unset, the boolean is part of the compared string, so an agent applying the merchant-contact condition fails gold[8].",
+      "suggested_fix": "Make doc_032's REQUIRED and NOT REQUIRED lists mutually exclusive."
+    }
+  ],
+  "solution_check": "Reconstructed four disputes: third-party ATM $150 keep_active, goods-not-received $189.50 (provisional false, merchant contacted), duplicate $67.25 keep_active, family-member unauthorized $475 with yes_shared and freeze_pending_investigation. The gold uses the same categories and amounts, but its calls cannot execute, and no real call can string-match them.",
+  "prior_status": "persists",
+  "prior_note": "The task file is unchanged since v1.0.0; the missing required argument still blocks every agent. The duplicate pick now agrees with the v1.0.1 most-recent-first ordering but still needs a non-obvious reading.",
+  "notes": "Because the gold disputes never execute, the gold also omits the most-severe card action (freeze GFF for freeze_pending_investigation, per doc_031). Under ACTION grading extra calls are ignored, so this does not change scoring; the scorer variant (verified DB) does not apply because reward_basis is ACTION only."
+}

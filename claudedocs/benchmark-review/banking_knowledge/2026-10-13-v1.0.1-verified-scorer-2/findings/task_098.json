@@ -1,0 +1,17 @@
+{
+  "task_id": "task_098",
+  "severity": "None",
+  "headline": "Clean: the Blue Account referral ($35 + $30 = $65) is the unique best combined bonus for a $600 deposit, and the referral window allows it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Tenure counts from Green Fee-Free opened 09/14/2025 (61 days). Combined bonuses that a $600 deposit qualifies for: Blue 65 ($500), Green Fee-Free 55 ($300), Green 50, Light Blue 50, Light Green 40. Evergreen ($750), Purple and Dark Green ($1,000), and Bluest ($2,000) are out, and Gold Years needs age 62+. Window: the COMPLETE referral on 11/04 is 10 days old and IN_PROGRESS 11/10 is the only one inside 9 days, so a slot is open under either the bonus or the referral count. Blue Account matches gold[2]; the gold replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "The customer's account of the referral history ('maybe 9 days ago... a few days before that') differs from the DB, which is an intended verification check. submit_referral stores the account_type string the user types; the script tells the user to append 'Account'. get_referrals_by_user is a non-discoverable read and logs nothing."
+}
