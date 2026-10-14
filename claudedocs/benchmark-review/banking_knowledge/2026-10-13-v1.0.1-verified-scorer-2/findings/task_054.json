@@ -1,7 +1,7 @@
 {
   "task_id": "task_054",
   "severity": "Minor",
-  "headline": "The customer never says whether she wants expedited shipping for the replacement card, but the gold records expedited; the documents' strong recommendation for fraud cases makes it the likely default.",
+  "headline": "The customer never says whether she wants expedited shipping for the replacement card, but the gold records expedited; the documents' strong recommendation for fraud cases makes it the likely default. The gold also does the credit-limit increase before the fraud steps, which the script endorses once the agent raises the conflict.",
   "ratings": {
     "instructions_sufficient": "Partial",
     "docs_deterministic": "Yes",
@@ -27,6 +27,25 @@
       ],
       "why_it_matters": "An agent that asks neutrally and gets no preference, or that relies on the tool default, orders standard shipping and fails on credit_card_orders even though the rest of the work is correct.",
       "suggested_fix": "Add a line to the customer script accepting expedited shipping (e.g., \"Yes, expedited please since it's free\")."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Minor",
+      "summary": "The gold approves the credit-limit increase (gold[12]) before ordering the replacement (gold[14]) and filing the dispute (gold[16]), because a pending dispute or replacement blocks CLI approval. The customer's opening puts the fraud first, but the script has her ask for the CLI first as soon as the agent mentions the conflict, and tells her not to push back on the order.",
+      "evidence": [
+        "user_scenario opening: \"but let's handle the fraud situation first since that's the priority\"",
+        "user_scenario step 3: \"If the agent mentions there's a conflict between the requests: ... Can we do the credit limit increase FIRST before the fraud stuff, so I can still get everything done?\"",
+        "user_scenario: \"Be cooperative and receptive when the agent explains the conflict. Do not push back on the suggested order\"",
+        "doc_credit_cards_credit_card_account_logistics_007 Step 2: \"3. No Pending Disputes: Verify the account has no active disputes.\" and \"If a replacement is pending, the CLI cannot be processed until the replacement is delivered or cancelled.\"",
+        "Replay: gold order -> verified=True; fraud steps first then approve -> \"Error: Credit limit increase request cannot be approved at this time.\"; fraud first + deny(pending_disputes) -> verified=False (missing approve, extra deny, credit_card_accounts and credit_limit_increase_requests differ)"
+      ],
+      "gold_action_refs": [
+        12,
+        14,
+        16
+      ],
+      "why_it_matters": "The gold is correct and its order is the scripted path: an agent that reads logistics_007 sees the conflict, tells the customer, and she asks for the CLI first. A run fails only if the agent handles the fraud without weighing that rule and then has to deny the CLI. This is a reliability risk, not a defect.",
+      "suggested_fix": "None needed; optionally add a logistics_007 line on handling a CLI alongside a new dispute or replacement in the same contact."
     }
   ],
   "solution_check": "Reconstructed from logistics_004-007, general_014-016 and replacements_001/005: verify, recognize from logistics_007 Step 2 that a pending dispute or replacement blocks a CLI, cap the request at 50% of $5,000 = $2,500 (logistics_006), submit 2500, run the documented reads (CLI history, dispute history, pending replacements, payment history: 6 ON_TIME payments), approve new_credit_limit 7500, then order the fraud replacement and file the dispute with card_action cancel_and_reissue, contacted_merchant false, purchase_date 11/11/2025, issue_noticed_date 11/12/2025, provisional credit true (account open since 03/20/2023, fraud reason, $487.50 within $25-$10,000, no prior disputes). This matches the gold except for the unstated shipping speed. Replay confirms ordering the replacement before or after filing the dispute gives the same DB.",

@@ -1,0 +1,30 @@
+{
+  "task_id": "task_045",
+  "severity": "Minor",
+  "reason": "The customer gives two closure reasons in one sentence; gold step 12 accepts only found_better_card, so logging not_using_card fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Two stated closure reasons; gold accepts one",
+      "kind": "ambiguous_choice",
+      "step": 12,
+      "gold": {"call": "log_credit_card_closure_reason_4521",
+               "args": {"credit_card_account_id": "cc_224959b99e_bsilver", "user_id": "224959b99e", "closure_reason": "found_better_card"},
+               "output": "Closure reason 'found_better_card' logged for account cc_224959b99e_bsilver."},
+      "doc_faithful": {"call": "log_credit_card_closure_reason_4521",
+                       "args": {"credit_card_account_id": "cc_224959b99e_bsilver", "user_id": "224959b99e", "closure_reason": "not_using_card"},
+                       "output": "Closure reason 'not_using_card' logged for account cc_224959b99e_bsilver.",
+                       "note": "Agent logs the customer's second stated reason, also a valid doc category."},
+      "refs": [
+        {"source": "instructions",
+         "quote": "I found a better card at another bank and I don't really use this one much anymore."},
+        {"source": "doc_credit_cards_credit_card_account_logistics_003",
+         "quote": "- closure_reason (string, required): One of: 'annual_fee', 'not_using_card', 'found_better_card', 'unhappy_with_rewards', 'simplifying_finances', 'negative_experience', 'other'."}
+      ],
+      "conflict": "Opening line maps to both found_better_card and not_using_card (doc _003 lists both). Gold step 12 accepts only found_better_card; first-stated reason and later flow favor it.",
+      "scorer": {"field": "credit_card_closure_reasons[clsr_dbc2e6bee274].closure_reason: gold=\"found_better_card\" agent=\"not_using_card\"",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

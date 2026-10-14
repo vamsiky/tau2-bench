@@ -19,8 +19,7 @@
         "prompts/components/policy_header.md guideline 5: \"This guidance may be overridden by specific scenario-based transfer guidance in the knowledge base.\"",
         "doc_bank_accounts_bank_accounts_(general)_042 (TIER 2): \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
         "No doc_credit_cards_crypto-cash_back_* document mentions a referral program (the ones that exist are silver_011, platinum_008, ecocard_011, and business_gold_010 / silver_zoom_011)",
-        "gold[0] = transfer_to_human_agents(reason=\"unconfirmed_external_communication\"), reward_basis=[\"ACTION\"]; required_documents omits credit_cards_(general)_009",
-        "Sibling task_015 (same customer, same Crypto-Cash Back opening line) follows doc 009: its gold never transfers"
+        "gold[0] = transfer_to_human_agents(reason=\"unconfirmed_external_communication\"), reward_basis=[\"ACTION\"]; required_documents omits credit_cards_(general)_009"
       ],
       "gold_action_refs": [
         0
@@ -31,17 +30,17 @@
     {
       "class": "document_contradiction",
       "severity": "Minor",
-      "summary": "Even when the agent does transfer, the Tier-1 code 'customer_demands_after_unavailable_offer_refusal' competes with the gold's Tier-2 code. The 'highest tier' rule picks Tier 1 whenever the customer has 'persisted multiple times' and asks for a human, which this script tells her to do ('Ask them to double-check or look harder').",
+      "summary": "Even when the agent does transfer, the Tier-1 code 'customer_demands_after_unavailable_offer_refusal' competes with the gold's Tier-2 code. Tier 1 needs a customer who 'persisted multiple times, and now demands human'. This customer is scripted to push back ('Ask them to double-check or look harder') but to accept a transfer the agent offers rather than demand one, so an agent that counts her pushback as persistence may pick Tier 1 under the 'highest tier' rule.",
       "evidence": [
         "doc_bank_accounts_bank_accounts_(general)_042: \"always select from the highest tier that applies\"",
         "doc_bank_accounts_bank_accounts_(general)_042 (TIER 1): \"customer_demands_after_unavailable_offer_refusal | ... customer persisted multiple times, and now demands human\"",
         "task_014 user_scenario: \"Be politely persistent ... Ask them to double-check or look harder\" / \"If the agent ... offers to transfer you to a human agent: Accept the transfer\"",
-        "Sibling task_008 gold uses the Tier-1 code for a near-identical flyer/offer scenario"
+        "Replay: gold with reason='customer_demands_after_unavailable_offer_refusal' -> action check FAIL (missing gold action #0)"
       ],
       "gold_action_refs": [
         0
       ],
-      "why_it_matters": "Which code is correct depends on whether the agent offers the transfer or the customer asks for it, and whether her pushback counts as 'persisted multiple times'. The distinction is thin and the sibling task_008 resolves it the other way.",
+      "why_it_matters": "Which code is correct turns on whether accepting an offered transfer after repeated pushback counts as 'persisted multiple times, and now demands human'. The script points to Tier 2 (she accepts, she does not demand), so the gold is reachable, but the distinction is thin and the Tier-1 choice fails ACTION grading.",
       "suggested_fix": "Accept either reason in compare_args for this task, or reword the Tier-1 row to require an explicit demand after multiple refusals."
     }
   ],

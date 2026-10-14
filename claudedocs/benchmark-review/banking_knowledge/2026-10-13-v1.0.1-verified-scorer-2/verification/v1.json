@@ -1,18 +1,66 @@
 {
   "verifier_id": "v1",
   "fact_checks": [
-    {"fact": "DB grading replays gold actions on a fresh environment and compares final agent-side and user-side DBs (upstream: exact hash)", "status": "Confirmed", "evidence": "snapshot src/tau2/evaluator/evaluator_env.py calculate_reward: gold_environment.make_tool_call for each gold action, then get_db_hash()/get_user_db_hash() equality; working-repo copy swaps in _verified_db_match when use_verified_scorer"},
-    {"fact": "Discoverable read calls are logged only when the gold calls that tool (read_log_allowlist); log row keyed by tool name only; writes always logged", "status": "Confirmed", "evidence": "runner/build.py _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool; tools.py call_discoverable_agent_tool logs when MUTATES_STATE_ATTR or name in _read_log_allowlist; utils.generate_agent_discoverable_tool_id(tool_name) uses name only; toolkit.is_discoverable_tool defaults mutates_state = (tool_type == WRITE)"},
-    {"fact": "Unlocking writes nothing; giving a user tool writes a row keyed by tool name; user discoverable calls are logged per distinct argument set", "status": "Confirmed", "evidence": "tools.py unlock_discoverable_agent_tool stores only in-memory state; give_discoverable_user_tool add_to_db with generate_user_discoverable_tool_id(name); _log_user_tool_call uses generate_user_discoverable_tool_call_id(tool_name, args)"},
-    {"fact": "call_discoverable_agent_tool / call_discoverable_user_tool parse integers as floats", "status": "Confirmed", "evidence": "tools.py json.loads(arguments, parse_int=float) in both wrappers; apply_for_credit_card also casts annual_income to float"},
-    {"fact": "A discoverable write that returns an error string is still logged; calls rejected earlier (unknown/locked tool, invalid JSON, wrong argument names via TypeError) log nothing", "status": "Confirmed", "evidence": "tools.py call_discoverable_agent_tool returns before add_to_db on unknown tool, not unlocked, JSONDecodeError, TypeError; replay: task_029 gold + update_transaction_rewards_3847 on 'txn_doesnotexist' -> exact hash differs (row logged) while verified scorer passes (input-error regex)"},
-    {"fact": "ACTION grading: each gold action needs some matching call by name and compare_args (all agent-passed args when compare_args unset); order, repetition, extras and requestor ignored", "status": "Confirmed", "evidence": "data_model/tasks.py Action.compare_with_tool_call; evaluator_action._check_actions and extract_tool_calls (AssistantMessage and UserMessage tool calls)"},
-    {"fact": "NL_ASSERTION multiplies into reward when in reward_basis", "status": "Confirmed", "evidence": "evaluator.py reward *= nl_reward_info.reward when RewardType.NL_ASSERTION in reward_basis (no assigned task uses it)"},
-    {"fact": "Agent and user toolkits share one DB; user tool results go to the user only", "status": "Confirmed", "evidence": "environment.get_environment builds KnowledgeUserTools(db) on the same db object; orchestrator.py routes ToolMessage with requestor != 'assistant' to Role.USER"},
-    {"fact": "Clock fixed at 2025-11-14 03:40:00 EST", "status": "Confirmed", "evidence": "utils.get_now -> datetime(2025, 11, 14, 3, 40, 0); get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'"},
-    {"fact": "Verified scorer: gold discoverable tool names must be a subset of the agent's; extra names allowed only if every agent call to them matched _INPUT_ERROR_RE; closure_reason stripped from accounts only; every other table exact; same comparison applied to user DB", "status": "Confirmed", "evidence": "working repo src/tau2/evaluator/evaluator_env.py _verified_db_match, _input_rejected_discoverable_tools (only inspects assistant call_discoverable_agent_tool calls), _strip_free_text with _FREE_TEXT_ANNOTATION_FIELDS = {'accounts': {'closure_reason'}}; user_db branch calls _verified_db_match again"},
-    {"fact": "No agent tool reads cash_back_disputes", "status": "Confirmed", "evidence": "tools.py: every query_database_tool table name enumerated (users, referrals, credit_card_transaction_history, credit_card_accounts, debit_card_disputes, transaction_disputes, credit_card_orders, credit_card_closure_reasons, credit_limit_increase_requests, accounts, user/agent_discoverable_tools, human_transfer_requests); the only cash_back_disputes access is add_to_db in KnowledgeUserTools.submit_cash_back_dispute_0589; KnowledgeUserTools.query_database has no @is_tool; shell sandbox runs in the KB documents directory"},
-    {"fact": "Default retrieval variant is alltools (all docs reachable); golden_retrieval inlines only required_documents", "status": "Confirmed", "evidence": "retrieval.py DEFAULT_RETRIEVAL_VARIANT = 'alltools'; golden_prompt fills {{required_documents}} from task.required_documents"}
+    {
+      "fact": "DB grading replays gold actions on a fresh environment and compares final agent-side and user-side DBs (upstream: exact hash)",
+      "status": "Confirmed",
+      "evidence": "snapshot src/tau2/evaluator/evaluator_env.py calculate_reward: gold_environment.make_tool_call for each gold action, then get_db_hash()/get_user_db_hash() equality; working-repo copy swaps in _verified_db_match when use_verified_scorer"
+    },
+    {
+      "fact": "Discoverable read calls are logged only when the gold calls that tool (read_log_allowlist); log row keyed by tool name only; writes always logged",
+      "status": "Confirmed",
+      "evidence": "runner/build.py _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool; tools.py call_discoverable_agent_tool logs when MUTATES_STATE_ATTR or name in _read_log_allowlist; utils.generate_agent_discoverable_tool_id(tool_name) uses name only; toolkit.is_discoverable_tool defaults mutates_state = (tool_type == WRITE)"
+    },
+    {
+      "fact": "Unlocking writes nothing; giving a user tool writes a row keyed by tool name; user discoverable calls are logged per distinct argument set",
+      "status": "Confirmed",
+      "evidence": "tools.py unlock_discoverable_agent_tool stores only in-memory state; give_discoverable_user_tool add_to_db with generate_user_discoverable_tool_id(name); _log_user_tool_call uses generate_user_discoverable_tool_call_id(tool_name, args)"
+    },
+    {
+      "fact": "call_discoverable_agent_tool / call_discoverable_user_tool parse integers as floats",
+      "status": "Confirmed",
+      "evidence": "tools.py json.loads(arguments, parse_int=float) in both wrappers; apply_for_credit_card also casts annual_income to float"
+    },
+    {
+      "fact": "A discoverable write that returns an error string is still logged; calls rejected earlier (unknown/locked tool, invalid JSON, wrong argument names via TypeError) log nothing",
+      "status": "Confirmed",
+      "evidence": "tools.py call_discoverable_agent_tool returns before add_to_db on unknown tool, not unlocked, JSONDecodeError, TypeError; replay: task_029 gold + update_transaction_rewards_3847 on 'txn_doesnotexist' -> exact hash differs (row logged) while verified scorer passes (input-error regex)"
+    },
+    {
+      "fact": "ACTION grading: each gold action needs some matching call by name and compare_args (all agent-passed args when compare_args unset); order, repetition, extras and requestor ignored",
+      "status": "Confirmed",
+      "evidence": "data_model/tasks.py Action.compare_with_tool_call; evaluator_action._check_actions and extract_tool_calls (AssistantMessage and UserMessage tool calls)"
+    },
+    {
+      "fact": "NL_ASSERTION multiplies into reward when in reward_basis",
+      "status": "Confirmed",
+      "evidence": "evaluator.py reward *= nl_reward_info.reward when RewardType.NL_ASSERTION in reward_basis (no assigned task uses it)"
+    },
+    {
+      "fact": "Agent and user toolkits share one DB; user tool results go to the user only",
+      "status": "Confirmed",
+      "evidence": "environment.get_environment builds KnowledgeUserTools(db) on the same db object; orchestrator.py routes ToolMessage with requestor != 'assistant' to Role.USER"
+    },
+    {
+      "fact": "Clock fixed at 2025-11-14 03:40:00 EST",
+      "status": "Confirmed",
+      "evidence": "utils.get_now -> datetime(2025, 11, 14, 3, 40, 0); get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'"
+    },
+    {
+      "fact": "Verified scorer: gold discoverable tool names must be a subset of the agent's; extra names allowed only if every agent call to them matched _INPUT_ERROR_RE; closure_reason stripped from accounts only; every other table exact; same comparison applied to user DB",
+      "status": "Confirmed",
+      "evidence": "working repo src/tau2/evaluator/evaluator_env.py _verified_db_match, _input_rejected_discoverable_tools (only inspects assistant call_discoverable_agent_tool calls), _strip_free_text with _FREE_TEXT_ANNOTATION_FIELDS = {'accounts': {'closure_reason'}}; user_db branch calls _verified_db_match again"
+    },
+    {
+      "fact": "No agent tool reads cash_back_disputes",
+      "status": "Confirmed",
+      "evidence": "tools.py: every query_database_tool table name enumerated (users, referrals, credit_card_transaction_history, credit_card_accounts, debit_card_disputes, transaction_disputes, credit_card_orders, credit_card_closure_reasons, credit_limit_increase_requests, accounts, user/agent_discoverable_tools, human_transfer_requests); the only cash_back_disputes access is add_to_db in KnowledgeUserTools.submit_cash_back_dispute_0589; KnowledgeUserTools.query_database has no @is_tool; shell sandbox runs in the KB documents directory"
+    },
+    {
+      "fact": "Default retrieval variant is alltools (all docs reachable); golden_retrieval inlines only required_documents",
+      "status": "Confirmed",
+      "evidence": "retrieval.py DEFAULT_RETRIEVAL_VARIANT = 'alltools'; golden_prompt fills {{required_documents}} from task.required_documents"
+    }
   ],
   "task_verdicts": {
     "task_002": {
@@ -272,10 +320,10 @@
     }
   },
   "calibration_notes": [
-    "Unverifiable cash-back dispute status (026, 027, 028, 029): the review rated 026/028/029 Blocker but 027 Major on identical evidence, and labelled the class document_gap in 026 but non_determinism in 027-029. I set all four to Blocker (deciding fact unobservable; twins demand opposite states from identical observations). If the panel prefers Major, it must move all four together.",
+    "Cash-back dispute status (026, 027, 028, 029): Major in all four, class document_gap. Doc _004's cash_back_disputes lookup has no agent tool. The status is reachable only by asking the customer what each submission returned (RESOLVED in 026/028, SUBMITTED in 027/029), a check no document describes, and both results open with the same 'queued for review' sentence. 026 is a Blocker on its separate 1500-vs-1499 gold value.",
     "Rewards rounding: 018/019/021/022/029 rate the missing general_007 in required_documents Minor, consistent with calibration. 020/026/027 rate the half-up seed vs documented floor Major, consistently. 017's unexplained 1159 is also Major. 026's gold write '1500 points' is correctly kept separate as a Blocker: the gold value itself contradicts general_007 and the floored values in sibling task_028's gold.",
     "Silver Zoom triple-cash-back promo: 024 and 025 both treat it as a competing winner and both rate Major; consistent. The only other business-card application task (047, outside my group) has explicit thresholds (>3.5% travel/advertising and no FTF) that Silver Zoom fails, so it is unaffected.",
     "Transfer-code overlaps: 008 (Minor, settled by the highest-tier rule) and 014's secondary issue (Minor) are consistent with each other. 014's primary doc_009 'Do not transfer' contradiction (Major) has no sibling with the same doc conflict in my group."
   ],
-  "methodology_note": "Every grading-model and verified-scorer fact in review.md and scorers/verified.md holds in the v1.0.1 snapshot and the working-repo scorer. I rebuilt each task in the snapshot (no_knowledge retrieval variant, same toolkit and DB, gold-derived read_log_allowlist), replayed gold and the alternatives the review cites, and compared with a verbatim copy of _verified_db_match/_input_rejected_discoverable_tools. Every divergence claim reproduced, and all 19 gold trajectories replay without tool errors. I also recomputed rewards for all six dispute users under floor and half-up, and both conventions gave exactly the counts the review reports. The review's reasoning is sound and its citations are accurate apart from two transaction-count slips (018: 49 vs 47 rows; 020: 25 vs 26) and an imprecise 'differ only in auto_resolve' phrasing (026). Its blind spots are two. First, it applied severities to the dispute-status twins without cross-checking them, which left 027 a severity below 026/028/029. Second, it repeatedly uses 'earlier Opus trials' pass/fail counts (014, 015) as supporting evidence that nothing in the snapshot or the run inputs lets a verifier check. Those counts should be treated as anecdote, not proof. The unflagged sample (002, 004, 008) held up under a from-scratch audit."
+  "methodology_note": "Every grading-model and verified-scorer fact in review.md and scorers/verified.md holds in the v1.0.1 snapshot and the working-repo scorer. I rebuilt each task in the snapshot (no_knowledge retrieval variant, same toolkit and DB, gold-derived read_log_allowlist), replayed gold and the alternatives the review cites, and compared with a verbatim copy of _verified_db_match/_input_rejected_discoverable_tools. Every divergence claim reproduced, and all 19 gold trajectories replay without tool errors. I also recomputed rewards for all six dispute users under floor and half-up, and both conventions gave exactly the counts the review reports. The review's reasoning is sound and its citations are accurate apart from two transaction-count slips (018: 49 vs 47 rows; 020: 25 vs 26) and an imprecise 'differ only in auto_resolve' phrasing (026). Its blind spot is that it repeatedly uses 'earlier Opus trials' pass/fail counts (014, 015) as supporting evidence that nothing in the snapshot or the run inputs lets a verifier check. Those counts should be treated as anecdote, not proof. The unflagged sample (002, 004, 008) held up under a from-scratch audit."
 }

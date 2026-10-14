@@ -1,0 +1,49 @@
+{
+  "task_id": "task_093",
+  "severity": "Major",
+  "reason": "Gold credits $33.00 using a 0.025% relationship bonus that docs tie to a Platinum Rewards Card this customer lacks; without it, $30.00.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Relationship bonus applied without Platinum Rewards Card",
+      "kind": "ambiguous_choice",
+      "step": 6,
+      "gold": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {
+          "account_id": "sav_sp93k4m7n2_silver",
+          "amount": 33.0,
+          "credit_type": "interest_correction"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_e1348448ad89d8de\n...\n  - Amount: $33.00\n  - Previous Balance: $144000.00\n  - New Balance: $144033.00"
+      },
+      "doc_faithful": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {
+          "account_id": "sav_sp93k4m7n2_silver",
+          "amount": 30.0,
+          "credit_type": "interest_correction"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_ff2ac7983f62984a\n...\n  - Amount: $30.00\n  - Previous Balance: $144000.00\n  - New Balance: $144030.00",
+        "note": "Verifier's reading (not in the reviewer's issue text, attached to issue 1 as the credit-amount issue). Step 8 report also changed to expected_apy 4.25, amount_difference 30.0."
+      },
+      "refs": [
+        {
+          "source": "doc_savings_accounts_silver_account_009",
+          "quote": "When your Silver Account and Platinum Rewards Card are linked under the same customer profile, an additional 0.025% is added to your APY as a relationship bonus."
+        },
+        {
+          "source": "doc_savings_accounts_silver_account_002",
+          "quote": "If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY."
+        }
+      ],
+      "conflict": "Customer has Green checking + Silver, no credit card. Gold: 4.0+0.25+0.025 → 144000×0.275%/12 = 33.00. Platinum-only reading: 4.25% → 30.00. task_097 gold omits the bonus.",
+      "scorer": {
+        "field": "accounts[sav_sp93k4m7n2_silver].current_holdings: gold=\"144033.00\" agent=\"144030.00\"; bank_account_transaction_history[txn_e1348448ad89d8de]: MISSING row (gold has)",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

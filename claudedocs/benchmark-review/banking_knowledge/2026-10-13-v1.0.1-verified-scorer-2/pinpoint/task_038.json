@@ -1,0 +1,57 @@
+{
+  "task_id": "task_038",
+  "severity": "Minor",
+  "reason": "Gold step 4 orders the replacement with expedited_shipping true, but the script never says whether the customer accepts the $10 Silver expedited fee.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Unscripted $10 expedited-shipping choice; gold assumes yes",
+      "kind": "ambiguous_choice",
+      "step": 4,
+      "gold": {
+        "call": "order_replacement_credit_card_7291",
+        "args": {
+          "credit_card_account_id": "cc_890389b165_silver",
+          "user_id": "890389b165",
+          "shipping_address": "2500 Woodward Avenue, Suite 300, Detroit, MI 48201",
+          "reason": "fraud_suspected",
+          "expedited_shipping": true
+        },
+        "output": "Order ID: ccord_6ed1a491c036 ... Shipping Method: Expedited\nExpected Delivery: 2-3 business days"
+      },
+      "doc_faithful": {
+        "call": "order_replacement_credit_card_7291",
+        "args": {
+          "credit_card_account_id": "cc_890389b165_silver",
+          "user_id": "890389b165",
+          "shipping_address": "2500 Woodward Avenue, Suite 300, Detroit, MI 48201",
+          "reason": "fraud_suspected",
+          "expedited_shipping": false
+        },
+        "output": "Order ID: ccord_6ed1a491c036 ... Shipping Method: Standard\nExpected Delivery: 7-10 business days",
+        "note": "Agent asks as the doc requires; the simulated customer, with no scripted answer, declines the $10 fee."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_card_replacements_001",
+          "quote": "- Ask whether they want expedited shipping (advise on possible fees by tier; see Shipping selection)."
+        },
+        {
+          "source": "doc_credit_cards_credit_card_replacements_001",
+          "quote": "  - Mid-tier (Silver Rewards, Business Silver, Green Rewards, Silver Zoom): $10.00."
+        },
+        {
+          "source": "doc_credit_cards_credit_card_replacements_001",
+          "quote": "- If the reason is fraud_suspected or stolen, strongly recommend expedited shipping to minimize exposure"
+        }
+      ],
+      "conflict": "Doc _001: speed is the customer's choice ($10 for Silver), expedited only recommended for fraud. Script has no speed line. Gold step 4 requires expedited_shipping true.",
+      "scorer": {
+        "field": "credit_card_orders[ccord_6ed1a491c036].expedited_shipping: gold=true agent=false",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

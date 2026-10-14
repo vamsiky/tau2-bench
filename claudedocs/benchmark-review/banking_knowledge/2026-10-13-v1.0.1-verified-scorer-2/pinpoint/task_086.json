@@ -1,0 +1,51 @@
+{
+  "task_id": "task_086",
+  "severity": "Major",
+  "reason": "Gold stores liability 50 for disputes noticed five business days before reporting, where doc _031's noticed-date tiers give 500; also 'skimmed' stored as PIN 'unknown'.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Liability $50 though noticed 5 business days earlier",
+      "kind": "ambiguous_choice",
+      "step": 11,
+      "gold": {"call": "file_debit_card_transaction_dispute_6281",
+               "args": {"transaction_id": "btxn_c671c90e2724", "dispute_category": "atm_cash_discrepancy", "discovery_date": "11/07/2025", "disputed_amount": 100.0, "customer_max_liability_amount": 50, "...": "other args as gold"},
+               "output": "Dispute ID: dsp_3c585e9afa44\nTransaction: btxn_c671c90e2724\n...\nProvisional Credit: ISSUED - $100.00 credited within 10 business days per Regulation E."},
+      "doc_faithful": {"call": "file_debit_card_transaction_dispute_6281",
+                       "args": {"transaction_id": "btxn_c671c90e2724", "customer_max_liability_amount": 500, "...": "other args as gold"},
+                       "output": "Dispute ID: dsp_3c585e9afa44\nTransaction: btxn_c671c90e2724\n...\nProvisional Credit: ISSUED - $100.00 credited within 10 business days per Regulation E.",
+                       "note": "Counts from when the customer noticed (11/07 → 11/14, 5 business days) → $500 tier. Gold steps 12, 14, 16 (noticed 11/08-11/09) are the same case."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_031",
+         "quote": "inform the customer of their liability exposure based on when they noticed the unauthorized activity:\n- Reported within 2 business days of statement: Maximum liability $50\n- Reported within 60 days of statement: Maximum liability $500"}
+      ],
+      "conflict": "No statement dates exist. Counting from noticing (11/07 → 11/14) gives $500; gold step 11 stores 50 (statement-period reading).",
+      "scorer": {"field": "debit_card_disputes[dsp_3c585e9afa44].customer_max_liability_amount: gold 50.0 vs agent 500.0",
+                 "upstream": "FAIL", "verified": "FAIL", "action": "n/a"}
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "'Someone skimmed my card' stored as PIN 'unknown'",
+      "kind": "ambiguous_choice",
+      "step": 15,
+      "gold": {"call": "file_debit_card_transaction_dispute_6281",
+               "args": {"transaction_id": "btxn_5690acdd3de5", "dispute_category": "card_present_fraud", "transaction_type": "pin_purchase", "pin_compromised": "unknown", "disputed_amount": 625.0, "...": "other args as gold"},
+               "output": "Dispute ID: dsp_eab67a7a00f1\nTransaction: btxn_5690acdd3de5\n...\nCategory: Card Present Fraud\nDisputed Amount: $625.00"},
+      "doc_faithful": {"call": "file_debit_card_transaction_dispute_6281",
+                       "args": {"transaction_id": "btxn_5690acdd3de5", "pin_compromised": "yes_observed", "...": "other args as gold"},
+                       "output": "Dispute ID: dsp_eab67a7a00f1\nTransaction: btxn_5690acdd3de5\n...\nCategory: Card Present Fraud\nDisputed Amount: $625.00",
+                       "note": "Maps 'skimmed' to the doc's 'observed/skimmed' value. transaction_type (gold pin_purchase) is also unscripted; signature_purchase fails too."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_031",
+         "quote": "- 'yes_observed': Customer believes PIN was observed/skimmed"},
+        {"source": "instructions",
+         "quote": "Still have card - I think someone skimmed my card at a gas station or something."}
+      ],
+      "conflict": "Customer says the card was skimmed; doc _031 maps skimmed → 'yes_observed'. Gold step 15: 'unknown'.",
+      "scorer": {"field": "debit_card_disputes[dsp_eab67a7a00f1].pin_compromised: gold \"unknown\" vs agent \"yes_observed\"",
+                 "upstream": "FAIL", "verified": "FAIL", "action": "n/a"}
+    }
+  ]
+}

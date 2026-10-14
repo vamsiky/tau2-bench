@@ -1,7 +1,7 @@
 {
   "task_id": "task_028",
-  "severity": "Blocker",
-  "headline": "The agent must take the customer's word that her disputes were approved, because it has no way to check, while the twin task 029 fails any agent that does exactly that.",
+  "severity": "Major",
+  "headline": "Doc _004 tells the agent to confirm resolved disputes in cash_back_disputes, but no agent tool reads it; the gold updates are reachable only by asking the customer what each submission returned (RESOLVED).",
   "ratings": {
     "instructions_sufficient": "Partial",
     "docs_deterministic": "No",
@@ -11,18 +11,17 @@
   },
   "issues": [
     {
-      "class": "non_determinism",
-      "severity": "Blocker",
-      "summary": "Gold actions 8-14 update rewards on the strength of the customer's claim that the disputes were resolved. Doc 004 tells the agent to confirm resolution in the cash_back_disputes table, but no agent tool reads that table. task_029 shows the agent the same conversation and expects it to refuse.",
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "Gold actions 8-14 update rewards after the disputes resolve. Doc 004 tells the agent to confirm resolution in the cash_back_disputes table, and no agent tool reads that table. The status is reachable through the customer: each submit_cash_back_dispute_0589 result she receives says 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.', matching her Phase 2 claim.",
       "evidence": [
         "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
         "tools.py: the only reference to cash_back_disputes is the add_to_db write inside KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool (base or discoverable) reads that table. Agent tool list (no_knowledge variant): call_discoverable_agent_tool, change_user_email, get_credit_card_accounts_by_user, get_credit_card_transactions_by_user, get_current_time, get_referrals_by_user, get_user_information_by_*, give_discoverable_user_tool, list_discoverable_agent_tools, log_verification, transfer_to_human_agents, unlock_discoverable_agent_tool (+ KB search/shell over documents only)",
-        "submit_cash_back_dispute_0589 result (status line) is returned to the user simulator only, never to the agent",
-        "task_028 initial_state task_config.dispute_settings.auto_resolve_disputes = true -> replayed dispute status RESOLVED; task_029 auto_resolve_disputes = false -> status SUBMITTED",
-        "task_028 Phase 2 and task_029 Phase 2 scripts use the identical customer line: \"Great, I've submitted all the disputes. I just got a notification that they've all been approved and resolved! Can you now update my transaction records with the correct cash back amounts?\"",
+        "submit_cash_back_dispute_0589 returns its status line to the customer: here 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.' (auto_resolve_disputes = true); in task_029 'Status: SUBMITTED - Your dispute has been queued for review.' (false)",
+        "simulation_guidelines_tools.md: \"Never make up the results of tool calls that the agent has requested, you must ground your responses based on the results of tool calls if the agent has requested.\"",
+        "task_028 and task_029 give the customer the same Phase 2 line (\"I just got a notification that they've all been approved and resolved!\"); the dispute results she holds differ (RESOLVED here, SUBMITTED in 029)",
         "gold[8] unlock_discoverable_agent_tool update_transaction_rewards_3847; gold[9..14] call_discoverable_agent_tool update_transaction_rewards_3847 (95/1390/642/669/2049/750 points)",
-        "task_029 description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED (not RESOLVED).\"",
-        "Replay: gold[0..7] only (agent declines to update) -> verified match False: missing required discoverable calls ['update_transaction_rewards_3847'], table 'credit_card_transaction_history' differs"
+        "Replay: gold -> verified PASS; gold[0..7] only (agent declines to update) -> verified FAIL: missing required discoverable calls ['update_transaction_rewards_3847'], table 'credit_card_transaction_history' differs"
       ],
       "gold_action_refs": [
         8,
@@ -33,11 +32,11 @@
         13,
         14
       ],
-      "why_it_matters": "From the agent's side, task_028 and task_029 look the same. A careful agent that will not update without the doc-04 lookup fails 028. A trusting agent passes 028 and fails 029. The score depends on whether the agent is inclined to trust the customer, not on whether its work is correct.",
-      "suggested_fix": "Expose cash_back_disputes to the agent, for example a discoverable get_cash_back_dispute_status tool documented in doc 004 and added to both golds as a required read. Alternatively, have the user tool's status text reach the agent."
+      "why_it_matters": "The documented check cannot be run, so the gold is reachable only through an undocumented workaround: asking the customer exactly what each submission returned. Her result begins 'Your case has been queued for review.', the same words the SUBMITTED twins (027/029) get, and only the following 'Status: RESOLVED' line differs. An agent that cannot verify and declines to update fails here, while one that trusts the claim fails in the twins, so scores depend on a convention the documents do not give.",
+      "suggested_fix": "Expose cash_back_disputes to the agent, for example a discoverable get_cash_back_dispute_status tool documented in doc 004 and added to both golds as a required read."
     }
   ],
-  "solution_check": "I recomputed rewards for all 47 of user 890389b165's credit-card transactions: Silver 4x on Travel/Software, else 1x; Business Platinum 4x on Travel/Software/Media, else 1.5x; Crypto 2x; EcoCard 5x on Green, else 1x; floored per doc_..._007. Exactly 6 rows differ from the stored values, and they are the gold set with the gold values: 57ecc6=95, d80aef=1390, 896ac6=642, adea68=669, 0be1cc=2049, e647e2=750. Round-half-up would flag 28 rows instead. Phase 1 is fully determined. Phase 2 hinges on dispute status, which the agent cannot see.",
+  "solution_check": "I recomputed rewards for all 47 of user 890389b165's credit-card transactions: Silver 4x on Travel/Software, else 1x; Business Platinum 4x on Travel/Software/Media, else 1.5x; Crypto 2x; EcoCard 5x on Green, else 1x; floored per doc_..._007. Exactly 6 rows differ from the stored values, and they are the gold set with the gold values: 57ecc6=95, d80aef=1390, 896ac6=642, adea68=669, 0be1cc=2049, e647e2=750. Round-half-up would flag 28 rows instead. Phase 1 is fully determined. Phase 2 hinges on dispute status, which the agent learns from the customer's dispute results (RESOLVED), not from an agent tool.",
   "prior_status": "new",
   "prior_note": "The prior review rated this task clean. It checked the reward math, which is correct, but did not see that no agent tool can read the dispute status that separates 028 from 029.",
   "notes": "Grading model confirmed against the snapshot: DB is exact under upstream and verified compares discoverable tool-name sets; an extra update_transaction_rewards_3847 is a successful write, so neither verified relaxation applies. doc_..._007 states the floor rule: \"All credit card rewards points are rounded down to the nearest whole number.\" Its worked example has an arithmetic slip (\"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar\"), which is cosmetic. Script step 4 lets the customer give up on disputing the overpaid txn_e647e242ce96 (1875 stored vs 750 correct) if the agent insists. No document supports refusing that dispute, so the gold path, which disputes it, is the doc-faithful one. The verification gold uses DB values and time_verified from get_current_time (2025-11-14 03:40:00 EST). The gold replays without errors."

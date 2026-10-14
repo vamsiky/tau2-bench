@@ -1,0 +1,56 @@
+{
+  "task_id": "task_090",
+  "severity": "Minor",
+  "reason": "Blue fraud score sits on unresolved boundaries (exact 2-minute gap, 91-day account) and can reach VERY HIGH, where closing instead of gold PIN reset fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Boundary flags can push Blue score to VERY HIGH",
+      "kind": "ambiguous_choice",
+      "step": 14,
+      "gold": {
+        "call": "reset_debit_card_pin_6284",
+        "args": {
+          "card_id": "dbc_er38a7c9d2_blue",
+          "last_4_digits": "6183",
+          "new_pin": "7294"
+        },
+        "output": "Debit Card PIN Reset Successfully\nCard ID: dbc_er38a7c9d2_blue\n...\nYour card has been unlocked and is ready to use."
+      },
+      "doc_faithful": {
+        "call": "close_debit_card_4721",
+        "args": {
+          "card_id": "dbc_er38a7c9d2_blue",
+          "reason": "fraud_suspected"
+        },
+        "output": "Debit Card Closed Successfully\n...\nNew Status: CLOSED\nClosure Reason: Fraud Suspected",
+        "note": "Upper-boundary reading scores 11 (VERY HIGH, cannot unlock); agent offers closure and the script accepts it. Unlock at step 13 dropped. PIN-reset option still reaches gold."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_041",
+          "quote": "- 2-5 minutes apart: 1 point\n- 1-2 minutes apart: 2 points"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_041",
+          "quote": "- 3-6 months: 1 point\n- Less than 3 months: 2 points"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_041",
+          "quote": "| 11-14 | VERY HIGH | Cannot unlock on this call."
+        },
+        {
+          "source": "instructions",
+          "quote": "If agent recommends closing the Blue card:** \"Sure, close it and send me a new one.\""
+        }
+      ],
+      "conflict": "Declines 14:30:00/14:32:00 are exactly 2 min apart; account opened 08/15/2025 is 91 days old. Score ranges 8-11; at 11 closure path diverges from gold step 14 reset.",
+      "scorer": {
+        "field": "debit_cards[dbc_er38a7c9d2_blue].status: gold=\"ACTIVE\" agent=\"CLOSED\"; debit_cards[dbc_er38a7c9d2_blue].pin_locked: gold=false agent=true; missing required discoverable call reset_debit_card_pin_6284",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

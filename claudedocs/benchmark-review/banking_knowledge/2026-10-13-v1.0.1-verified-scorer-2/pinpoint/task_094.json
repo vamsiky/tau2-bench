@@ -1,0 +1,57 @@
+{
+  "task_id": "task_094",
+  "severity": "Major",
+  "reason": "Doc _013 calls the Gold Rewards Card's 0.025% a relationship bonus, which doc _045 says stacks; gold drops it, crediting $140.00 not $142.00.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Gold Rewards 0.025%: stacking relationship bonus or card bonus",
+      "kind": "ambiguous_choice",
+      "step": 6,
+      "gold": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {
+          "account_id": "sav_wl94k7m3p8_gold",
+          "amount": 140.0,
+          "credit_type": "interest_correction"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_c75c4b8687b54ba5\n...\n  - Amount: $140.00\n  - Previous Balance: $96000.00\n  - New Balance: $96140.00"
+      },
+      "doc_faithful": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {
+          "account_id": "sav_wl94k7m3p8_gold",
+          "amount": 142.0,
+          "credit_type": "interest_correction"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_445fa03368167874\n...\n  - Amount: $142.00\n  - Previous Balance: $96000.00\n  - New Balance: $96142.00",
+        "note": "Expected APY 6.875% (6.85 + 0.025 stacked); step 8 report changed to expected_apy 6.875, amount_difference 142.0."
+      },
+      "refs": [
+        {
+          "source": "doc_savings_accounts_gold_account_013",
+          "quote": "As a Gold Rewards Card holder, you receive an additional 0.025% relationship bonus APY on top of the base rate."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_045",
+          "quote": "However, credit card APY bonuses DO stack with other types of bonuses, such as:"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_045",
+          "quote": "  - Relationship bonuses for holding multiple Rho-Bank products"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_045",
+          "quote": "The customer receives only the EcoCard bonus of +0.6% (the highest), not the sum of all three."
+        }
+      ],
+      "conflict": "Gold: EcoCard 0.6 only → 6.85%, 96000×(6.85−5.10)%/12 = 140.00. Doc _013 relationship bonus stacked per _045 → 6.875%, 142.00. Doc _045 example favours gold.",
+      "scorer": {
+        "field": "accounts[sav_wl94k7m3p8_gold].current_holdings: gold=\"96140.00\" agent=\"96142.00\"; bank_account_transaction_history[txn_c75c4b8687b54ba5]: MISSING row (gold has)",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

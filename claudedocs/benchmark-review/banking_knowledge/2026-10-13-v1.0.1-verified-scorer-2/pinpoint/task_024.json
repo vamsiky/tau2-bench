@@ -1,0 +1,30 @@
+{
+  "task_id": "task_024",
+  "severity": "Major",
+  "reason": "Gold applies for Business Bronze ($900 back), but Silver Zoom's open triple-cash-back promo pays $1,200 on the $40,000 truck; no doc bars landscapers.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Silver Zoom promo beats gold's Business Bronze",
+      "kind": "ambiguous_choice",
+      "step": 0,
+      "gold": {"call": "apply_for_credit_card",
+               "args": {"card_type": "Business Bronze Rewards Card", "customer_name": "Marcus Chen", "annual_income": 120000, "rho_bank_subscription": false},
+               "output": "Credit card application submitted:\nYour application has been successfully submitted. ..."},
+      "doc_faithful": {"call": "apply_for_credit_card",
+                       "args": {"card_type": "Silver Zoom Card", "customer_name": "Marcus Chen", "annual_income": 120000, "rho_bank_subscription": false},
+                       "output": "Credit card application submitted:\nYour application has been successfully submitted. ...",
+                       "note": "Agent comparing all business cards recommends Silver Zoom: 3 x 1.0% x $40,000 = $1,200 ($1,125.50 after $74.50 fee) vs Bronze $400 + $500 = $900."},
+      "refs": [
+        {"source": "doc_business_credit_cards_silver_zoom_card_012", "quote": "You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31"},
+        {"source": "doc_business_credit_cards_silver_zoom_card_012", "quote": "All other eligible purchases earn 3 × 1.0% during the promo period"},
+        {"source": "doc_business_credit_cards_business_bronze_rewards_card_010", "quote": "After qualification, a $500 statement credit will be applied to your account."},
+        {"source": "doc_business_credit_cards_silver_zoom_card_001", "quote": "Established transportation and logistics operators that can meet both personal and business credit criteria"}
+      ],
+      "conflict": "Silver Zoom _012 promo open on 2025-11-14: $1,200 (or $3,600 if truck counts as transport). Gold Bronze: $900. Zoom docs say 'built for' logistics; no doc states others are ineligible.",
+      "scorer": {"field": "credit_card_applications: gold row \"Business Bronze Rewards Card\" MISSING, agent row \"Silver Zoom Card\" EXTRA",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

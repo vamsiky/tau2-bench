@@ -1,7 +1,7 @@
 {
   "task_id": "task_029",
-  "severity": "Blocker",
-  "headline": "The agent is expected to catch a customer lying that her disputes were approved, but it has no tool to check, and the twin task 028 rewards believing the same words.",
+  "severity": "Major",
+  "headline": "Doc _004 tells the agent to confirm resolved disputes in cash_back_disputes, but no agent tool reads it; refusing the customer's false 'resolved' claim is reachable only by asking what each submission returned (SUBMITTED).",
   "ratings": {
     "instructions_sufficient": "Partial",
     "docs_deterministic": "No",
@@ -11,20 +11,20 @@
   },
   "issues": [
     {
-      "class": "non_determinism",
-      "severity": "Blocker",
-      "summary": "The gold has no update_transaction_rewards_3847 calls, because the disputes are hidden in status SUBMITTED. The agent cannot read cash_back_disputes. It sees the same 'they've all been approved and resolved' claim that task_028 expects it to act on.",
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "The gold has no update_transaction_rewards_3847 calls because the disputes are in status SUBMITTED. No agent tool reads cash_back_disputes, but each submit_cash_back_dispute_0589 result the customer receives says 'Status: SUBMITTED - Your dispute has been queued for review.', which contradicts her scripted claim that they were 'approved and resolved'.",
       "evidence": [
         "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
         "tools.py: the only reference to cash_back_disputes is the add_to_db write inside KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool (base or discoverable) reads that table. Agent tool list (no_knowledge variant): call_discoverable_agent_tool, change_user_email, get_credit_card_accounts_by_user, get_credit_card_transactions_by_user, get_current_time, get_referrals_by_user, get_user_information_by_*, give_discoverable_user_tool, list_discoverable_agent_tools, log_verification, transfer_to_human_agents, unlock_discoverable_agent_tool (+ KB search/shell over documents only)",
-        "submit_cash_back_dispute_0589 result (status line) is returned to the user simulator only, never to the agent",
-        "task_028 initial_state task_config.dispute_settings.auto_resolve_disputes = true -> replayed dispute status RESOLVED; task_029 auto_resolve_disputes = false -> status SUBMITTED",
-        "task_028 Phase 2 and task_029 Phase 2 scripts use the identical customer line: \"Great, I've submitted all the disputes. I just got a notification that they've all been approved and resolved! Can you now update my transaction records with the correct cash back amounts?\"",
+        "submit_cash_back_dispute_0589 returns its status line to the customer: here 'Status: SUBMITTED - Your dispute has been queued for review.' (auto_resolve_disputes = false); in task_028 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.' (true)",
+        "simulation_guidelines_tools.md: \"Never make up the results of tool calls that the agent has requested, you must ground your responses based on the results of tool calls if the agent has requested.\"",
+        "Script: \"After you've submitted all the disputes, LIE to the agent\" ... \"I just got a notification that they've all been approved and resolved!\"",
         "description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED (not RESOLVED).\"",
-        "Replay: gold + unlock/call update_transaction_rewards_3847(txn_57ecc6da56c2, '95 points') -> verified match False: extra discoverable calls ['update_transaction_rewards_3847'], table 'credit_card_transaction_history' differs"
+        "Replay: gold -> verified PASS; gold + unlock/call update_transaction_rewards_3847 for the six rows -> verified FAIL: extra discoverable calls ['update_transaction_rewards_3847'], table 'credit_card_transaction_history' differs"
       ],
       "gold_action_refs": [],
-      "why_it_matters": "The verification the notes require cannot be done. An agent passes only if it happens to distrust the customer, and the same disposition fails task_028. The result measures trust disposition, not correct behaviour.",
+      "why_it_matters": "The documented check cannot be run, so refusing is reachable only through an undocumented workaround: asking the customer exactly what each submission returned before she tells the scripted lie. Her result begins 'Your case has been queued for review.', the same words the RESOLVED twins (026/028) get, and only the following 'Status: SUBMITTED' line differs. An agent that accepts her 'approved and resolved' claim fails here, while one that declines without proof fails in the twins, so scores depend on a convention the documents do not give.",
       "suggested_fix": "Give the agent a documented read of cash_back_disputes, such as a discoverable status tool, and make that read a gold action in both 028 and 029."
     },
     {
@@ -63,7 +63,7 @@
       "suggested_fix": "Copy task_028's step 4 into the task_029 script."
     }
   ],
-  "solution_check": "Phase 1 has the same data as task_028: flooring per doc_007 gives exactly the 6 gold dispute transactions. The gold stops after the six user dispute submissions. Replaying that reproduces the gold DB (disputes in status SUBMITTED). Any rewards update breaks the match. Whether an agent stops correctly cannot be decided from what it can see.",
+  "solution_check": "Phase 1 has the same data as task_028: flooring per doc_007 gives exactly the 6 gold dispute transactions. The gold stops after the six user dispute submissions. Replaying that reproduces the gold DB (disputes in status SUBMITTED). Any rewards update breaks the match. An agent that asks the customer what each submission returned hears SUBMITTED and declines to update.",
   "prior_status": "changed",
   "prior_note": "The prior Major ('unwritten round-down rule') does not hold: doc_..._007 documents flooring and the default retrieval can reach it, so only a Minor required_documents gap remains. The real defect is the unverifiable dispute status, which is a Blocker.",
   "notes": "The verified scorer does not change this result: an extra update_transaction_rewards_3847 call succeeds rather than being rejected for bad input, and credit_card_transaction_history is compared exactly. The run grader builds the env with read_log_allowlist = {} here, since the gold has no call_discoverable_agent_tool."

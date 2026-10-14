@@ -31,25 +31,26 @@
     },
     {
       "class": "hidden_ordering",
-      "severity": "Major",
-      "summary": "The gold processes the credit-limit increase before filing the dispute, because a pending dispute blocks CLI approval. The customer asks for the dispute first, and no document tells the agent to reorder concurrent requests to avoid the dispute check.",
+      "severity": "Minor",
+      "summary": "The gold approves the credit-limit increase (gold[12]) before filing the dispute (gold[15]), because a pending dispute blocks CLI approval. The customer names the dispute first in the opening, but that is only the order of mention: the goal is to get both done, and no later script step insists on the dispute going first.",
       "evidence": [
-        "user_scenario opening: \"State BOTH requests upfront, but the dispute first\"",
+        "user_scenario goal: \"Get BOTH the transaction dispute filed AND the credit limit increase approved.\"",
+        "user_scenario opening: \"State BOTH requests upfront, but the dispute first\" (order of mention; no later step presses it)",
         "doc_credit_cards_credit_card_account_logistics_007 Step 2: \"3. No Pending Disputes: Verify the account has no active disputes.\"",
         "tools.py approve_credit_limit_increase_5847 rejects when the user has a dispute with status SUBMITTED/UNDER_REVIEW/PENDING",
-        "Replay: dispute filed first, then approve -> \"Error: Credit limit increase request cannot be approved at this time.\"; dispute first + deny(pending_disputes) -> verified=False (missing approve, extra deny, credit_card_accounts and credit_limit_increase_requests differ)"
+        "Replay: gold order -> verified=True; dispute filed first + deny(pending_disputes) -> verified=False (missing approve, extra deny, credit_card_accounts and credit_limit_increase_requests differ)"
       ],
       "gold_action_refs": [
         10,
         12,
         15
       ],
-      "why_it_matters": "An agent that handles requests in the customer's order, which the documents allow, files the dispute, finds a pending dispute, and denies the CLI per policy. That is a documented outcome, but it fails. Passing requires noticing the interaction and sequencing the CLI first, which the author notes call the test but which no document states.",
-      "suggested_fix": "Add a rule to logistics_007 or the dispute doc on handling a CLI and a new dispute in the same contact (for example, 'process the CLI before filing a new dispute'), or have the customer ask for the CLI first."
+      "why_it_matters": "The gold is correct. An agent that reads logistics_007 for the CLI can see that filing the dispute first would block the increase and defeat half of the customer's goal, so it does the CLI first or proposes that order, which nothing in the script gives the customer a reason to refuse. A run fails only if the agent files the dispute without weighing that rule and then denies the CLI. This is a reliability risk, not a defect.",
+      "suggested_fix": "Optional: add a line to logistics_007 on handling a CLI and a new dispute in the same contact, or script the customer's reply if the agent raises the conflict."
     }
   ],
   "solution_check": "CLI: Silver Rewards is Mid tier, $7,500 is 50% of $15,000 (the cap), utilization $4,500/$15,000 = 30% is under 80%, opened 11/15/2024, no history, 3 on-time payments, so submit 7500 and approve 22500. Dispute: GNR purchased 10/10/2025 (35 days ago), merchant contacted, $1,247.99 within the $5,000 mid-tier cap, no prior disputes, so eligible_for_provisional_credit true, noticed 10/31/2025, full_refund, keep_active, last-4 from the customer's tool. The arguments match the gold, but reaching the gold state requires the user tool call the gold omits.",
   "prior_status": "new",
-  "prior_note": "The prior review found this task clean. The omitted user call makes the gold unreachable under v1.0.1's exact user-side comparison (and the verified scorer, which compares user_discoverable_tool_calls exactly), and the CLI-before-dispute ordering is a separate new Major finding.",
+  "prior_note": "The prior review found this task clean. The omitted user call makes the gold unreachable under v1.0.1's exact user-side comparison (and the verified scorer, which compares user_discoverable_tool_calls exactly), and the CLI-before-dispute ordering is a separate new Minor finding.",
   "notes": "payment_history includes ph_e9d195fe8e_silver_006 dated 2025-11-15, after the fixed clock (2025-11-14). It is ON_TIME, like the three before it, so the 3-month on-time check comes out the same either way and the gold does not depend on it. Gold 053_15 carries compare_args, but reward_basis is DB only, so it has no effect."
 }

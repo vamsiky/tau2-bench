@@ -1,0 +1,107 @@
+{
+  "task_id": "task_039",
+  "severity": "Major",
+  "reason": "Gold step 9 denies credit on the $129.45 fraud dispute by counting this session's filings; doc _015 never says to, and history shows zero.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Unclear whether same-session filings count toward cap",
+      "kind": "ambiguous_choice",
+      "step": 9,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_2f16599b9075",
+          "contacted_merchant": false,
+          "purchase_date": "10/11/2025",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_6d3fd7ab85a6\nTransaction: txn_2f16599b9075\nReason: Unauthorized Fraudulent Charge ... Provisional Credit: Not eligible at this time."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_2f16599b9075",
+          "contacted_merchant": false,
+          "purchase_date": "10/11/2025",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_6d3fd7ab85a6\nTransaction: txn_2f16599b9075\nReason: Unauthorized Fraudulent Charge ... Provisional Credit: ELIGIBLE - Credit will be applied within 2 business days.",
+        "note": "Snapshot reading: count only the history from gold step 2, which shows no disputes, so all criteria hold."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "tool:get_user_dispute_history_7291",
+          "quote": "gold step 2 output: \"No transaction disputes found for this user.\""
+        }
+      ],
+      "conflict": "History (step 2): 0 disputes. Doc _015 is silent on in-session filings. Gold counts steps 6-8, so step 9 ($129.45 fraud) is false; snapshot reading: true.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_6d3fd7ab85a6].eligible_for_provisional_credit: gold=false agent=true; .provisional_credit_given: gold=false agent=true",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Gold flags need largest-first filing order",
+      "kind": "ambiguous_choice",
+      "step": 8,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_182e896e1c97",
+          "contacted_merchant": true,
+          "purchase_date": "10/26/2025",
+          "dispute_reason": "duplicate_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_724e3fc6e879\nTransaction: txn_182e896e1c97\nReason: Duplicate Charge ... Provisional Credit: ELIGIBLE - Credit will be applied within 2 business days."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_182e896e1c97",
+          "contacted_merchant": true,
+          "purchase_date": "10/26/2025",
+          "dispute_reason": "duplicate_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Transaction: txn_182e896e1c97\nReason: Duplicate Charge ... Provisional Credit: Not eligible at this time.",
+        "note": "Gold's own cumulative reading, but filing in the customer's listed order (234.56, 312.87, 267.34, 198.23, 129.45, 215.67, 162.54, 56.78): only 234.56 and 312.87 are eligible; $215.67 is filed 6th with 5 prior."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "instructions",
+          "quote": "If there's any limit on provisional credit, I want it applied to the biggest charges first. The $312 Costco charge and the $234 fraud charge are the ones hurting my cash flow the most right now. Do not mention this if the agent does NOT bring provisional credit up."
+        }
+      ],
+      "conflict": "No doc sets filing order. Gold files 312.87, 234.56, 215.67 first (steps 6-8). Listed order makes $215.67 ineligible; the priority line appears only if the agent raises provisional credit.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_724e3fc6e879].eligible_for_provisional_credit: gold=true agent=false; .provisional_credit_given: gold=true agent=false",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

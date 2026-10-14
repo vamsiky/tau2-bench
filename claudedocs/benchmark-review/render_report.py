@@ -4,7 +4,9 @@ The reviewers write judgments only (``findings/<task_id>.json``, optional
 ``verification/*.json`` and ``synthesis.json``). Everything copied from the benchmark
 itself - customer instructions, required documents, gold actions - is read here from
 the benchmark's git ref, so the report always shows the exact task text that was
-reviewed.
+reviewed. Optional ``pinpoint/<task_id>.json`` files give each verdict's exact step,
+values, and document text, and ``inputs/gold_outputs.json`` holds each gold step's
+output (both written with ``replay.py``).
 
 Usage:
     python claudedocs/benchmark-review/render_report.py \
@@ -65,8 +67,22 @@ def load_run(run_dir: Path, allow_partial: bool = False) -> dict:
         task = tree.read_json(path)
         tasks[task["id"]] = task
 
+    pinpoints = {}
+    for path in sorted((run_dir / "pinpoint").glob("*.json")):
+        p = json.loads(path.read_text())
+        pinpoints[p["task_id"]] = p
+    cited = {
+        r["source"]
+        for p in pinpoints.values()
+        for point in p.get("points", [])
+        for r in point.get("refs", [])
+        if r.get("source", "").startswith("doc_")
+    }
+    outputs_path = run_dir / "inputs" / "gold_outputs.json"
+    gold_outputs = json.loads(outputs_path.read_text()) if outputs_path.exists() else {}
+
     doc_ids = sorted(
-        {d for t in tasks.values() for d in t.get("required_documents") or []}
+        {d for t in tasks.values() for d in t.get("required_documents") or []} | cited
     )
     documents = {}
     for doc_id in doc_ids:
@@ -82,6 +98,9 @@ def load_run(run_dir: Path, allow_partial: bool = False) -> dict:
     findings = {}
     for path in sorted((run_dir / "findings").glob("*.json")):
         f = json.loads(path.read_text())
+        if not meta.get("prior_run"):
+            f.pop("prior_status", None)
+            f.pop("prior_note", None)
         findings[f["task_id"]] = f
     missing = sorted(set(tasks) - set(findings))
     if missing and not allow_partial:
@@ -105,7 +124,11 @@ def load_run(run_dir: Path, allow_partial: bool = False) -> dict:
             verification["methodology_notes"].append(v["methodology_note"])
 
     prior_path = run_dir / "inputs" / "prior_findings.json"
-    prior = json.loads(prior_path.read_text()) if prior_path.exists() else {"tasks": {}}
+    prior = (
+        json.loads(prior_path.read_text())
+        if meta.get("prior_run") and prior_path.exists()
+        else {"tasks": {}}
+    )
     synthesis_path = run_dir / "synthesis.json"
     synthesis = (
         json.loads(synthesis_path.read_text()) if synthesis_path.exists() else {}
@@ -139,6 +162,8 @@ def load_run(run_dir: Path, allow_partial: bool = False) -> dict:
         "prior": prior,
         "synthesis": synthesis,
         "reconciled": reconciled,
+        "pinpoints": pinpoints,
+        "gold_outputs": gold_outputs,
     }
 
 
@@ -170,6 +195,8 @@ def build_rows(run: dict) -> list[dict]:
                 "prior_severity": p.get("severity", "-"),
                 "prior_status": f.get("prior_status", "-"),
                 "headline": f.get("headline", ""),
+                "reason": run["pinpoints"].get(task_id, {}).get("reason")
+                or f.get("headline", ""),
                 "ratings": f.get("ratings", {}),
                 "classes": sorted({i.get("class", "") for i in f.get("issues", [])}),
                 "reward_basis": run["tasks"][task_id]["evaluation_criteria"].get(
@@ -188,28 +215,82 @@ def md_cell(text) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
+def md_call(c: dict | None) -> str:
+    if not c:
+        return "-"
+    if c.get("call") == "(no call)":
+        return "no tool call"
+    if not c.get("args") and not c.get("output"):
+        return f"skips `{md_cell(c.get('call', ''))}`"
+    args = ", ".join(f"{k}={json.dumps(v)}" for k, v in (c.get("args") or {}).items())
+    return f"`{md_cell(c.get('call', ''))}({md_cell(args)})`"
+
+
+def md_pinpoint(p: dict) -> list[str]:
+    out = [f"**Why:** {p['reason']}", ""]
+    for n, pt in enumerate(p.get("points", []), 1):
+        step = (
+            f"gold step #{pt['step']}" if pt.get("step") is not None else "no gold step"
+        )
+        out += [
+            f"**{n}. {pt['title']}** ({pt['severity']} · {pt['kind']} · {step})",
+            "",
+            *([f"*{pt['issue_note']}*", ""] if pt.get("issue_note") else []),
+            "| | Call | Output |",
+            "|---|---|---|",
+            f"| Gold | {md_call(pt.get('gold'))} | {md_cell((pt.get('gold') or {}).get('output', '-'))} |",
+        ]
+        alt = pt.get("doc_faithful")
+        if alt:
+            note = f" ({alt['note']})" if alt.get("note") else ""
+            out.append(
+                f"| Alternative path | {md_call(alt)}{md_cell(note)} | {md_cell(alt.get('output', '-'))} |"
+            )
+        out.append("")
+        for r in pt.get("refs", []):
+            out.append(f'- **{r["source"]}:** "{" ".join(r["quote"].split())}"')
+        out.append(f"- **Where it differs:** {pt['conflict']}")
+        sc = pt.get("scorer")
+        if sc:
+            out.append(
+                f"- **Scorer:** `{sc.get('field', '-')}` → DB upstream {sc['upstream']}, "
+                f"verified {sc['verified']}"
+                + (
+                    f", actions {sc['action']}"
+                    if sc.get("action") in ("PASS", "FAIL")
+                    else ""
+                )
+            )
+        out.append("")
+    if p.get("discrepancy"):
+        out += [f"*Replay note:* {p['discrepancy']}", ""]
+    return out
+
+
 def render_md(run: dict, rows: list[dict]) -> str:
     m, syn = run["meta"], run["synthesis"]
     counts = Counter(r["severity"] for r in rows)
     prior_counts = Counter(r["prior_severity"] for r in rows)
+    has_prior = bool(m.get("prior_run"))
     out = [
         f"# `{m['domain']}` benchmark correctness review — {m['benchmark_version']}",
         "",
         f"**Benchmark:** `{m['benchmark_ref']}` (`{m['benchmark_commit'][:10]}`) · "
         f"**Run date:** {m['run_date']} · **Reviewer:** {m.get('reviewer', '-')} · "
-        f"**Effort:** {m.get('effort', '-')} · "
-        f"**Prior review:** {m.get('prior_run', '-')}",
+        f"**Effort:** {m.get('effort', '-')}"
+        + (f" · **Prior review:** {m['prior_run']}" if has_prior else ""),
         "",
         "The interactive version (`review.html`) shows each task's customer instructions, "
         "required documents, gold trajectory, and findings side by side.",
         "",
         "## Summary",
         "",
-        "| Severity | Now | Prior |",
-        "|---|---|---|",
+        "| Severity | Now | Prior |" if has_prior else "| Severity | Tasks |",
+        "|---|---|---|" if has_prior else "|---|---|",
     ]
     for s in SEVERITIES:
-        out.append(f"| {s} | {counts.get(s, 0)} | {prior_counts.get(s, 0)} |")
+        prior_cell = f" {prior_counts.get(s, 0)} |" if has_prior else ""
+        out.append(f"| {s} | {counts.get(s, 0)} |{prior_cell}")
     if syn.get("summary"):
         out += ["", syn["summary"]]
     if syn.get("systemic_issues"):
@@ -224,40 +305,58 @@ def render_md(run: dict, rows: list[dict]) -> str:
         if r["prior_status"] in ("resolved", "changed", "new")
         or r["severity"] != r["prior_severity"]
     ]
-    out += [
-        "",
-        "## Changes since the prior review",
-        "",
-        "| Task | Prior | Now | Status | Headline |",
-        "|---|---|---|---|---|",
-    ]
-    for r in changed:
-        out.append(
-            f"| {r['task_id']} | {r['prior_severity']} | {r['severity']} | {r['prior_status']} | {md_cell(r['headline'])} |"
-        )
+    if has_prior:
+        out += [
+            "",
+            "## Changes since the prior review",
+            "",
+            "| Task | Prior | Now | Status | Why |",
+            "|---|---|---|---|---|",
+        ]
+        for r in changed:
+            out.append(
+                f"| {r['task_id']} | {r['prior_severity']} | {r['severity']} | {r['prior_status']} | {md_cell(r['reason'])} |"
+            )
+    prior_head = " Prior |" if has_prior else ""
     out += [
         "",
         "## All tasks",
         "",
-        "| Task | Final | Reviewer | Verifier | Reconciled | Prior | Instr. | Docs det. | Cx | Ordering | Gold ok | Headline |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        f"| Task | Final | Reviewer | Verifier | Reconciled |{prior_head} Instr. | Docs det. | Cx | Ordering | Gold ok | Why |",
+        "|---" * (12 if has_prior else 11) + "|",
     ]
     for r in rows:
         g = r["ratings"]
+        prior_cell = f" {r['prior_severity']} |" if has_prior else ""
         out.append(
             f"| {r['task_id']} | {r['severity']} | {r['review_severity']} | "
-            f"{r['verdict']} ({r['verified_severity']}) | {'yes' if r['reconciled'] else '-'} | {r['prior_severity']} | "
+            f"{r['verdict']} ({r['verified_severity']}) | {'yes' if r['reconciled'] else '-'} |{prior_cell} "
             f"{g.get('instructions_sufficient', '-')} | {g.get('docs_deterministic', '-')} | "
             f"{g.get('reasoning_complexity', '-')} | {g.get('ordering_dependency', '-')} | "
-            f"{g.get('gold_consistent', '-')} | {md_cell(r['headline'])} |"
+            f"{g.get('gold_consistent', '-')} | {md_cell(r['reason'])} |"
         )
-    out += ["", "## Findings (Blocker and Major)", ""]
+    shown = ("Blocker", "Major", "Minor") if run["pinpoints"] else ("Blocker", "Major")
+    out += ["", f"## Findings ({', '.join(shown)})", ""]
+    if run["pinpoints"]:
+        out += [
+            "Each finding shows the gold step where the task breaks, the path an agent "
+            "that follows the documents takes there instead (both replayed on the "
+            "benchmark snapshot), the exact text that disagrees with the gold, and what "
+            "the scorer compares. For a Minor issue where the gold is right but easy to "
+            "miss, the alternative is the plausible misreading. Full write-ups are in "
+            "`findings/` and `verification/`.",
+            "",
+        ]
     for r in rows:
-        if r["severity"] not in ("Blocker", "Major"):
+        if r["severity"] not in shown:
             continue
         f = run["findings"][r["task_id"]]
         v = run["verdicts"].get(r["task_id"])
-        out += [f"### {r['task_id']} — {r['severity']}", "", f"**{f['headline']}**", ""]
+        out += [f"### {r['task_id']} — {r['severity']}", ""]
+        if r["task_id"] in run["pinpoints"]:
+            out += md_pinpoint(run["pinpoints"][r["task_id"]])
+            continue
+        out += [f"**{f['headline']}**", ""]
         for i in f.get("issues", []):
             out.append(
                 f"- **{i.get('class')} ({i.get('severity')})** — {i.get('summary')}"
@@ -303,6 +402,7 @@ def render_html(run: dict, rows: list[dict]) -> str:
                 "nl_assertions": t["evaluation_criteria"].get("nl_assertions") or [],
                 "reward_basis": t["evaluation_criteria"].get("reward_basis") or [],
                 "initial_state": t.get("initial_state"),
+                "outputs": run["gold_outputs"].get(tid, []),
             }
             for tid, t in run["tasks"].items()
         },
@@ -313,6 +413,7 @@ def render_html(run: dict, rows: list[dict]) -> str:
         "reconciled": run["reconciled"],
         "prior": run["prior"]["tasks"],
         "synthesis": run["synthesis"],
+        "pinpoints": run["pinpoints"],
     }
     data = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     template = (HERE / "report_template.html").read_text()

@@ -1,0 +1,49 @@
+{
+  "task_id": "task_096",
+  "severity": "Minor",
+  "reason": "Docs say Bronze and Gold Plus interest compounds daily, but gold credits ($17.50, $15.00) use the seeded balance×APY/12 convention; daily compounding gives $17.85, $11.08.",
+  "points": [
+    {
+      "issue": 2,
+      "severity": "Minor",
+      "title": "Daily-compounding docs vs simple monthly gold credits",
+      "kind": "ambiguous_choice",
+      "step": 7,
+      "gold": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {
+          "account_id": "sav_ni73k9m4p2_bronze",
+          "amount": 17.5,
+          "credit_type": "interest_correction"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_136c2e2023da789d\n...\n  - Amount: $17.50\n  - Previous Balance: $30000.00\n  - New Balance: $30017.50"
+      },
+      "doc_faithful": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {
+          "account_id": "sav_ni73k9m4p2_bronze",
+          "amount": 17.85,
+          "credit_type": "interest_correction"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_d53dfc2f650ad90d\n...\n  - Amount: $17.85\n  - Previous Balance: $30000.00\n  - New Balance: $30017.85",
+        "note": "Plausible misreading: agent applies the documented daily compounding instead of the balance×APY/12 convention the seeded credits use. Step 8 (Gold Plus) likewise 11.08 instead of 15.00."
+      },
+      "refs": [
+        {
+          "source": "doc_savings_accounts_bronze_account_007",
+          "quote": "Interest compounds daily, so each day's interest is based on your current balance plus any previously accrued interest."
+        },
+        {
+          "source": "db:bank_account_transaction_history[btxn_bronze_interest_oct]",
+          "quote": "amount 63.75 = 30000 × 2.55% / 12"
+        }
+      ],
+      "conflict": "Gold step 7: 30000×(3.25−2.55)%/12 = 17.50; step 8: 15.00. Daily compounding over 31 days: 17.85 and 11.08. Seeded credits support gold.",
+      "scorer": {
+        "field": "accounts[sav_ni73k9m4p2_bronze].current_holdings: gold=\"30017.50\" agent=\"30017.85\"; accounts[sav_ni73k9m4p2_goldplus].current_holdings: gold=\"60015.00\" agent=\"60011.08\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

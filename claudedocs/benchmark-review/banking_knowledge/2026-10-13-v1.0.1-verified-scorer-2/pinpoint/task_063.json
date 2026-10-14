@@ -1,0 +1,30 @@
+{
+  "task_id": "task_063",
+  "severity": "Blocker",
+  "reason": "Bronze and Silver Rewards both add +0.15% to Silver Plus ($252/yr on $8,000), both fit; gold step 1 accepts only Silver Rewards.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Bronze and Silver Rewards tie exactly",
+      "kind": "ambiguous_choice",
+      "step": 1,
+      "gold": {"call": "apply_for_credit_card",
+               "args": {"card_type": "Silver Rewards Card", "customer_name": "Taylor Brooks", "annual_income": 85000, "rho_bank_subscription": false},
+               "output": "Credit card application submitted:\nYour application has been successfully submitted. ..."},
+      "doc_faithful": {"call": "apply_for_credit_card",
+                       "args": {"card_type": "Bronze Rewards Card", "customer_name": "Taylor Brooks", "annual_income": 85000, "rho_bank_subscription": false},
+                       "output": "Credit card application submitted:\nYour application has been successfully submitted. ...",
+                       "note": "Agent recommends the equally good Bronze Rewards; customer applies with \"whatever card the agent recommended\"."},
+      "refs": [
+        {"source": "doc_savings_accounts_silver_plus_account_009", "quote": "| Bronze Rewards Card | +0.15% |"},
+        {"source": "doc_savings_accounts_silver_plus_account_009", "quote": "| Silver Rewards Card | +0.15% |"},
+        {"source": "doc_credit_cards_bronze_rewards_card_001", "quote": "Consent to a credit pull (minimum score requirement is $640)."},
+        {"source": "instructions", "quote": "card_type: Use whatever card the agent recommended"}
+      ],
+      "conflict": "Both cards: $0 fee, credit check, minimum ≤700, +0.15% on Silver Plus → $8,000 × 3.15% = $252. No doc tie-breaker; gold step 1 takes Silver Rewards only.",
+      "scorer": {"field": "credit_card_applications[df7bfcce497828d4]: MISSING row (gold has); credit_card_applications[834b05512cd56ec5]: EXTRA row (Bronze Rewards Card)",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

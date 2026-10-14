@@ -33,7 +33,7 @@
         4,
         5
       ],
-      "why_it_matters": "A doc-faithful agent that recomputes every row finds 13 discrepancies: 4 gross and 9 one-point overcredits. The customer is told to follow the agent's lead, so if the agent presents all 13 she disputes all 13 and the task fails. Customers in sibling tasks 018/022 are told to dispute overpaid rows, so flagging overcredits is the benchmark's own convention. The gold is reached only by rounding half-up (against _007) or by an unstated materiality threshold. The verified scorer compares both affected tables exactly.",
+      "why_it_matters": "A doc-faithful agent that recomputes every row finds 13 discrepancies: 4 gross and 9 one-point overcredits. The customer is told to follow the agent's lead, so if the agent presents all 13 she disputes all 13 and the task fails. The gold is reached only by rounding half-up (against _007) or by an unstated materiality threshold. The verified scorer compares both affected tables exactly.",
       "suggested_fix": "Re-seed Amara's (755bcb4d5d) non-error rows with floored values (e.g. a8f1c2d3e402 -> 1099, b7e2d4c5f503 -> 179, ...), so the documented rule reproduces the gold set; or change _007 to round half-up and re-seed the floor-convention tasks 017-019/021/022."
     },
     {

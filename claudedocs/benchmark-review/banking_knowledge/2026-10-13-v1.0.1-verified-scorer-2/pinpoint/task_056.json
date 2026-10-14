@@ -1,0 +1,28 @@
+{
+  "task_id": "task_056",
+  "severity": "Major",
+  "reason": "Business-savings doc _004 says \"Set account_type to 'savings'\"; gold step 5 uses 'business_savings', so following the doc creates a different account.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Doc says account_type 'savings'; gold uses 'business_savings'",
+      "kind": "ambiguous_choice",
+      "step": 5,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "b5e8f2a1c9", "account_type": "business_savings", "account_class": "Silver Plus Saver Account"},
+               "output": "Bank account opened successfully!\n  - Account ID: c1b48f17bb35e876\n  ...\n  - Account Type: business_savings"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "b5e8f2a1c9", "account_type": "savings", "account_class": "Silver Plus Saver Account"},
+                       "output": "Bank account opened successfully!\n  - Account ID: 3e54498f671ab53f\n  ...\n  - Account Type: savings",
+                       "note": "No error; step 7 then transfers $3,200 to 3e54498f671ab53f."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_004", "quote": "Set account_type to 'savings'."},
+        {"source": "tool:open_bank_account_4821", "quote": "Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'"}
+      ],
+      "conflict": "Business-savings procedure _004 says 'savings'; tool docstring calls that personal and lists 'business_savings'. Gold step 5 follows the docstring; account ID changes (c1b48f… vs 3e5449…).",
+      "scorer": {"field": "accounts[3e54498f671ab53f]: EXTRA row; accounts[c1b48f17bb35e876]: MISSING row (gold has)",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

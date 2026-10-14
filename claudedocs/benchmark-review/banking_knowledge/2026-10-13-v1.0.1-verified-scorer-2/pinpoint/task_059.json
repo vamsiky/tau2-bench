@@ -1,0 +1,29 @@
+{
+  "task_id": "task_059",
+  "severity": "Major",
+  "reason": "Gold step 5 opens savings as 'Green Account'; the docs name the product 'Green Account (savings)', which opens a different account and fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Two documented spellings for Green savings class",
+      "kind": "ambiguous_choice",
+      "step": 5,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "cr59b4d8e3", "account_type": "savings", "account_class": "Green Account"},
+               "output": "Bank account opened successfully!\n  - Account ID: 6bec25bde54c963e\n  ...\n  - Account Class: Green Account"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "cr59b4d8e3", "account_type": "savings", "account_class": "Green Account (savings)"},
+                       "output": "Bank account opened successfully!\n  - Account ID: f9386249cd4ade09\n  ...\n  - Account Class: Green Account (savings)",
+                       "note": "Agent copies the product's full documented name, following general_001's 'Green Account (checking)' pattern."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_001", "quote": "Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')"},
+        {"source": "doc_savings_accounts_green_account_(savings)_005", "quote": "What APY does the Green Account (savings) earn?"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_002", "quote": "account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'"}
+      ],
+      "conflict": "Savings docs name it 'Green Account (savings)' (13 uses); general_001 keeps the suffix in a class example. Gold step 5 uses bare 'Green Account'; account ID changes.",
+      "scorer": {"field": "accounts[6bec25bde54c963e]: MISSING row (gold has); accounts[f9386249cd4ade09]: EXTRA row",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

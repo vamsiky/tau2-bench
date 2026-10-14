@@ -1,0 +1,30 @@
+{
+  "task_id": "task_071",
+  "severity": "Major",
+  "reason": "Business-savings procedure doc _004 says \"Set account_type to 'savings'\", but gold step 5 uses 'business_savings', producing a different account.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Doc _004 says account_type 'savings'; gold uses business_savings",
+      "kind": "gold_value_wrong",
+      "step": 5,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "yt71c9e4f2", "account_type": "business_savings", "account_class": "Gold Saver Account"},
+               "output": "Bank account opened successfully!\n  - Account ID: 00babd93acc4dd4e\n  - User ID: yt71c9e4f2\n  - Account Type: business_savings\n  - Account Class: Gold Saver Account"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "yt71c9e4f2", "account_type": "savings", "account_class": "Gold Saver Account"},
+                       "output": "Bank account opened successfully!\n  - Account ID: b8329f69ab675fe5\n  - User ID: yt71c9e4f2\n  - Account Type: savings\n  - Account Class: Gold Saver Account",
+                       "note": "Follows doc _004 verbatim; the personal-savings eligibility check passes, so the call succeeds with a different id."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_004",
+         "quote": "Set account_type to 'savings'."},
+        {"source": "tool:open_bank_account_4821",
+         "quote": "Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'"}
+      ],
+      "conflict": "Doc _004 (Opening Business Savings Accounts): account_type 'savings'. Gold step 5: 'business_savings'. The tool accepts both; the account id hash differs.",
+      "scorer": {"field": "accounts[00babd93acc4dd4e]: MISSING row (business_savings); accounts[b8329f69ab675fe5]: EXTRA row (savings)",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

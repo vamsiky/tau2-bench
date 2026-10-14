@@ -1,15 +1,14 @@
 {
-  "summary": "97 tasks reviewed against v1.0.1 under the revised verified scorer: 12 Blocker, 33 Major, 24 Minor, 28 clean (v1.0.0 review: 10 / 11 / 14 / 62). Severities are the reviewers' verdicts as checked by four independent verifiers, who covered every Blocker and Major, every change from v1.0.0, and a seeded sample of 12 low-severity tasks; they confirmed 70 of 79, upgraded 8 (027 to Blocker; 046, 054, 066, 093, 101 to Major; and issue-level upgrades in 091 and 102) and corrected the reasoning in 075. Nothing is reconciled with any other run. Four of the ten v1.0.0 Blockers persist (063, 082, 083, 084) and six drop to Major because the documents support the gold's reading on one side (039, 040, 041, 074, 075, 101). The rewards rounding rule is documented (round down), which reduces 018, 019, 021 and 022 to a missing required document, but it exposes seed data and a gold value that break the rule (017, 020, 026, 027). 36 tasks the v1.0.0 review rated clean have a defect, 20 of them Major or Blocker, found mostly by replaying gold and alternative actions. The scorer's relaxations decide no Blocker or Major: bank-account closures with a custom reason (060, 061, 062, 067) are clean, and every other divergence tested fails both the verified and the exact comparison. Verifiers noted three possible under-ratings outside their groups that are left as reported: task_092's unscripted shipping speed (Minor, Major in 082), and tasks 080 and 081 if counting the dispute being filed is a supported reading of the provisional-credit limit.",
+  "summary": "97 tasks reviewed against v1.0.1 under the revised verified scorer: 8 Blocker, 35 Major, 26 Minor, 28 clean. Severities are the reviewers' verdicts as checked by four independent verifiers, who covered every Blocker and Major and a seeded sample of 12 low-severity tasks, and a targeted re-review of every flagged task's reasoning about the simulated customer: which tools each task gives it, what it will naturally do and say, and what the agent can learn by asking it. The Blockers are gold values or calls that a document-following agent cannot reproduce (026, 053, 069, 082, 083, 084, 091) and an exact tie with no tie-breaker (063). Most Majors come from strings the gold stores that differ from what the documents say to write, rules with two document-supported readings, seed data that breaks the documented rules, and the cash-back dispute twins (026-029), whose documented status lookup has no agent tool. The rewards rounding rule is documented (round down), so leaving its document out of required_documents is Minor (018, 019, 021, 022, 029). The scorer's relaxations decide no Blocker or Major: bank-account closures with a custom reason (060, 061, 062, 067) are clean, and every other divergence tested fails both the verified and the exact comparison. Verifiers noted three possible under-ratings that are left as reported: task_092's unscripted shipping speed (Minor, Major in 082), and tasks 080 and 081 if counting the dispute being filed is a supported reading of the provisional-credit limit.",
   "systemic_issues": [
     {
-      "title": "Gold depends on information the agent cannot observe",
-      "description": "No agent tool reads cash_back_disputes and the customer's own tool results never reach the agent, so 026-029 grade the same customer claim about dispute approval in opposite ways and any one behaviour passes at most one twin. task_053's gold uses card digits only the customer's get_card_last_4_digits call can return but omits that call, and task_049's gold contains a customer transfer request the script never tells the simulated customer to make.",
+      "title": "Documented checks the agent has no tool for",
+      "description": "Doc _004 tells the agent to confirm resolved disputes in cash_back_disputes, and no agent tool reads that table. In 026-029 the status reaches the agent only if it asks the customer what each submission returned (RESOLVED in 026/028, SUBMITTED in 027/029, where the customer then lies), a check no document describes. task_053's gold uses card digits that only the customer's get_card_last_4_digits call returns, yet omits that call, so an agent that has the customer make it fails.",
       "tasks": [
         "task_026",
         "task_027",
         "task_028",
         "task_029",
-        "task_049",
         "task_053"
       ]
     },
@@ -99,13 +98,11 @@
       ]
     },
     {
-      "title": "Hidden ordering and choices the script never states",
-      "description": "task_054 and task_053 need the credit limit increase before the dispute the customer asked for first; task_046 passes only if the agent reports just the first failed retention check, otherwise the scripted customer pays the balance; task_041 never states the refund types the gold records.",
+      "title": "Choices the script never states",
+      "description": "task_046 passes only if the agent reports just the first failed retention check, otherwise the scripted customer pays the balance; task_041 never states the refund types the gold records.",
       "tasks": [
         "task_041",
-        "task_046",
-        "task_053",
-        "task_054"
+        "task_046"
       ]
     }
   ]

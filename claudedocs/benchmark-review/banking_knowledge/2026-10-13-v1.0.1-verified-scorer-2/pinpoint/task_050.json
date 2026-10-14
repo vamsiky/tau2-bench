@@ -1,0 +1,29 @@
+{
+  "task_id": "task_050",
+  "severity": "Minor",
+  "reason": "The Gold-card-is-Premium tier map (doc _015) is missing from required_documents; only an Entry-tier guess ($1,250 cap) would change the $2,500 answer.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Card-to-tier map not in required documents",
+      "kind": "info_unavailable",
+      "step": 2,
+      "gold": {"call": "submit_credit_limit_increase_request_7392",
+               "args": {"credit_card_account_id": "cc_584f9c5d00_gold", "user_id": "584f9c5d00", "requested_increase_amount": 2500},
+               "output": "Credit limit increase request submitted successfully.\n...\n  - Requested Increase: $2,500\n  - Status: PENDING"},
+      "doc_faithful": {"call": "submit_credit_limit_increase_request_7392",
+                       "args": {"credit_card_account_id": "cc_584f9c5d00_gold", "user_id": "584f9c5d00", "requested_increase_amount": 1250},
+                       "output": "Credit limit increase request submitted successfully.\n...\n  - Requested Increase: $1,250\n  - Status: PENDING",
+                       "note": "Plausible misreading: the Entry-tier guess an agent might make without _015 (25% cap); also step 12 new_credit_limit 6250. Gold is correct if _015 is retrieved."},
+      "refs": [
+        {"source": "doc_credit_cards_credit_cards_(general)_015", "quote": "Premium Tier (Gold Rewards Card, Business Gold Rewards Card): Maximum $10000.00"},
+        {"source": "doc_credit_cards_credit_card_account_logistics_006", "quote": "- Entry-tier cards: Maximum increase of 25% of current credit limit per request."},
+        {"source": "task:required_documents", "quote": "logistics_004, logistics_005, logistics_006, logistics_007, replacements_005, (general)_016 (no (general)_015)"}
+      ],
+      "conflict": "Logistics_006 caps by tier but never maps cards to tiers; mapping is only in unlisted _015. Premium/Mid give 2500→7500 (gold); Entry guess gives 1250→6250.",
+      "scorer": {"field": "credit_card_accounts[cc_584f9c5d00_gold].credit_limit: gold \"$7500.00\" agent \"$6250.00\"; credit_limit_increase_requests[cli_4fe9de112e66]: MISSING row",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

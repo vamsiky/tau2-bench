@@ -1,0 +1,61 @@
+{
+  "task_id": "task_076",
+  "severity": "Major",
+  "reason": "Gold step 2 opens Purple ($20 ATM fees); Bluest also has 2-day early deposit and costs $16, excluded only by an unmentioned $75,000 deposit.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Bluest is cheaper; deposit capacity never stated",
+      "kind": "instruction_conflict",
+      "step": 2,
+      "gold": {
+        "call": "open_bank_account_4821",
+        "args": {
+          "user_id": "av96d4e7f1",
+          "account_type": "checking",
+          "account_class": "Purple Account"
+        },
+        "output": "Bank account opened successfully!\n  - Account ID: 0516a4f7bca2d8d1\n  ...\n  - Account Class: Purple Account"
+      },
+      "doc_faithful": {
+        "call": "open_bank_account_4821",
+        "args": {
+          "user_id": "av96d4e7f1",
+          "account_type": "checking",
+          "account_class": "Bluest Account"
+        },
+        "output": "Bank account opened successfully!\n  - Account ID: 96e41799521fedbe\n  ...\n  - Account Class: Bluest Account",
+        "note": "Minimises ATM fees as asked: Bluest 8 x $2.00 = $16 vs Purple 8 x $2.50 = $20; the tool does not check the opening deposit."
+      },
+      "refs": [
+        {
+          "source": "doc_checking_accounts_bluest_account_010",
+          "quote": "| Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal |"
+        },
+        {
+          "source": "doc_checking_accounts_purple_account_012",
+          "quote": "You are charged $2.50 per cash withdrawal made at an out-of-network ATM."
+        },
+        {
+          "source": "doc_checking_accounts_bluest_account_001",
+          "quote": "| Early direct deposit | 2 day(s) before payday |"
+        },
+        {
+          "source": "doc_checking_accounts_bluest_account_001",
+          "quote": "| Minimum opening deposit | $75,000 |"
+        },
+        {
+          "source": "instructions",
+          "quote": "You want to open a new personal checking account for this trip that minimizes ATM fees."
+        }
+      ],
+      "conflict": "Customer wants lowest ATM fees plus 2-day early deposit: Bluest $16 < Purple $20. Gold excludes Bluest for its $75,000 deposit; script never states funds.",
+      "scorer": {
+        "field": "accounts[0516a4f7bca2d8d1]: MISSING row (Purple Account); accounts[96e41799521fedbe]: EXTRA row (Bluest Account)",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "task_id": "task_028",
+  "severity": "Major",
+  "reason": "Doc _004's cash_back_disputes lookup has no agent tool; the gold updates are reachable only by asking the customer what each submission returned.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Documented dispute-status lookup has no agent tool",
+      "kind": "info_unavailable",
+      "step": 8,
+      "gold": {
+        "call": "unlock_discoverable_agent_tool",
+        "args": {
+          "agent_tool_name": "update_transaction_rewards_3847"
+        },
+        "output": "Tool unlocked: update_transaction_rewards_3847 ..."
+      },
+      "doc_faithful": {
+        "call": "update_transaction_rewards_3847",
+        "args": {},
+        "output": "",
+        "note": "Agent cannot run doc _004's cash_back_disputes lookup, never asks what the customer's dispute results said (RESOLVED), and declines to update; steps 8-14 dropped."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_004",
+          "quote": "Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments."
+        },
+        {
+          "source": "tool:submit_cash_back_dispute_0589",
+          "quote": "status_msg = \"Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.\""
+        },
+        {
+          "source": "instructions",
+          "quote": "I just got a notification that they've all been approved and resolved!"
+        }
+      ],
+      "conflict": "Doc _004's cash_back_disputes lookup has no agent tool; the customer's results at steps 2-7 say RESOLVED and she reports them when asked. Gold updates six rows (steps 9-14).",
+      "scorer": {
+        "field": "missing required discoverable calls: ['update_transaction_rewards_3847']; credit_card_transaction_history[txn_57ecc6da56c2].rewards_earned: gold \"95 points\" vs agent \"47 points\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

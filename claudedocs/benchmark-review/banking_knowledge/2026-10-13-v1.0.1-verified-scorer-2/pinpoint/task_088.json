@@ -1,0 +1,76 @@
+{
+  "task_id": "task_088",
+  "severity": "Major",
+  "reason": "Docs tell the agent to offer a Blue-to-Green transfer for the $449.99 decline, but gold has no transfer; any transfer fails the task.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "CODE 51 transfer offer has no gold or script answer",
+      "kind": "gold_call_missing",
+      "step": 6,
+      "gold": null,
+      "doc_faithful": {
+        "call": "transfer_funds_between_bank_accounts_7291",
+        "args": {"source_account_id": "chk_cec8333d41_blue", "destination_account_id": "chk_cec8333d41_green", "amount": 69.52},
+        "output": "Transfer completed successfully!\n  - Amount: $69.52\n  - From: chk_cec8333d41_blue (new balance: $1180.48)\n  - To: chk_cec8333d41_green (new balance: $449.99)",
+        "note": "Inserted after step 6, once the Green shortfall (380.47 vs 449.99) is explained and the customer asks for options."
+      },
+      "refs": [
+        {"source": "doc_checking_accounts_checking_accounts_(general)_006", "quote": "Offer options: 'Would you like to transfer funds from another account, or would you prefer to make a smaller transaction?'"},
+        {"source": "doc_checking_accounts_checking_accounts_(general)_006", "quote": "If they want to transfer, help them do so."},
+        {"source": "instructions", "quote": "Is there anything I can do? Can I get access to the money sooner?"}
+      ],
+      "conflict": "Doc _006 CODE 51: offer a transfer, help if accepted. Customer asks for options; script never answers a transfer offer. Gold (after step 6) has no transfer.",
+      "scorer": {"field": "accounts[chk_cec8333d41_blue].current_holdings: gold=\"1250.00\" agent=\"$1180.48\"; accounts[chk_cec8333d41_green].current_holdings: gold=\"380.47\" agent=\"$449.99\"", "upstream": "FAIL", "verified": "FAIL"}
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "CODE 82 says stolen protocol; gold closes fraud_suspected",
+      "kind": "ambiguous_choice",
+      "step": 12,
+      "gold": {
+        "call": "close_debit_card_4721",
+        "args": {"card_id": "dbc_c8feebe975cf", "reason": "fraud_suspected"},
+        "output": "Debit Card Closed Successfully\nCard ID: dbc_c8feebe975cf\n...\nClosure Reason: Fraud Suspected"
+      },
+      "doc_faithful": {
+        "call": "close_debit_card_4721",
+        "args": {"card_id": "dbc_c8feebe975cf", "reason": "stolen"},
+        "output": "Debit Card Closed Successfully\nCard ID: dbc_c8feebe975cf\nPrevious Status: ACTIVE\nNew Status: CLOSED\nClosure Reason: Stolen",
+        "note": "Agent follows the 'stolen card protocol' wording of CODE 82."
+      },
+      "refs": [
+        {"source": "doc_checking_accounts_purple_account_007", "quote": "If suspicious transactions found: Follow stolen card protocol to assist the customer."},
+        {"source": "doc_checking_accounts_purple_account_007", "quote": "Recommend freezing the card until a replacement arrives."}
+      ],
+      "conflict": "Doc purple_007 CODE 82: stolen card protocol, recommend freezing. Gold step 12: close with reason fraud_suspected.",
+      "scorer": {"field": "debit_cards[dbc_c8feebe975cf].closure_reason: gold=\"fraud_suspected\" agent=\"stolen\"; debit_cards[dbc_fbcd78c9c7aa].issue_reason: gold=\"fraud\" agent=\"stolen\"", "upstream": "FAIL", "verified": "FAIL"}
+    },
+    {
+      "issue": 3,
+      "severity": "Major",
+      "title": "Fraud charge purchase type is never stated",
+      "kind": "info_unavailable",
+      "step": 10,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {"transaction_id": "btxn_28eee7145c29", "dispute_category": "card_present_fraud", "transaction_type": "signature_purchase", "pin_compromised": "no", "card_action": "close_and_reissue"},
+        "output": "Dispute ID: dsp_76b0f2bc26c3\n...\nDisputed Amount: $347.99"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {"transaction_id": "btxn_28eee7145c29", "dispute_category": "card_present_fraud", "transaction_type": "pin_purchase", "pin_compromised": "no", "card_action": "close_and_reissue"},
+        "output": "Dispute ID: dsp_76b0f2bc26c3\nTransaction: btxn_28eee7145c29\n...\nCategory: Card Present Fraud\nDisputed Amount: $347.99",
+        "note": "Other args unchanged from gold. The txn record only says type debit_card_purchase; an in-store PIN purchase is equally consistent."
+      },
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_031", "quote": "**transaction_type** (string) - Determine from user circumstances."},
+        {"source": "db:bank_account_transaction_history[btxn_28eee7145c29]", "quote": "description: ELECTRO MART MIAMI FL; type: debit_card_purchase"}
+      ],
+      "conflict": "Doc _031: determine type from user circumstances; script and txn data never say PIN or signature. Gold step 10: signature_purchase.",
+      "scorer": {"field": "debit_card_disputes[dsp_76b0f2bc26c3].transaction_type: gold=\"signature_purchase\" agent=\"pin_purchase\"", "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

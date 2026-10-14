@@ -17,12 +17,13 @@
       "evidence": [
         "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
         "doc_business_checking_accounts_sky_blue_008: \"Eligibility criteria tied to company age are evaluated when you open the account; the threshold is 4.\"",
-        "user_scenario.instructions: no formation date or company age is given"
+        "user_scenario.instructions: no formation date or company age is given",
+        "simulation_guidelines_tools.md: \"Information that is not provided in the scenario instructions should be considered unknown or unavailable.\""
       ],
       "gold_action_refs": [
         4
       ],
-      "why_it_matters": "A careful agent that asks the company age gets an improvised answer; if the simulated customer says more than 4 years, the agent correctly falls back to Lime Green and fails the gold. Most agents will not ask, so the effect is limited.",
+      "why_it_matters": "A careful agent that asks the company age gets no grounded answer: the script gives none, and the simulator treats unscripted facts as unknown, so the customer cannot confirm eligibility. An agent that will not open Sky Blue unconfirmed falls back to Lime Green (next in the promotion, no age limit) and fails the gold. Most agents will not ask, so the effect is limited.",
       "suggested_fix": "Add a line to the script stating the business was formed within the last 4 years (e.g., \"I started the agency 2 years ago\")."
     }
   ],

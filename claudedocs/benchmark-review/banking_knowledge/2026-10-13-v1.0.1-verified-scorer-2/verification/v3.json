@@ -1,16 +1,56 @@
 {
   "verifier_id": "v3",
   "fact_checks": [
-    {"fact": "Upstream DB grading replays the gold actions on a fresh environment and compares agent-side and user-side DB hashes exactly", "status": "Confirmed", "evidence": "snapshot src/tau2/evaluator/evaluator_env.py lines 118-121 and 325-328 compare get_db_hash()/get_user_db_hash() of the gold and predicted environments"},
-    {"fact": "Discoverable reads are logged only when the gold makes the same read; log rows are keyed by tool name, so one call with any arguments satisfies the read and repeats change nothing", "status": "Confirmed", "evidence": "tools.py call_discoverable_agent_tool: logs if underlying_mutates or agent_tool_name in self._read_log_allowlist; record_id = generate_agent_discoverable_tool_id(agent_tool_name) (utils.py: name only); add_to_db returns False on an existing id; build.py _derive_read_log_allowlist collects gold call_discoverable_agent_tool names"},
-    {"fact": "Unlocking writes nothing; give_discoverable_user_tool writes a row keyed by tool name; a user's discoverable call is logged per distinct argument set", "status": "Confirmed", "evidence": "unlock_discoverable_agent_tool stores only _agent_discoverable_tools_state; give_discoverable_user_tool -> generate_user_discoverable_tool_id(name); _log_user_tool_call -> generate_user_discoverable_tool_call_id(tool_name, args)"},
-    {"fact": "Arguments through call_discoverable_agent_tool / call_discoverable_user_tool are parsed with parse_int=float", "status": "Confirmed", "evidence": "json.loads(arguments, parse_int=float) in both wrappers; replay: task_072 credit amount 14 vs 14.00 match, task_057 check_amount 2000 vs 2000.00 match"},
-    {"fact": "A discoverable write is logged once the tool runs even if it returns an error string; calls rejected before that (unknown/locked tool, invalid JSON, wrong argument names) log nothing", "status": "Confirmed", "evidence": "call_discoverable_agent_tool returns early on unknown tool, not-unlocked, JSONDecodeError, TypeError; otherwise logs after method(**args_dict) regardless of the returned string"},
-    {"fact": "Agent and user toolkits share one database; transfer_to_human_agents writes nothing", "status": "Confirmed", "evidence": "environment.py get_environment: tools = build_tools(variant, db, ...), user_tools = KnowledgeUserTools(db); transfer_to_human_agents only validates the reason and returns a string"},
-    {"fact": "The clock is fixed", "status": "Confirmed", "evidence": "utils.py get_now() returns datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"The current time is 2025-11-14 03:40:00 EST.\""},
-    {"fact": "Verified scorer: agent_discoverable_tools compared as a set of tool names (gold subset of agent, extras allowed only if every call matched _INPUT_ERROR_RE); accounts.closure_reason stripped; every other table exact; same comparison applied to the user-side DB", "status": "Confirmed", "evidence": "working repo evaluator_env.py _verified_db_match, _strip_free_text, _input_rejected_discoverable_tools, and the use_verified_scorer branch that calls _verified_db_match for both tools.db and user_tools.db"},
-    {"fact": "open_bank_account_4821 hashes account_type and account_class into the new account id and stores account_class verbatim", "status": "Confirmed", "evidence": "tools.py: seed = f\"account:{user_id}:{account_type}:{account_class}\"; account_id = _deterministic_id(seed); replays of 'savings' vs 'business_savings' and 'Green Account' vs 'Green Account (savings)/(checking)' all fail with \"table 'accounts' differs\""},
-    {"fact": "get_bank_account_transactions_9173 returns every stored row, including rows dated after the fixed clock, and prints each record id", "status": "Confirmed", "evidence": "tools.py get_bank_account_transactions_9173 has no date filter; replay output for chk_ar72c5d8e3_1 lists 11/15-11/18 rows and 'Record ID: btxn_ar_purple_..'"}
+    {
+      "fact": "Upstream DB grading replays the gold actions on a fresh environment and compares agent-side and user-side DB hashes exactly",
+      "status": "Confirmed",
+      "evidence": "snapshot src/tau2/evaluator/evaluator_env.py lines 118-121 and 325-328 compare get_db_hash()/get_user_db_hash() of the gold and predicted environments"
+    },
+    {
+      "fact": "Discoverable reads are logged only when the gold makes the same read; log rows are keyed by tool name, so one call with any arguments satisfies the read and repeats change nothing",
+      "status": "Confirmed",
+      "evidence": "tools.py call_discoverable_agent_tool: logs if underlying_mutates or agent_tool_name in self._read_log_allowlist; record_id = generate_agent_discoverable_tool_id(agent_tool_name) (utils.py: name only); add_to_db returns False on an existing id; build.py _derive_read_log_allowlist collects gold call_discoverable_agent_tool names"
+    },
+    {
+      "fact": "Unlocking writes nothing; give_discoverable_user_tool writes a row keyed by tool name; a user's discoverable call is logged per distinct argument set",
+      "status": "Confirmed",
+      "evidence": "unlock_discoverable_agent_tool stores only _agent_discoverable_tools_state; give_discoverable_user_tool -> generate_user_discoverable_tool_id(name); _log_user_tool_call -> generate_user_discoverable_tool_call_id(tool_name, args)"
+    },
+    {
+      "fact": "Arguments through call_discoverable_agent_tool / call_discoverable_user_tool are parsed with parse_int=float",
+      "status": "Confirmed",
+      "evidence": "json.loads(arguments, parse_int=float) in both wrappers; replay: task_072 credit amount 14 vs 14.00 match, task_057 check_amount 2000 vs 2000.00 match"
+    },
+    {
+      "fact": "A discoverable write is logged once the tool runs even if it returns an error string; calls rejected before that (unknown/locked tool, invalid JSON, wrong argument names) log nothing",
+      "status": "Confirmed",
+      "evidence": "call_discoverable_agent_tool returns early on unknown tool, not-unlocked, JSONDecodeError, TypeError; otherwise logs after method(**args_dict) regardless of the returned string"
+    },
+    {
+      "fact": "Agent and user toolkits share one database; transfer_to_human_agents writes nothing",
+      "status": "Confirmed",
+      "evidence": "environment.py get_environment: tools = build_tools(variant, db, ...), user_tools = KnowledgeUserTools(db); transfer_to_human_agents only validates the reason and returns a string"
+    },
+    {
+      "fact": "The clock is fixed",
+      "status": "Confirmed",
+      "evidence": "utils.py get_now() returns datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"The current time is 2025-11-14 03:40:00 EST.\""
+    },
+    {
+      "fact": "Verified scorer: agent_discoverable_tools compared as a set of tool names (gold subset of agent, extras allowed only if every call matched _INPUT_ERROR_RE); accounts.closure_reason stripped; every other table exact; same comparison applied to the user-side DB",
+      "status": "Confirmed",
+      "evidence": "working repo evaluator_env.py _verified_db_match, _strip_free_text, _input_rejected_discoverable_tools, and the use_verified_scorer branch that calls _verified_db_match for both tools.db and user_tools.db"
+    },
+    {
+      "fact": "open_bank_account_4821 hashes account_type and account_class into the new account id and stores account_class verbatim",
+      "status": "Confirmed",
+      "evidence": "tools.py: seed = f\"account:{user_id}:{account_type}:{account_class}\"; account_id = _deterministic_id(seed); replays of 'savings' vs 'business_savings' and 'Green Account' vs 'Green Account (savings)/(checking)' all fail with \"table 'accounts' differs\""
+    },
+    {
+      "fact": "get_bank_account_transactions_9173 returns every stored row, including rows dated after the fixed clock, and prints each record id",
+      "status": "Confirmed",
+      "evidence": "tools.py get_bank_account_transactions_9173 has no date filter; replay output for chk_ar72c5d8e3_1 lists 11/15-11/18 rows and 'Record ID: btxn_ar_purple_..'"
+    }
   ],
   "task_verdicts": {
     "task_056": {
@@ -300,7 +340,7 @@
     }
   },
   "calibration_notes": [
-    "Green class string (059, 065, 066, 068): the reviewers rated 059/065/068 Major and 066 Minor on identical evidence (same gold 'Green Account', same documents, same failing replay). Calibration's 'two document-supported readings' rule gives Major for all four; I upgraded 066. 068 is the strongest instance (the checking procedure's own example is 'Green Account (checking)') but stays Major because the gold spelling remains document-supported.",
+    "Green class string (059, 065, 066, 068): Major in all four on identical evidence (same gold 'Green Account', same documents, same failing replay), per calibration's 'two document-supported readings' rule. 068 is the strongest instance (the checking procedure's own example is 'Green Account (checking)') but stays Major because the gold spelling remains document-supported.",
     "doc_004 'savings' vs gold 'business_savings' (056, 071): both Major and consistent. These are the only two tasks in the benchmark whose gold opens a business savings account, and the only four Green opens are 059/065/066/068, so no sibling outside this group carries either defect.",
     "Post-clock gold values (072, 073, 074): all Major, consistent with calibration.",
     "ATM rebate scope: 072 treats Bluest's rebate of Rho-Bank's own fee as well supported (note only), while 074 rates Purple's as a Major document_contradiction. The split is justified by the wording (Bluest: 'third-party ATM fees' / 'aggregate ATM fees'; Purple: 'refunds of ATM operator fees' and 'confirm that the charge was coded as an ATM operator fee'). But the 074 gold (broad Purple rebate) and the 075 gold (Purple's $2.50 not rebated) cannot both be right, so the gold set is inconsistent.",

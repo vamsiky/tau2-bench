@@ -1,17 +1,61 @@
 {
   "verifier_id": "v4",
   "fact_checks": [
-    {"fact": "DB grading (upstream) replays gold on a fresh env and compares agent-side and user-side DB hashes exactly", "status": "Confirmed", "evidence": "snapshot src/tau2/evaluator/evaluator_env.py has no verified mode; working-repo EnvironmentEvaluator.calculate_reward replays golden_actions via gold_environment.make_tool_call and compares get_db_hash()/get_user_db_hash() unless use_verified_scorer"},
-    {"fact": "Discoverable reads are logged only when in the gold-derived allowlist; row keyed by tool name only", "status": "Confirmed", "evidence": "tools.py call_discoverable_agent_tool: `if underlying_mutates or agent_tool_name in self._read_log_allowlist` -> record_id = generate_agent_discoverable_tool_id(agent_tool_name); runner/build.py _derive_read_log_allowlist collects agent_tool_name of gold call_discoverable_agent_tool actions. Replay: task_085 gold minus its second get_bank_account_transactions_9173 call still matches exactly."},
-    {"fact": "Unlocking writes nothing; giving a user tool writes a row keyed by name; a user's own discoverable call is keyed per argument set", "status": "Confirmed", "evidence": "unlock_discoverable_agent_tool only sets _agent_discoverable_tools_state; give_discoverable_user_tool -> generate_user_discoverable_tool_id(tool_name); call_discoverable_user_tool -> generate_user_discoverable_tool_call_id(tool_name, args)"},
-    {"fact": "Arguments through call_discoverable_agent_tool are parsed with integers as floats", "status": "Confirmed", "evidence": "tools.py: json.loads(arguments, parse_int=float). Replay: task_082 gold with customer_max_liability_amount 50 -> 50.0 matches exactly. Note: unrounded floats are stored as given (task_097 credit 220.8367 changes bank_account_transaction_history even though the message rounds to $220.84)."},
-    {"fact": "ACTION grading matches by name and compare_args (all agent-passed args when unset); inner arguments JSON string compared verbatim", "status": "Confirmed", "evidence": "data_model/tasks.py Action.compare_with_tool_call: compare_args None -> tool_call.arguments.keys(); returns tool_args == action_args"},
-    {"fact": "A discoverable write is logged once the tool runs even if it returns an error; TypeError/unknown/locked/invalid JSON log nothing", "status": "Confirmed", "evidence": "call_discoverable_agent_tool returns early on unknown tool, locked tool, JSONDecodeError, and TypeError('Error: Invalid arguments') before add_to_db; otherwise logs after method returns"},
-    {"fact": "transfer_to_human_agents writes nothing", "status": "Confirmed", "evidence": "tools.py transfer_to_human_agents returns 'Transfer successful (reason: ...)' with no add_to_db; human_transfer_requests rows come only from the user tool request_human_agent_transfer"},
-    {"fact": "Clock fixed by get_now()", "status": "Confirmed", "evidence": "utils.py get_now() -> datetime(2025, 11, 14, 3, 40, 0)"},
-    {"fact": "Verified scorer: gold discoverable tool names must be a subset of the agent's; extras allowed only if every call was input-rejected; closure_reason stripped on accounts only; all other tables exact incl. user-side", "status": "Confirmed", "evidence": "working repo evaluator_env.py _verified_db_match, _strip_free_text (_FREE_TEXT_ANNOTATION_FIELDS = {'accounts': {'closure_reason'}}), _input_rejected_discoverable_tools (_INPUT_ERROR_RE); applied to both tools.db and user_tools.db. Copied verbatim into scratch harness; gold self-match True for all 20 assigned tasks."},
-    {"fact": "Debit-card closure reasons are compared exactly under this scorer", "status": "Confirmed", "evidence": "Replay task_082 with Blue close reason 'fraud_suspected' instead of 'lost': debit_cards differs (closure_reason, and new card issue_reason 'fraud' vs 'lost'); verified False"},
-    {"fact": "submit_interest_discrepancy_report_7294 persists nothing", "status": "Confirmed", "evidence": "db_query.add_to_db returns False when getattr(db, 'interest_discrepancy_reports') is None; gold model_dump has no such key; replay of task_093 with expected_apy 9.99 / amount_difference 1.0 still matches exactly"}
+    {
+      "fact": "DB grading (upstream) replays gold on a fresh env and compares agent-side and user-side DB hashes exactly",
+      "status": "Confirmed",
+      "evidence": "snapshot src/tau2/evaluator/evaluator_env.py has no verified mode; working-repo EnvironmentEvaluator.calculate_reward replays golden_actions via gold_environment.make_tool_call and compares get_db_hash()/get_user_db_hash() unless use_verified_scorer"
+    },
+    {
+      "fact": "Discoverable reads are logged only when in the gold-derived allowlist; row keyed by tool name only",
+      "status": "Confirmed",
+      "evidence": "tools.py call_discoverable_agent_tool: `if underlying_mutates or agent_tool_name in self._read_log_allowlist` -> record_id = generate_agent_discoverable_tool_id(agent_tool_name); runner/build.py _derive_read_log_allowlist collects agent_tool_name of gold call_discoverable_agent_tool actions. Replay: task_085 gold minus its second get_bank_account_transactions_9173 call still matches exactly."
+    },
+    {
+      "fact": "Unlocking writes nothing; giving a user tool writes a row keyed by name; a user's own discoverable call is keyed per argument set",
+      "status": "Confirmed",
+      "evidence": "unlock_discoverable_agent_tool only sets _agent_discoverable_tools_state; give_discoverable_user_tool -> generate_user_discoverable_tool_id(tool_name); call_discoverable_user_tool -> generate_user_discoverable_tool_call_id(tool_name, args)"
+    },
+    {
+      "fact": "Arguments through call_discoverable_agent_tool are parsed with integers as floats",
+      "status": "Confirmed",
+      "evidence": "tools.py: json.loads(arguments, parse_int=float). Replay: task_082 gold with customer_max_liability_amount 50 -> 50.0 matches exactly. Note: unrounded floats are stored as given (task_097 credit 220.8367 changes bank_account_transaction_history even though the message rounds to $220.84)."
+    },
+    {
+      "fact": "ACTION grading matches by name and compare_args (all agent-passed args when unset); inner arguments JSON string compared verbatim",
+      "status": "Confirmed",
+      "evidence": "data_model/tasks.py Action.compare_with_tool_call: compare_args None -> tool_call.arguments.keys(); returns tool_args == action_args"
+    },
+    {
+      "fact": "A discoverable write is logged once the tool runs even if it returns an error; TypeError/unknown/locked/invalid JSON log nothing",
+      "status": "Confirmed",
+      "evidence": "call_discoverable_agent_tool returns early on unknown tool, locked tool, JSONDecodeError, and TypeError('Error: Invalid arguments') before add_to_db; otherwise logs after method returns"
+    },
+    {
+      "fact": "transfer_to_human_agents writes nothing",
+      "status": "Confirmed",
+      "evidence": "tools.py transfer_to_human_agents returns 'Transfer successful (reason: ...)' with no add_to_db; human_transfer_requests rows come only from the user tool request_human_agent_transfer"
+    },
+    {
+      "fact": "Clock fixed by get_now()",
+      "status": "Confirmed",
+      "evidence": "utils.py get_now() -> datetime(2025, 11, 14, 3, 40, 0)"
+    },
+    {
+      "fact": "Verified scorer: gold discoverable tool names must be a subset of the agent's; extras allowed only if every call was input-rejected; closure_reason stripped on accounts only; all other tables exact incl. user-side",
+      "status": "Confirmed",
+      "evidence": "working repo evaluator_env.py _verified_db_match, _strip_free_text (_FREE_TEXT_ANNOTATION_FIELDS = {'accounts': {'closure_reason'}}), _input_rejected_discoverable_tools (_INPUT_ERROR_RE); applied to both tools.db and user_tools.db. Copied verbatim into scratch harness; gold self-match True for all 20 assigned tasks."
+    },
+    {
+      "fact": "Debit-card closure reasons are compared exactly under this scorer",
+      "status": "Confirmed",
+      "evidence": "Replay task_082 with Blue close reason 'fraud_suspected' instead of 'lost': debit_cards differs (closure_reason, and new card issue_reason 'fraud' vs 'lost'); verified False"
+    },
+    {
+      "fact": "submit_interest_discrepancy_report_7294 persists nothing",
+      "status": "Confirmed",
+      "evidence": "db_query.add_to_db returns False when getattr(db, 'interest_discrepancy_reports') is None; gold model_dump has no such key; replay of task_093 with expected_apy 9.99 / amount_difference 1.0 still matches exactly"
+    }
   ],
   "task_verdicts": {
     "task_080": {
@@ -261,8 +305,10 @@
         "user_scenario 17: \"If agent recommends all 4 referrals without mentioning rolling window: ... submit ALL 4\"",
         "Replay: gold + Green Fee-Free + Lime Green submissions -> referrals differs"
       ],
-      "citation_problems": ["The finding cites doc_048's FAQ as tying the cap to 'how many people can be referred at once', but the FAQ answer begins \"You can have multiple referrals in progress\", which supports the payout-only reading the review calls weaker. Quoted correctly, misread."],
-      "note": "Recommendations reproduce: Vikram -> Purple $80 and TechFlow -> Sky Blue $400 (Sky Blue 7/8, under 4 years since formation, $10,000 deposit; Ember is 5 years old). However, doc_047/048 support both a submission cap and a bonus-receipt cap. Under the receipt reading an agent can endorse submitting all four, and the script then submits four. Two document-supported readings with different graded states is Major per calibration, not Minor. The prior Blocker overstated it, because the gold does follow a supported reading."
+      "citation_problems": [
+        "The finding cites doc_048's FAQ as tying the cap to 'how many people can be referred at once', but the FAQ answer begins \"You can have multiple referrals in progress\", which supports the payout-only reading the review calls weaker. Quoted correctly, misread."
+      ],
+      "note": "Recommendations reproduce: Vikram -> Purple $80 and TechFlow -> Sky Blue $400 (Sky Blue 7/8, under 4 years since formation, $10,000 deposit; Ember is 5 years old). However, doc_047/048 support both a submission cap and a bonus-receipt cap. Under the receipt reading an agent can endorse submitting all four, and the script then submits four. Two document-supported readings with different graded states is Major per calibration, not Minor."
     },
     "task_102": {
       "verdict": "Upgraded",

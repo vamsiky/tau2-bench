@@ -1,0 +1,164 @@
+{
+  "task_id": "task_040",
+  "severity": "Major",
+  "reason": "Gold step 9 denies credit on the $342.50 fraud by counting this session's filings; history shows one prior dispute, within doc _015's limit.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Unclear whether same-session filings count toward cap",
+      "kind": "ambiguous_choice",
+      "step": 9,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_a1b2c3d4e503",
+          "card_action": "keep_active",
+          "contacted_merchant": false,
+          "purchase_date": "10/10/2025",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_da37cfc4d0d6\nTransaction: txn_a1b2c3d4e503\nReason: Unauthorized Fraudulent Charge ... Provisional Credit: Not eligible at this time."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_a1b2c3d4e503",
+          "card_action": "keep_active",
+          "contacted_merchant": false,
+          "purchase_date": "10/10/2025",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Transaction: txn_a1b2c3d4e503 ... Provisional Credit: ELIGIBLE - Credit will be applied within 2 business days.",
+        "note": "Snapshot reading: gold step 2 history shows 1 dispute (not more than 2), so all criteria hold."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "tool:get_user_dispute_history_7291",
+          "quote": "gold step 2 output: \"Found 1 record(s) in 'transaction_disputes':\n1. Record ID: dsp_ed3ab3dce038\""
+        }
+      ],
+      "conflict": "History (step 2): 1 dispute. Doc _015 is silent on in-session filings. Gold counts steps 7-8, so step 9 ($342.50 fraud) is false; snapshot reading: true.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_da37cfc4d0d6].eligible_for_provisional_credit: gold=false agent=true; .provisional_credit_given: gold=false agent=true",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Gold flags need Grainger and Uline filed first",
+      "kind": "ambiguous_choice",
+      "step": 7,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_25e23705f61f",
+          "card_action": "keep_active",
+          "contacted_merchant": true,
+          "purchase_date": "10/26/2025",
+          "dispute_reason": "duplicate_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_e78437c39cf5\nTransaction: txn_25e23705f61f\nReason: Duplicate Charge ... Provisional Credit: ELIGIBLE - Credit will be applied within 2 business days."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_25e23705f61f",
+          "card_action": "keep_active",
+          "contacted_merchant": true,
+          "purchase_date": "10/26/2025",
+          "dispute_reason": "duplicate_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Transaction: txn_25e23705f61f ... Provisional Credit: Not eligible at this time.",
+        "note": "Gold's own cumulative reading, filing in the customer's listed order (AA, Best Buy dup, PECO, Spotify, Uline, Grainger, Best Buy, Comcast): AA and Best Buy $189.99 get credit; Uline and Grainger do not."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "instructions",
+          "quote": "If the agent mentions provisional credit or asks about it, say: \"Yes, I'd like provisional credit on whatever qualifies. The Grainger and Uline charges are the biggest ones hurting my business cash flow right now - those are on my business card. Please prioritize those if there's any limit.\""
+        }
+      ],
+      "conflict": "No doc sets filing order. Gold files Grainger, Uline first (steps 7-8). Listed order flips all four flags; the priority line appears only if the agent raises provisional credit.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_092ef9bd9397].eligible_for_provisional_credit: gold=true agent=false; transaction_disputes[dsp_1d6efbdca7c9].eligible_for_provisional_credit: gold=false agent=true; transaction_disputes[dsp_e78437c39cf5].eligible_for_provisional_credit: gold=true agent=false",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 3,
+      "severity": "Major",
+      "title": "Comcast refund type unscripted; story says partial",
+      "kind": "instruction_conflict",
+      "step": 14,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_3ef1a3e9bf56",
+          "card_action": "keep_active",
+          "contacted_merchant": true,
+          "purchase_date": "10/30/2025",
+          "dispute_reason": "refund_never_processed",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_faf3282bff07\nTransaction: txn_3ef1a3e9bf56\nReason: Refund Never Processed\nResolution Requested: Full Refund"
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_3ef1a3e9bf56",
+          "card_action": "keep_active",
+          "contacted_merchant": true,
+          "purchase_date": "10/30/2025",
+          "dispute_reason": "refund_never_processed",
+          "resolution_requested": "partial_refund",
+          "partial_refund_amount": 50,
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Resolution Requested: Partial Refund\nPartial Refund Amount: $50.00",
+        "note": "Agent asks per doc _014; the simulated customer, told only that a partial refund was promised, asks for a partial refund (amount 50 is illustrative; the script gives none)."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_014",
+          "quote": "13. resolution_requested (string) - Ask user what resolution they want."
+        },
+        {
+          "source": "instructions",
+          "quote": "You downgraded your business internet plan and were promised a partial refund weeks ago."
+        }
+      ],
+      "conflict": "Doc _014: ask the customer. Script never scripts a resolution, and its Comcast story says 'partial refund'. Gold step 14 requires full_refund.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_faf3282bff07].partial_refund_amount: gold=null agent=50.0; .resolution_requested: gold=\"full_refund\" agent=\"partial_refund\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

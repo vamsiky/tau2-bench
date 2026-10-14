@@ -13,12 +13,11 @@
     {
       "class": "non_determinism",
       "severity": "Major",
-      "summary": "After v1.0.1 swapped the fixture rows, the gold CityFit duplicate btxn_b2c3d4e5f602 is listed second of two identical 11/06 rows. It is 'earliest' only if the agent infers within-day order from the most-recent-first contract.",
+      "summary": "The gold CityFit duplicate btxn_b2c3d4e5f602 is listed second of two identical 11/06 rows. It is 'earliest' only if the agent infers within-day order from the most-recent-first contract.",
       "evidence": [
         "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
         "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
         "tools.py get_bank_account_transactions_9173: stable sort by date, reverse=True; same-date rows keep stored order (comment: \"identifies the later-listed record as the earlier one\")",
-        "v1.0.0->v1.0.1 diff swaps stored order of btxn_c3d4e5f6g703 and btxn_b2c3d4e5f602",
         "Tool output for chk_b4d92f7c28 lists btxn_c3d4e5f6g703 then btxn_b2c3d4e5f602 (both 11/06/2025, -89.99)",
         "gold[10] transaction_id btxn_b2c3d4e5f602",
         "Replay: disputing btxn_c3d4e5f6g703 -> verified fails, debit_card_disputes differs"
@@ -26,7 +25,7 @@
       "gold_action_refs": [
         10
       ],
-      "why_it_matters": "An agent reading 'earliest (first)' as the first row shown disputes btxn_c3d4e5f6g703 and fails. Under v1.0.0 the gold row was listed first, so this reading used to pass.",
+      "why_it_matters": "An agent reading 'earliest (first)' as the first row shown disputes btxn_c3d4e5f6g703 and fails.",
       "suggested_fix": "Give the duplicates distinct timestamps, or state the within-day tie-break explicitly in doc_031."
     },
     {

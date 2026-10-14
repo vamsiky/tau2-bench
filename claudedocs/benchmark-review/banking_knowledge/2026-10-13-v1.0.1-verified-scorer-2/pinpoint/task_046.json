@@ -1,0 +1,52 @@
+{
+  "task_id": "task_046",
+  "severity": "Major",
+  "reason": "Gold stops at the pending dispute, but an agent that also reports the $125 balance gets a scripted payoff request, and paying it fails.",
+  "points": [
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Scripted $125 payoff request; gold has no payment",
+      "kind": "instruction_conflict",
+      "step": 2,
+      "gold": {
+        "call": "get_user_dispute_history_7291",
+        "args": {
+          "user_id": "224959b99e"
+        },
+        "output": "Found 1 record(s) in 'transaction_disputes':\n\n1. Record ID: dsp_yuki_bsilver_001 ... status: UNDER_REVIEW"
+      },
+      "doc_faithful": {
+        "call": "pay_credit_card_from_checking_9182",
+        "args": {
+          "user_id": "224959b99e",
+          "checking_account_id": "05",
+          "credit_card_account_id": "cc_224959b99e_bsilver",
+          "amount": 125.0
+        },
+        "output": "Payment processed successfully!\n  - Payment Amount: $125.00\n  - From Checking Account: 05\n  - To Credit Card Account: cc_224959b99e_bsilver\n  - New Checking Balance: $2725.00\n  - New Credit Card Balance: $0.00",
+        "note": "After step 2 the agent explains every unmet requirement (pending dispute and $125 balance); the customer asks for a payoff, which the agent makes (after get_all_user_accounts_by_user_id_3847)."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_card_account_logistics_003",
+          "quote": "4. Outstanding balance: The account must have no outstanding balance. If a balance remains, the customer must pay it off before closure.\n\nIf any requirement is not met, explain what must be resolved and do not proceed with retention offers."
+        },
+        {
+          "source": "instructions",
+          "quote": "Oh, I didn't realize there was still a balance. Yes, please pay that off from my checking account."
+        },
+        {
+          "source": "db:credit_card_accounts[cc_224959b99e_bsilver]",
+          "quote": "current_balance: $125.00"
+        }
+      ],
+      "conflict": "Doc _003: explain what must be resolved (dispute and $125 balance both unmet). Script then requests payoff. Gold stops at step 2 with no payment.",
+      "scorer": {
+        "field": "accounts[05].current_holdings: gold=\"2850.00\" agent=\"2725.00\"; credit_card_accounts[cc_224959b99e_bsilver].current_balance: gold=\"$125.00\" agent=\"$0.00\"; extra discoverable call pay_credit_card_from_checking_9182",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "task_id": "task_074",
+  "severity": "Major",
+  "reason": "Gold step 9 credits Purple $27.00 by counting an 11/15 duplicate fee (after the 11/14 clock) and rebating Rho-Bank's own fee, which Purple docs exclude.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Purple refund counts a duplicate fee dated after today",
+      "kind": "gold_value_wrong",
+      "step": 9,
+      "gold": {"call": "apply_checking_account_credit_5829",
+               "args": {"account_id": "chk_ar72c5d8e3_1", "amount": 27.0, "credit_type": "fee_refund"},
+               "output": "Credit applied successfully!\n  - Transaction ID: txn_a3e3028990be09a3\n  ...\n  - Amount: $27.00"},
+      "doc_faithful": {"call": "apply_checking_account_credit_5829",
+                       "args": {"account_id": "chk_ar72c5d8e3_1", "amount": 24.5, "credit_type": "fee_refund"},
+                       "output": "Credit applied successfully!\n  - Transaction ID: txn_1700c9f29a0f203a\n  ...\n  - Amount: $24.50",
+                       "note": "Excludes the 11/15 duplicate $2.50 fee; everything else as gold."},
+      "refs": [
+        {"source": "tool:get_current_time",
+         "quote": "The current time is 2025-11-14 03:40:00 EST."},
+        {"source": "db:bank_account_transaction_history[btxn_ar_purple_15f_dup]",
+         "quote": "account_id: chk_ar72c5d8e3_1, date: 11/15/2025, description: NON-RHO ATM FEE, amount: -2.5"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_017",
+         "quote": "Check the transaction history to confirm each fee discrepancy"}
+      ],
+      "conflict": "Clock 11/14. Gold step 9 includes +$2.50 for the 11/15 duplicate: 27.00 vs 24.50. No doc says whether future-dated rows count.",
+      "scorer": {"field": "accounts[chk_ar72c5d8e3_1].current_holdings: gold \"$4527.00\" vs agent \"$4524.50\"; bank_account_transaction_history[txn_a3e3028990be09a3]: MISSING row; bank_account_transaction_history[txn_1700c9f29a0f203a]: EXTRA row",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Purple rebate covers operator fees, not Rho-Bank's fee",
+      "kind": "gold_value_wrong",
+      "step": 9,
+      "gold": {"call": "apply_checking_account_credit_5829",
+               "args": {"account_id": "chk_ar72c5d8e3_1", "amount": 27.0, "credit_type": "fee_refund"},
+               "output": "Credit applied successfully!\n  - Transaction ID: txn_a3e3028990be09a3\n  ...\n  - Amount: $27.00"},
+      "doc_faithful": {"call": "apply_checking_account_credit_5829",
+                       "args": {"account_id": "chk_ar72c5d8e3_1", "amount": 24.5, "credit_type": "fee_refund"},
+                       "output": "Credit applied successfully!\n  - Transaction ID: txn_1700c9f29a0f203a\n  ...\n  - Amount: $24.50",
+                       "note": "Refunds only the $1.00 overcharge on the 11/11 $3.50 fee, not a $2.50 'missing rebate'. Combined with point 1 the amount is $22.00 (also FAIL per verifier)."},
+      "refs": [
+        {"source": "doc_checking_accounts_purple_account_004",
+         "quote": "You are eligible for refunds of ATM operator fees up to a monthly cap of $30."},
+        {"source": "doc_checking_accounts_purple_account_010",
+         "quote": "Confirm that the charge is labeled as an ATM operator fee"},
+        {"source": "db:bank_account_transaction_history[btxn_ar_purple_11f]",
+         "quote": "account_id: chk_ar72c5d8e3_1, date: 11/11/2025, description: NON-RHO ATM FEE, amount: -3.5 (no rebate row)"}
+      ],
+      "conflict": "Docs _004/_010 rebate ATM-operator fees only. Gold adds a $2.50 rebate on Rho-Bank's own 11/11 NON-RHO fee: 27.00 vs 24.50. Task_075 assumes the opposite reading.",
+      "scorer": {"field": "accounts[chk_ar72c5d8e3_1].current_holdings: gold \"$4527.00\" vs agent \"$4524.50\"; bank_account_transaction_history[txn_a3e3028990be09a3]: MISSING row",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

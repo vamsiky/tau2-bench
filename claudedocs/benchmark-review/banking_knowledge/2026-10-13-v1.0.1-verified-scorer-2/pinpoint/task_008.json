@@ -1,0 +1,52 @@
+{
+  "task_id": "task_008",
+  "severity": "Minor",
+  "reason": "Doc _042's Tier-1 and Tier-2 transfer reasons both fit a flyer-holding customer demanding a human; only the highest-tier rule makes gold's Tier-1 code unique.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Overlapping Tier-1 and Tier-2 transfer reason codes",
+      "kind": "ambiguous_choice",
+      "step": 0,
+      "gold": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "reason": "customer_demands_after_unavailable_offer_refusal",
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: customer_demands_after_unavailable_offer_refusal). A human agent will assist you shortly."
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "reason": "unconfirmed_external_communication",
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: unconfirmed_external_communication). A human agent will assist you shortly.",
+        "note": "Plausible misreading: flyer-matching Tier-2 choice; the highest-tier rule still favours gold. 3 of 4 earlier Opus trials picked this code."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_042",
+          "quote": "Reasons are organized into 4 priority tiers - always select from the highest tier that applies."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_042",
+          "quote": "| customer_demands_after_unavailable_offer_refusal | Customer asked about offers/promotions that don't exist in the system, you informed them the offers aren't available, customer persisted multiple times, and now demands human |"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_042",
+          "quote": "| unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching |"
+        }
+      ],
+      "conflict": "Both rows describe a flyer offer absent from the KB; gold step 0 requires the Tier-1 code (compare_args=[\"reason\"]), Tier-2 also fits literally.",
+      "scorer": {
+        "field": "missing gold action #0 transfer_to_human_agents(reason=customer_demands_after_unavailable_offer_refusal); no DB field differs",
+        "upstream": "PASS",
+        "verified": "PASS",
+        "action": "FAIL"
+      }
+    }
+  ]
+}

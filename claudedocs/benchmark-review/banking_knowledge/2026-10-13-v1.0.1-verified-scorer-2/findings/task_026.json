@@ -1,7 +1,7 @@
 {
   "task_id": "task_026",
   "severity": "Blocker",
-  "headline": "The agent is asked to correct rewards after disputes are resolved, but no tool lets it see a dispute's status. The gold's corrected Zoom value (1500) also breaks the documented round-down rule, which gives 1499.",
+  "headline": "The gold's corrected Zoom reward (1500 points for $149.99 at 10%) breaks the documented round-down rule, which gives 1499, so an agent that follows the docs fails.",
   "ratings": {
     "instructions_sufficient": "Partial",
     "docs_deterministic": "No",
@@ -28,14 +28,15 @@
     },
     {
       "class": "document_gap",
-      "severity": "Blocker",
-      "summary": "Doc _004 requires the agent to look up resolved disputes in cash_back_disputes before updating rewards, but no agent tool reads that table, and the dispute tool's status message goes only to the customer. The agent cannot tell this task (disputes RESOLVED, gold updates) from task_027 (disputes SUBMITTED, gold refuses), because both customers make the identical claim.",
+      "severity": "Major",
+      "summary": "Doc _004 tells the agent to look up resolved disputes in cash_back_disputes, and no agent tool reads that table. The status is still reachable through the customer: each submit_cash_back_dispute_0589 result she receives says 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.', which matches her Phase 2 claim.",
       "evidence": [
-        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
-        "tools.py: the only code touching cash_back_disputes is KnowledgeUserTools.submit_cash_back_dispute_0589 (add_to_db). get_user_dispute_history_7291 reads transaction_disputes, KnowledgeUserTools.query_database has no @is_tool, and the alltools shell only sees the KB directory",
-        "submit_cash_back_dispute_0589 returns 'Status: RESOLVED ...' (task_026, auto_resolve_disputes=True) or 'Status: SUBMITTED ...' (task_027, False) to the user only; orchestrator routes requestor='user' ToolMessages to Role.USER",
-        "task_026 and task_027 differ only in initial_state.task_config.dispute_settings.auto_resolve_disputes; both customers say \"I just got a notification that they've all been approved and resolved!\"",
-        "Replay: task_026 gold without the update calls -> verified match False (missing update_transaction_rewards_3847; credit_card_transaction_history differs)"
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: the only code touching cash_back_disputes is KnowledgeUserTools.submit_cash_back_dispute_0589 (add_to_db); no agent tool (base or discoverable) reads that table; get_user_dispute_history_7291 reads transaction_disputes",
+        "submit_cash_back_dispute_0589 returns its status line to the customer: here 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.' (auto_resolve_disputes=True); in task_027 'Status: SUBMITTED - Your dispute has been queued for review.' (False)",
+        "simulation_guidelines_tools.md: \"Never make up the results of tool calls that the agent has requested, you must ground your responses based on the results of tool calls if the agent has requested.\"",
+        "Phase 2 line \"I just got a notification that they've all been approved and resolved!\" agrees with the RESOLVED results the customer holds",
+        "Replay: gold -> verified PASS; gold without the update calls -> verified FAIL (missing update_transaction_rewards_3847; credit_card_transaction_history differs)"
       ],
       "gold_action_refs": [
         6,
@@ -44,8 +45,8 @@
         9,
         10
       ],
-      "why_it_matters": "The documented precondition cannot be checked, so the agent must choose blindly between trusting the customer and refusing. Trusting passes this task and fails task_027; refusing does the reverse. A doc-faithful agent that will not update without the documented lookup fails here.",
-      "suggested_fix": "Add an agent read tool for cash_back_disputes (e.g. get_cash_back_disputes_by_user), document it in doc _004, and add that read to gold so both 026 and 027 test actual verification."
+      "why_it_matters": "The documented check cannot be run, so the gold is reachable only through an undocumented workaround: asking the customer exactly what each submission returned. Her result begins 'Your case has been queued for review.', the same words the SUBMITTED twins (027/029) get, and only the following 'Status: RESOLVED' line differs. An agent that cannot verify and declines to update fails here, while one that trusts the claim fails in the twins, so scores depend on a convention the documents do not give.",
+      "suggested_fix": "Add an agent read tool for cash_back_disputes (e.g. get_cash_back_disputes_by_user), document it in doc _004, and add that read to the gold, so the status check does not depend on the customer relaying her tool results."
     },
     {
       "class": "document_contradiction",
@@ -70,7 +71,7 @@
         4,
         5
       ],
-      "why_it_matters": "A doc-faithful agent that recomputes every row finds 13 discrepancies: 4 gross and 9 one-point overcredits. The customer is told to follow the agent's lead, so if the agent presents all 13 she disputes all 13 and the task fails. Customers in sibling tasks 018/022 are told to dispute overpaid rows, so flagging overcredits is the benchmark's own convention. The gold is reached only by rounding half-up (against _007) or by an unstated materiality threshold. The verified scorer compares both affected tables exactly. Here the extra disputes would also be auto-resolved, inviting extra update writes.",
+      "why_it_matters": "A doc-faithful agent that recomputes every row finds 13 discrepancies: 4 gross and 9 one-point overcredits. The customer is told to follow the agent's lead, so if the agent presents all 13 she disputes all 13 and the task fails. The gold is reached only by rounding half-up (against _007) or by an unstated materiality threshold. The verified scorer compares both affected tables exactly. Here the extra disputes would also be auto-resolved, inviting extra update writes.",
       "suggested_fix": "Re-seed Amara's (755bcb4d5d) non-error rows with floored values (e.g. a8f1c2d3e402 -> 1099, b7e2d4c5f503 -> 179, ...), so the documented rule reproduces the gold set; or change _007 to round half-up and re-seed the floor-convention tasks 017-019/021/022."
     },
     {
@@ -86,7 +87,7 @@
       "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
     }
   ],
-  "solution_check": "Disputes: same seed as task_020; the 4 gold rows match half-up but not the documented floor (9 extra one-point rows). Updates: recomputed e403 6300 (20% in promo), f506 1020 (Silver 4%), e410 3800 (10% after the promo ended 08/13/2025) and e411 1499.9, which floors to 1499 against gold's 1500. The dispute-status lookup in step 1 of doc _004 is impossible with the agent's tools. The gold replay matches itself; the replays with 1499 and with no updates both fail the verified comparison.",
+  "solution_check": "Disputes: same seed as task_020; the 4 gold rows match half-up but not the documented floor (9 extra one-point rows). Updates: recomputed e403 6300 (20% in promo), f506 1020 (Silver 4%), e410 3800 (10% after the promo ended 08/13/2025) and e411 1499.9, which floors to 1499 against gold's 1500. The agent cannot run doc _004's cash_back_disputes lookup itself, but the RESOLVED status is in the customer's dispute results and she reports it when asked. The gold replay matches itself; the replays with 1499 and with no updates both fail the verified comparison.",
   "prior_status": "changed",
   "prior_note": "The prior review rated this Minor ('normal rounding works'). Under the documented floor rule the gold write itself is wrong, and the review also missed that the agent has no tool to verify dispute status.",
   "notes": "Under the verified scorer, agent_discoverable_tools must contain update_transaction_rewards_3847. An extra update on a non-disputed row is a successful write that changes credit_card_transaction_history, so it fails either way. The scorer's relaxations do not rescue any path here."

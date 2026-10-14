@@ -1,0 +1,56 @@
+{
+  "task_id": "task_102",
+  "severity": "Major",
+  "reason": "Customer asks to \"maximize the bonus\" without saying whose; Ember to Lime Green pays her $200, but gold submits Sky Blue (her $150, combined $400).",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "\"Maximize the bonus\": referrer's bonus or combined bonus",
+      "kind": "instruction_conflict",
+      "step": 2,
+      "gold": {
+        "call": "submit_referral",
+        "args": {"user_id": "nk80d5r2j7", "account_type": "Sky Blue Account"},
+        "output": "Referral request submitted successfully!\n  - Referral ID: 37bce99de414890e\n  - Referrer ID: nk80d5r2j7\n  - Account Type: Sky Blue Account"
+      },
+      "doc_faithful": {
+        "call": "submit_referral",
+        "args": {"user_id": "nk80d5r2j7", "account_type": "Lime Green Account"},
+        "output": "Referral request submitted successfully!\n  - Referral ID: 9918e7d3cff55db3\n  - Referrer ID: nk80d5r2j7\n  - Account Type: Lime Green Account\n  - Status: NO_PROGRESS",
+        "note": "Agent maximizes the customer's own bonus and recommends Ember to Lime Green; customer submits only that one (script 12)."
+      },
+      "refs": [
+        {"source": "instructions", "quote": "Okay, so if I can only do one right now, which one should I prioritize? I want to maximize the bonus."},
+        {"source": "doc_business_checking_accounts_lime_green_003", "quote": "- **Your bonus**: $200 for each successful referral\n- **Their bonus**: $150 welcome bonus for the referred business"},
+        {"source": "doc_business_checking_accounts_sky_blue_001", "quote": "- Your bonus: $150 for each successful referral\n- Their bonus: $250 welcome bonus"}
+      ],
+      "conflict": "Referrer bonus: Lime Green $200 > Sky Blue $150. Combined: Sky Blue $400 > Lime Green $350. Script says only \"the bonus\"; gold step 2 assumes combined.",
+      "scorer": {"field": "referrals[37bce99de414890e]: MISSING row (gold has, Sky Blue Account); referrals[9918e7d3cff55db3]: EXTRA row in agent DB (Lime Green Account)", "upstream": "FAIL", "verified": "FAIL", "action": "n/a"}
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Rolling-window cap reads as payout limit or submission limit",
+      "kind": "ambiguous_choice",
+      "step": 2,
+      "gold": {
+        "call": "submit_referral",
+        "args": {"user_id": "nk80d5r2j7", "account_type": "Sky Blue Account"},
+        "output": "Referral request submitted successfully!\n  - Referral ID: 37bce99de414890e\n  - Referrer ID: nk80d5r2j7\n  - Account Type: Sky Blue Account"
+      },
+      "doc_faithful": {
+        "call": "submit_referral",
+        "args": {"user_id": "nk80d5r2j7", "account_type": "Lime Green Account"},
+        "output": "Referral request submitted successfully!\n  - Referral ID: 9918e7d3cff55db3\n  - Referrer ID: nk80d5r2j7\n  - Account Type: Lime Green Account\n  - Status: NO_PROGRESS",
+        "note": "Payout-only reading: the 11/10 bonus ages out before new ones pay, so agent allows more than one; customer (script 13) submits a second referral after step 2."
+      },
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_047", "quote": "You can receive at most 2 referral bonuses in any rolling 9-day window."},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_048", "quote": "You can have multiple referrals in progress, but you can only receive a maximum of 2 referral bonuses in any rolling 9-day window."}
+      ],
+      "conflict": "Docs cap bonuses received and allow multiple referrals in progress. Gold allows one submission (step 2) after the 11/10 COMPLETE referral. Major, matching task_101.",
+      "scorer": {"field": "referrals[9918e7d3cff55db3]: EXTRA row in agent DB (Lime Green Account)", "upstream": "FAIL", "verified": "FAIL", "action": "n/a"}
+    }
+  ]
+}

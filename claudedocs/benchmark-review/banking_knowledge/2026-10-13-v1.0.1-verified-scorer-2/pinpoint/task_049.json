@@ -1,0 +1,45 @@
+{
+  "task_id": "task_049",
+  "severity": "Minor",
+  "reason": "Gold is correct; the graded transfer-request row exists only if the simulated customer calls request_human_agent_transfer once, which the agent cannot influence.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Graded row depends on the customer's own tool call",
+      "kind": "other",
+      "step": 17,
+      "gold": {
+        "call": "request_human_agent_transfer",
+        "args": {},
+        "output": "Transfer request #1 submitted.\nThe agent will process your request."
+      },
+      "doc_faithful": {
+        "call": "request_human_agent_transfer",
+        "args": {},
+        "output": "",
+        "note": "Plausible misreading: the simulator says 'Transfer me to a human agent.' aloud but does not call its tool; the agent still transfers (step 18)."
+      },
+      "refs": [
+        {
+          "source": "instructions",
+          "quote": "Transfer me to a human agent."
+        },
+        {
+          "source": "tool:request_human_agent_transfer",
+          "quote": "Use this when you want to speak with a real human agent instead of the automated system."
+        },
+        {
+          "source": "task:user_tools",
+          "quote": "[\"apply_for_credit_card\", \"call_discoverable_user_tool\", \"request_human_agent_transfer\"]"
+        }
+      ],
+      "conflict": "Tool is given to the customer and its docstring matches the scripted request, so the gold call is expected; without it the row is missing.",
+      "scorer": {
+        "field": "human_transfer_requests[transfer_request_1]: MISSING row (gold has)",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

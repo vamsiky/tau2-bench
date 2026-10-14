@@ -1,0 +1,117 @@
+{
+  "task_id": "task_041",
+  "severity": "Major",
+  "reason": "Gold credits only Staples and Coinbase, denying eight other qualifying disputes from step 11, via an in-session counting rule doc _015 never states.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Two readings of the 2-dispute limit",
+      "kind": "ambiguous_choice",
+      "step": 11,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_107c4fa829bd",
+          "card_action": "keep_active",
+          "contacted_merchant": false,
+          "purchase_date": "10/08/2025",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_f8596fa0b690\nTransaction: txn_107c4fa829bd\nReason: Unauthorized Fraudulent Charge ... Provisional Credit: Not eligible at this time."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_107c4fa829bd",
+          "card_action": "keep_active",
+          "contacted_merchant": false,
+          "purchase_date": "10/08/2025",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Provisional Credit: ELIGIBLE - Credit will be applied within 2 business days.",
+        "note": "Snapshot reading (history at step 2 shows 1 prior dispute): steps 11-18, all reason-eligible fraud/duplicate/old not-received disputes, are set true."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "tool:get_user_dispute_history_7291",
+          "quote": "gold step 2 output: \"Found 1 record(s) in 'transaction_disputes':\n1. Record ID: dsp_dfab0685d198\""
+        },
+        {
+          "source": "instructions",
+          "quote": "Please prioritize those if there's any limit."
+        }
+      ],
+      "conflict": "History: 1 prior dispute (≤2). Doc _015 is silent on in-session filings. Gold counts steps 9-10, so steps 11-18 are false; snapshot reading makes all ten true.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_0f439ab38556].eligible_for_provisional_credit: gold=false agent=true; transaction_disputes[dsp_16978243efb8].eligible_for_provisional_credit: gold=false agent=true; transaction_disputes[dsp_2260d9f89d7f].eligible_for_provisional_credit: gold=false agent=true",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Unscripted XFINITY partial amount must be exactly 69.99",
+      "kind": "instruction_conflict",
+      "step": 19,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_dd095dee227f",
+          "card_action": "keep_active",
+          "contacted_merchant": true,
+          "purchase_date": "10/28/2025",
+          "dispute_reason": "incorrect_amount",
+          "resolution_requested": "partial_refund",
+          "partial_refund_amount": 69.99,
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Dispute ID: dsp_f603ba75fc0c ... Resolution Requested: Partial Refund\nPartial Refund Amount: $69.99"
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_dd095dee227f",
+          "card_action": "keep_active",
+          "contacted_merchant": true,
+          "purchase_date": "10/28/2025",
+          "dispute_reason": "incorrect_amount",
+          "resolution_requested": "partial_refund",
+          "partial_refund_amount": 70,
+          "eligible_for_provisional_credit": false,
+          "...": "card/customer fields as gold"
+        },
+        "output": "Credit card transaction dispute filed successfully. ... Resolution Requested: Partial Refund\nPartial Refund Amount: $70.00",
+        "note": "Agent asks per doc _014; customer, knowing only a usual bill of 'around $120', asks for about $70 back."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_014",
+          "quote": "13. resolution_requested (string) - Ask user what resolution they want."
+        },
+        {
+          "source": "instructions",
+          "quote": "XFINITY $189.99 on 10/28/2025** - INCORRECT AMOUNT. Your usual bill is around $120."
+        }
+      ],
+      "conflict": "Script gives no resolution or amount, only 'around $120'. Gold step 19 needs exactly 69.99. AT&T ('promised a partial refund') and Tesla are gold full_refund.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_f603ba75fc0c].partial_refund_amount: gold=69.99 agent=70.0",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

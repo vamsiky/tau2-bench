@@ -11,16 +11,19 @@ benchmark-review/
 ├── prompts/review.md          current review prompt (one findings JSON per task)
 ├── prompts/verification.md    current independent-verification prompt
 ├── prompts/calibration.md     agreed severities for recurring borderline cases
+├── prompts/pinpoint.md        per-task evidence: step, values, quoted text, scorer diff
 ├── prompts/scorers/*.md       optional scorer variants (e.g. verified.md)
 ├── render_report.py           findings JSON + benchmark data -> review.md / review.html
 ├── report_template.html       page template used by the renderer
 ├── compare_runs.py            task-by-task comparison of two runs of one version
+├── replay.py                  replays gold and doc-following variants on a benchmark snapshot
 └── <domain>/<run date>-<benchmark version>[-<variant>]/
     ├── run.json               domain, benchmark version and git ref, run date, reviewer, prior run
     ├── prompts/               copy of the prompts exactly as this run used them
-    ├── inputs/                prior verdicts, change notes, verification scope
+    ├── inputs/                prior verdicts, change notes, verification scope, gold step outputs
     ├── findings/<task>.json   one reviewer verdict per task
     ├── verification/<v>.json  independent verifier verdicts
+    ├── pinpoint/<task>.json   where each non-None verdict breaks: step, values, quoted text, scorer diff
     ├── synthesis.json         summary and systemic issues
     ├── review.html            interactive report (open in a browser)
     └── review.md              the same report as Markdown
@@ -49,8 +52,8 @@ Open `review.html`. The **Task explorer** shows one task per screen in three col
 the customer instructions and required documents (full text, expandable), the gold
 trajectory (every expected tool call with its arguments, with the steps an issue
 refers to highlighted), and the findings (ratings, issues with evidence and fixes, the
-verifier's verdict, and the comparison with the prior review). Filter by severity or
-prior status, deep-link with `review.html#task_074`, and use the arrow keys to step
+verifier's verdict, and, when `run.json` names a `prior_run`, the comparison with the
+prior review). Filter by severity or prior status, deep-link with `review.html#task_074`, and use the arrow keys to step
 through tasks. Tables scroll inside a box no taller than the window, so the horizontal
 scrollbar is always on screen.
 
@@ -61,7 +64,8 @@ scrollbar is always on screen.
    `git worktree add --detach <scratch>/bench-<tag> <tag>`.
 2. **Create the run folder** `<domain>/<YYYY-MM-DD>-<tag>/` with `run.json` (see the
    existing runs), copy `prompts/` into it, and put the prior run's verdicts and the
-   change notes since that run in `inputs/` when comparing with an earlier review.
+   change notes since that run in `inputs/` when comparing with an earlier review. The
+   report shows prior-review comparisons only when `run.json` sets `prior_run`.
 3. **Review.** Give `prompts/review.md` to reviewer agents with a run brief that fills
    in `{domain}`, `{benchmark_version}`, `{snapshot_root}`, `{run_dir}`,
    `{prior_findings}`, `{scorer_variant}` (or none), and a batch of task ids.
@@ -80,9 +84,16 @@ scrollbar is always on screen.
    where the scorer causes the difference. Point each run's `run.json` at it with
    `"reconciliation": {"file": ..., "side": ...}`. The reports keep the reviewer and
    verifier verdicts visible next to the reconciled one.
-6. **Synthesize.** Write `synthesis.json` (`summary`, and `systemic_issues` as
+6. **Pinpoint.** Give `prompts/pinpoint.md` to agents to write `pinpoint/<task>.json` for
+   every Blocker, Major and Minor task:
+   a one-sentence reason and, per decisive issue, the gold step where the task breaks,
+   the gold call and output, what an agent that follows the documents does instead
+   (replayed with `replay.py alt`), the verbatim document or instruction text that
+   disagrees with the gold, and the DB field the scorer compares. Write each gold
+   step's output with `replay.py dump-gold <run_dir>`; set `BENCH_DIR` to the snapshot.
+7. **Synthesize.** Write `synthesis.json` (`summary`, and `systemic_issues` as
    `{title, description, tasks}`) after reading the findings and verification.
-7. **Render.**
+8. **Render.**
    ```bash
    uv run python claudedocs/benchmark-review/render_report.py \
        claudedocs/benchmark-review/<domain>/<run>

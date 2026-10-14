@@ -26,7 +26,7 @@
         30,
         31
       ],
-      "why_it_matters": "When the third dispute is filed, two earlier disputes exist, which is not 'more than 2', so the gold's true is correct and a careful agent passes. An agent that adopts the author's reading (a cap of two eligible disputes), possibly nudged by the scripted prioritisation line, stores false for txn_39c2ddb4e1d2 and fails transaction_disputes. The defect sits in the scenario text, not the gold.",
+      "why_it_matters": "When the third dispute is filed, two earlier disputes exist, which is not 'more than 2', so the gold's true is correct and a careful agent passes. The author notes are not shown to the agent, and the scripted prioritisation line fires only after the agent itself raises a limit, so a failure needs an agent that invents a two-dispute cap on its own; it then stores false for txn_39c2ddb4e1d2 and fails transaction_disputes. The defect sits in the scenario text, not the gold.",
       "suggested_fix": "Remove the provisional-credit-limit line from the user script and correct description.notes to match the gold (all three eligible)."
     }
   ],

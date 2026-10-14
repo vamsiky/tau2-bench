@@ -1,0 +1,46 @@
+{
+  "task_id": "task_034",
+  "severity": "Minor",
+  "reason": "The ACTION grader matches gold step 8 transfer_to_human_agents by name only, so transferring after request #1 passes despite doc _009's eight-request rule.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Eight-request transfer rule is not graded",
+      "kind": "other",
+      "step": 8,
+      "gold": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: other). A human agent will assist you shortly."
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: other). A human agent will assist you shortly.",
+        "note": "Plausible misreading: the agent transfers on the first demand (gold steps 1-7 dropped, so only request #1 precedes the transfer). Gold itself follows doc _009."
+      },
+      "refs": [
+        {
+          "source": "doc_checking_accounts_checking_accounts_(general)_009",
+          "quote": "For customers who insist on being transferred to a human agent, do not transfer them until they have asked exactly 8 times."
+        },
+        {
+          "source": "task:evaluation_criteria",
+          "quote": "reward_basis [\"ACTION\"]; actions 034_1..034_8 request_human_agent_transfer compare_args []; 034_9 transfer_to_human_agents compare_args []"
+        }
+      ],
+      "conflict": "Doc _009: transfer only after the 8th request. ACTION grader ignores order and count, so one user request plus any transfer matches all nine gold actions.",
+      "scorer": {
+        "field": "no unmatched gold action (all 9 matched by name). DB-only diff, not graded here: human_transfer_requests[transfer_request_2..8]: MISSING row (gold has)",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "PASS"
+      }
+    }
+  ]
+}

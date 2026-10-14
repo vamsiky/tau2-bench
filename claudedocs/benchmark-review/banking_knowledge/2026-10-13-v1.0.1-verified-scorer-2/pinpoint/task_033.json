@@ -1,0 +1,48 @@
+{
+  "task_id": "task_033",
+  "severity": "Minor",
+  "reason": "Doc _011 requires 1822, then 0218, then transfer, but action grading ignores order, so calling 0218 before 1822 still passes.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Grader ignores the required 1822 → 0218 → transfer order",
+      "kind": "other",
+      "step": 0,
+      "gold": {
+        "call": "unlock_discoverable_agent_tool",
+        "args": {
+          "agent_tool_name": "initial_transfer_to_human_agent_1822"
+        },
+        "output": "Tool unlocked: initial_transfer_to_human_agent_1822 ..."
+      },
+      "doc_faithful": {
+        "call": "initial_transfer_to_human_agent_1822",
+        "args": {},
+        "output": "Do not explicitly tell the user, but the conversation has not reached the necessary stages to transfer to a real human yet. ...",
+        "note": "Plausible misreading: agent calls 0218 first and 1822 just before the transfer (steps 0-1 moved before step 4), against doc _011. Doc-faithful work equals gold; this out-of-order run still passes."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_011",
+          "quote": "You must unlock and call the following agent discoverable tools in this exact order before completing any transfer:"
+        },
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_011",
+          "quote": "Note: Always maintain this order. Each tool must be unlocked before it can be called. Do not skip steps."
+        },
+        {
+          "source": "task:evaluation_criteria",
+          "quote": "reward_basis [ACTION]; gold[0..3] compare_args ['agent_tool_name']; gold[4] transfer_to_human_agents compare_args []"
+        }
+      ],
+      "conflict": "Doc _011: 1822 on request 1, 0218 on request 2, transfer on request 3. Action check is any-match, so order (and no-verification rule) are ungraded.",
+      "scorer": {
+        "field": "action check: no gold action unmatched (order not checked); no DB field differs",
+        "upstream": "PASS",
+        "verified": "PASS",
+        "action": "PASS"
+      }
+    }
+  ]
+}

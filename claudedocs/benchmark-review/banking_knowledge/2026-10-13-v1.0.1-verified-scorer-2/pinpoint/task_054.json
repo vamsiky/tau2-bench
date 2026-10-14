@@ -1,0 +1,103 @@
+{
+  "task_id": "task_054",
+  "severity": "Minor",
+  "reason": "Script never states a shipping speed; gold step 14 records expedited, the documented recommendation for fraud (free on Gold), so a neutral ask may diverge.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Expedited shipping never stated by customer",
+      "kind": "ambiguous_choice",
+      "step": 14,
+      "gold": {
+        "call": "order_replacement_credit_card_7291",
+        "args": {
+          "credit_card_account_id": "cc_584f9c5d00_gold",
+          "user_id": "584f9c5d00",
+          "shipping_address": "1456 Astoria Boulevard, Queens, NY 11102",
+          "reason": "fraud_suspected",
+          "expedited_shipping": true
+        },
+        "output": "Order ID: ccord_ad344b6a4227\n...\nShipping Method: Expedited"
+      },
+      "doc_faithful": {
+        "call": "order_replacement_credit_card_7291",
+        "args": {
+          "credit_card_account_id": "cc_584f9c5d00_gold",
+          "user_id": "584f9c5d00",
+          "shipping_address": "1456 Astoria Boulevard, Queens, NY 11102",
+          "reason": "fraud_suspected",
+          "expedited_shipping": false
+        },
+        "output": "Order ID: ccord_ad344b6a4227\n...\nShipping Method: Standard",
+        "note": "Plausible misreading: agent asks neutrally and, with no scripted preference, orders standard shipping instead of recommending expedited as replacements_001 says for fraud."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_card_replacements_001",
+          "quote": "Ask whether they want expedited shipping (advise on possible fees by tier; see Shipping selection)."
+        },
+        {
+          "source": "doc_credit_cards_credit_card_replacements_001",
+          "quote": "If the reason is fraud_suspected or stolen, strongly recommend expedited shipping to minimize exposure"
+        },
+        {
+          "source": "instructions",
+          "quote": "Just send it to my address on file."
+        }
+      ],
+      "conflict": "Script never states a shipping speed; doc says ask and recommend expedited (free on Gold). Gold step 14: expedited true; neutral ask gives false.",
+      "scorer": {
+        "field": "credit_card_orders[ccord_ad344b6a4227].expedited_shipping: gold=true agent=false",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Minor",
+      "title": "Gold does CLI before fraud steps; script endorses reorder",
+      "kind": "other",
+      "step": 12,
+      "gold": {
+        "call": "approve_credit_limit_increase_5847",
+        "args": {
+          "credit_card_account_id": "cc_584f9c5d00_gold",
+          "user_id": "584f9c5d00",
+          "new_credit_limit": 7500
+        },
+        "output": "Credit limit increase approved!"
+      },
+      "doc_faithful": {
+        "call": "deny_credit_limit_increase_5848",
+        "args": {
+          "credit_card_account_id": "cc_584f9c5d00_gold",
+          "user_id": "584f9c5d00",
+          "denial_reason": "pending_disputes"
+        },
+        "output": "Credit limit increase request denied.",
+        "note": "Plausible misreading: agent follows the opening's fraud-first order without weighing logistics_007, orders the replacement and files the dispute, then approve errors and it denies the CLI."
+      },
+      "refs": [
+        {
+          "source": "instructions",
+          "quote": "but let's handle the fraud situation first since that's the priority"
+        },
+        {
+          "source": "instructions",
+          "quote": "Can we do the credit limit increase FIRST before the fraud stuff, so I can still get everything done?"
+        },
+        {
+          "source": "doc_credit_cards_credit_card_account_logistics_007",
+          "quote": "3. No Pending Disputes: Verify the account has no active disputes."
+        }
+      ],
+      "conflict": "Opening: fraud first. logistics_007: dispute/replacement blocks CLI. Script step 3: customer asks for CLI first once told. Gold approves 7500 at step 12, before steps 14/16.",
+      "scorer": {
+        "field": "credit_card_accounts[cc_584f9c5d00_gold].credit_limit: gold \"$7500.00\" agent \"$5,000.00\"; credit_limit_increase_requests[cli_439086eb3c3b]: EXTRA row; extra discoverable call deny_credit_limit_increase_5848",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

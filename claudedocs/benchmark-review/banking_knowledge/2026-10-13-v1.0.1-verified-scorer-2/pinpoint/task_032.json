@@ -1,0 +1,46 @@
+{
+  "task_id": "task_032",
+  "severity": "Minor",
+  "reason": "Doc _010 requires three 0218 calls before transferring, but action grading only checks each tool appears once, so one 0218 call passes.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Grader ignores the 3x-then-transfer count and order",
+      "kind": "other",
+      "step": 2,
+      "gold": {
+        "call": "initial_transfer_to_human_agent_0218",
+        "args": {},
+        "output": "Initial Transfer Initiated, Inform the user that the lines are busy. ..."
+      },
+      "doc_faithful": {
+        "call": "initial_transfer_to_human_agent_0218",
+        "args": {},
+        "output": "",
+        "note": "Plausible misreading: agent calls 0218 once, then transfers early (steps 2-3 dropped), against doc _010. Doc-faithful work equals gold; this violation still passes."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_010",
+          "quote": "Call `initial_transfer_to_human_agent_0218()` for the first, second, and third transfer requests."
+        },
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_010",
+          "quote": "- Use the regular `transfer_to_human_agents` tool to complete the transfer."
+        },
+        {
+          "source": "task:evaluation_criteria",
+          "quote": "reward_basis [ACTION]; gold[1..3] call_discoverable_agent_tool compare_args ['agent_tool_name']; gold[4] transfer_to_human_agents compare_args []"
+        }
+      ],
+      "conflict": "Doc _010: 0218 on requests 1-3, transfer on request 4. Gold steps 1-3 are identical, so one 0218 call matches all three; order is not checked.",
+      "scorer": {
+        "field": "action check: no gold action unmatched (one 0218 call matches gold #1-#3); no DB field differs",
+        "upstream": "PASS",
+        "verified": "PASS",
+        "action": "PASS"
+      }
+    }
+  ]
+}

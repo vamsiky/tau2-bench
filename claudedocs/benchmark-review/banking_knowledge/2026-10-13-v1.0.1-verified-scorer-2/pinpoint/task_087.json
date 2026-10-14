@@ -1,0 +1,52 @@
+{
+  "task_id": "task_087",
+  "severity": "Major",
+  "reason": "Doc _039 says escalate when a customer reports a charge they did not make; gold instead disputes the $499.99 charge and replaces the card.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Doc says escalate unrecognized charge; gold disputes it",
+      "kind": "ambiguous_choice",
+      "step": 15,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_70fb52ef4e29",
+          "account_id": "chk_mt35a7c9d2_evergreen",
+          "dispute_category": "card_present_fraud",
+          "disputed_amount": 499.99,
+          "card_action": "close_and_reissue",
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_8aa70a7acbbf\nTransaction: btxn_70fb52ef4e29\n...\nCategory: Card Present Fraud\nDisputed Amount: $499.99\nCard Action: Close And Reissue"
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "summary": "Customer reports a $499.99 Evergreen card charge they did not make; escalating to security team.",
+          "reason": "fraud_or_security_concern"
+        },
+        "output": "Transfer successful (reason: fraud_or_security_concern). A human agent will assist you shortly.",
+        "note": "Escalates per doc _039 instead of gold steps 14-19 (dispute, close fraud_suspected, EXPEDITED/PREMIUM reorder), which are dropped in the replay."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_039",
+          "quote": "**Escalate to security team when:**\n- The fraud alert is bank-initiated (you'll receive an error if you try to clear it)\n- Customer cannot verify their identity\n- Customer reports transactions they did not make"
+        },
+        {
+          "source": "doc_checking_accounts_checking_accounts_(general)_003",
+          "quote": "If fraud_alert_active is TRUE and alert_source is 'customer_initiated' → Ask customer to verify recent transactions. If they confirm all transactions are legitimate, clear the alert."
+        }
+      ],
+      "conflict": "Customer denies the $499.99 charge on the customer-initiated alert; doc _003 is silent on that case and doc _039 says escalate. Gold steps 15/17/19 dispute, close, reorder.",
+      "scorer": {
+        "field": "missing required discoverable calls: close_debit_card_4721, file_debit_card_transaction_dispute_6281, order_debit_card_5739; debit_cards[dbc_mt35a7c9d2_evergreen].status: gold \"CLOSED\" vs agent \"ACTIVE\"; debit_card_disputes[dsp_8aa70a7acbbf]: MISSING row",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "n/a"
+      }
+    }
+  ]
+}

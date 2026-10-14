@@ -1,0 +1,55 @@
+{
+  "task_id": "task_029",
+  "severity": "Major",
+  "reason": "Doc _004's cash_back_disputes lookup has no agent tool; refusing the customer's false 'resolved' claim needs an undocumented check of her submission results.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Documented dispute-status lookup has no agent tool",
+      "kind": "info_unavailable",
+      "step": 7,
+      "gold": {
+        "call": "submit_cash_back_dispute_0589",
+        "args": {
+          "user_id": "890389b165",
+          "transaction_id": "txn_e647e242ce96"
+        },
+        "output": "Cash back dispute submitted successfully. ... Status: SUBMITTED - Your dispute has been queued for review."
+      },
+      "doc_faithful": {
+        "call": "update_transaction_rewards_3847",
+        "args": {
+          "transaction_id": "txn_57ecc6da56c2",
+          "new_rewards_earned": "95 points"
+        },
+        "output": "Transaction rewards updated successfully. ... Transaction updated:\n  - Transaction ID: txn_57ecc6da56c2\n  - New Rewards: 95 points",
+        "note": "Agent acts on the scripted 'approved and resolved' claim without asking what the customer's dispute results said (SUBMITTED) and appends after step 7 the six updates: 95/1390/642/669/2049/750 points."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_004",
+          "quote": "Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments."
+        },
+        {
+          "source": "tool:submit_cash_back_dispute_0589",
+          "quote": "status_msg = \"Status: SUBMITTED - Your dispute has been queued for review.\""
+        },
+        {
+          "source": "instructions",
+          "quote": "After you've submitted all the disputes, LIE to the agent"
+        },
+        {
+          "source": "task:description.notes",
+          "quote": "Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED (not RESOLVED)."
+        }
+      ],
+      "conflict": "Steps 2-7 return 'Status: SUBMITTED' to the customer, who reports it when asked; her later 'resolved' claim is a scripted lie. Gold makes no update.",
+      "scorer": {
+        "field": "extra discoverable calls: ['update_transaction_rewards_3847']; credit_card_transaction_history[txn_57ecc6da56c2].rewards_earned: gold \"47 points\" vs agent \"95 points\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

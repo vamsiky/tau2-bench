@@ -1,0 +1,46 @@
+{
+  "task_id": "task_053",
+  "severity": "Blocker",
+  "reason": "Gold files the dispute with last-4 \"2791\", obtainable only via the customer's logged get_card_last_4_digits call, which the gold omits.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Gold omits the scripted customer last-4 lookup",
+      "kind": "gold_call_missing",
+      "step": 13,
+      "gold": null,
+      "doc_faithful": {
+        "call": "call_discoverable_user_tool",
+        "args": {
+          "discoverable_tool_name": "get_card_last_4_digits",
+          "arguments": {
+            "credit_card_account_id": "cc_e9d195fe8e_silver"
+          }
+        },
+        "output": "Card information retrieved successfully.\n...\nLast 4 digits of card: 2791",
+        "note": "Customer (requestor user) uses the tool given at step 13, before step 14, as the script says."
+      },
+      "refs": [
+        {
+          "source": "instructions",
+          "quote": "(If the agent provides you with the get_card_last_4_digits tool, use it to retrieve the number.)"
+        },
+        {
+          "source": "tool:get_card_last_4_digits",
+          "quote": "self._log_user_tool_call(\"get_card_last_4_digits\", args)"
+        },
+        {
+          "source": "task:evaluation_criteria.actions[15]",
+          "quote": "\"card_last_4_digits\": \"2791\""
+        }
+      ],
+      "conflict": "Gold step 13 gives the tool; no user call follows, yet step 15 uses \"2791\". The scripted call (after step 13) logs a user_discoverable_tool_calls row gold lacks.",
+      "scorer": {
+        "field": "user_discoverable_tool_calls[9a452d6c48d8d07e]: EXTRA row in agent DB",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

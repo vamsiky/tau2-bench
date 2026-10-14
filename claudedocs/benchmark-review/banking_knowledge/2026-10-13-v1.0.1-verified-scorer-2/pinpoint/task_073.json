@@ -1,0 +1,53 @@
+{
+  "task_id": "task_073",
+  "severity": "Major",
+  "reason": "Gold step 9 refunds $9.00 on Green by counting a duplicate $3.00 fee dated 11/15, after the 11/14/2025 clock; posted fees give $6.00.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Green refund counts a duplicate fee dated after today",
+      "kind": "gold_value_wrong",
+      "step": 9,
+      "gold": {
+        "call": "apply_checking_account_credit_5829",
+        "args": {
+          "account_id": "chk_kj93a7b2e1_2",
+          "amount": 9.0,
+          "credit_type": "fee_refund"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_6d3e75024589f071\n  ...\n  - Amount: $9.00"
+      },
+      "doc_faithful": {
+        "call": "apply_checking_account_credit_5829",
+        "args": {
+          "account_id": "chk_kj93a7b2e1_2",
+          "amount": 6.0,
+          "credit_type": "fee_refund"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_e9acb4a3f542db9f\n  ...\n  - Amount: $6.00",
+        "note": "Reviews only fees posted through 11/14: RHO-BANK ATM fee $3.00 + Woori $15 vs $12 = $6.00. Light Green's post-clock items (+1.50, -1.50) cancel, so step 10 is unchanged."
+      },
+      "refs": [
+        {
+          "source": "tool:get_current_time",
+          "quote": "The current time is 2025-11-14 03:40:00 EST."
+        },
+        {
+          "source": "db:bank_account_transaction_history[btxn_kj18k9l0m1n3, btxn_kj18k9l0m1n4]",
+          "quote": "account_id: chk_kj93a7b2e1_2, date: 11/15/2025, description: NON-RHO ATM FEE, amount: -3.0 (twice, one $250 PNC withdrawal)"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_017",
+          "quote": "Check the transaction history to confirm each fee discrepancy"
+        }
+      ],
+      "conflict": "Clock 11/14. Gold step 9 adds +$3.00 for the 11/15 duplicate fee: 9.00 vs 6.00. No doc says whether future-dated rows count.",
+      "scorer": {
+        "field": "accounts[chk_kj93a7b2e1_2].current_holdings: gold \"$12759.00\" vs agent \"$12756.00\"; bank_account_transaction_history[txn_6d3e75024589f071]: MISSING row; bank_account_transaction_history[txn_e9acb4a3f542db9f]: EXTRA row",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}
