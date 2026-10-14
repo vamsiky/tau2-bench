@@ -1,16 +1,16 @@
 # banking_knowledge v1.0.1 — upstream scorer vs revised verified scorer
 
-Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (claude-opus-5-5, effort high), task batches, inputs, verification and calibration prompts. The DB scorer differs: upstream exact-hash grading against the revised verified scorer (extra discoverable calls allowed only when every call was rejected for bad input; closure_reason ignored on bank accounts only). The verified-scorer run also used a later review prompt that adds grading facts confirmed during the upstream run and points reviewers to the calibration file. Both sides show their reviewers' and verifiers' own severities, with no reconciliation, so a difference can come from the scorer, the prompt update, or run-to-run judgment. 'Repeat' is an earlier same-scorer upstream review (draft-1) that shows how much reviewers alone vary.
+Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (claude-opus-5-5, effort high), task batches, inputs, verification and calibration prompts. The DB scorer differs: upstream exact-hash grading against the revised verified scorer (extra discoverable calls allowed only when every call was rejected for bad input; closure_reason ignored on bank accounts only). The verified-scorer run also used a later review prompt that adds grading facts confirmed during the upstream run and points reviewers to the calibration file. The verified-scorer side also includes a targeted re-review (2026-10-14, verification/v5.json) of every flagged task's reasoning about the simulated customer, which the upstream run did not get. Both sides show their reviewers' and verifiers' own severities, with no reconciliation, so a difference can come from the scorer, the prompt update, the re-review, or run-to-run judgment. 'Repeat' is an earlier same-scorer upstream review (draft-1) that shows how much reviewers alone vary.
 
 ## Agreement by stage
 
 | Stage | Tasks with the same severity | Differences |
 |---|---|---|
 | Noise baseline: repeat (draft-1) vs upstream reviewers (same scorer) | 70/97 | 27 |
-| Reviewers: upstream vs verified | 61/97 | 36 |
-| After verification: upstream vs verified | 71/97 | 26 |
+| Reviewers: upstream vs verified | 62/97 | 35 |
+| After verification: upstream vs verified | 70/97 | 27 |
 
-## Tasks that differ after verification (26)
+## Tasks that differ after verification (27)
 
 - **task_005**: upstream Minor, verified None.
   - upstream: The gold is correct per the bypass-code document, but reaching it needs the simulated customer to come back after a transfer, which the simulator's general rules tell it to end the conversation on.
@@ -24,9 +24,12 @@ Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (
 - **task_016**: upstream Minor, verified None.
   - upstream: The referral answer ($750 Silver card spend) is uniquely determined, but the customer's story says the friend has already made purchases while the database has no record of the friend at all.
   - verified: Clean: the only in-progress referral is a Silver Rewards Card referral whose documented requirement is $750 of spending, and the customer then makes exactly that purchase.
-- **task_029**: upstream Major, verified Blocker.
-  - upstream: To pass, the agent must refuse to update rewards because the disputes are still pending, but it has no tool to see dispute status and hears the same 'they were approved' claim that task_028 expects it to act on.
-  - verified: The agent is expected to catch a customer lying that her disputes were approved, but it has no tool to check, and the twin task 028 rewards believing the same words.
+- **task_027**: upstream Blocker, verified Major.
+  - upstream: The agent is expected to see through the customer's false claim that the disputes were approved, but it has no tool to check dispute status, and task_026 presents the identical conversation with the opposite expected outcome.
+  - verified: The gold's four disputes match the seeded rewards only under half-up rounding; the documented round-down rule flags nine more one-point overcredits, so an agent that follows the docs can file disputes the gold lacks.
+- **task_028**: upstream Blocker, verified Major.
+  - upstream: The rewards math reproduces exactly. The remaining defect, applying corrections on a dispute status the agent cannot observe while task_029 expects refusal on identical evidence, is the same defect class the review rated Blocker in 026/027 with no stated reason to differ. Raised to Blocker for consistency. The Minor EcoCard '$5.00 points' issue holds.
+  - verified: Doc _004 tells the agent to confirm resolved disputes in cash_back_disputes, but no agent tool reads it; the gold updates are reachable only by asking the customer what each submission returned (RESOLVED).
 - **task_035**: upstream None, verified Minor.
   - upstream: Clean: the 11/14 credit-bureau incident article clearly applies and names the emergency tool plus a transfer, which is exactly what the gold checks.
   - verified: The emergency credit-bureau transfer is well specified, but the action grader cannot tell whether the agent escalated immediately or verified first, as the task intends.
@@ -42,9 +45,9 @@ Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (
 - **task_047**: upstream None, verified Minor.
   - upstream: The two-card flow reproduces. The only issues are cosmetic doc corruptions, which the calibration makes notes, so the task is clean. One more residual risk: bp_011 says 'Offer is for new customers only', and an agent that tells this existing Rho-Bank customer the waiver does not apply quotes a $450 fee. The script accepts only if the fee is 'waived for the first year or reasonable'. The doc's 'applies to new accounts opened within the promotion window' supports the gold, so I leave this as a note.
   - verified: The two-card retention flow (Business Platinum for the Silver Zoom, then a $50 credit on the under-2-year Platinum) is derivable, but the second closure reason is stated two ways.
-- **task_054**: upstream Minor, verified Major.
-  - upstream: The fraud-plus-credit-limit task is solvable from the documents, but the gold expects expedited shipping on the replacement card, and the customer's script never says whether she wants it.
-  - verified: The expedited-shipping Minor holds. The review missed the ordering defect it flagged as Major in sibling task_053. An agent that handles the fraud first, as the customer asks, files the dispute and orders the replacement, then must deny the CLI under logistics_007, and fails. The gold needs the agent to anticipate the conflict and put the CLI ahead of a fraud response the customer called urgent, which no document prescribes. That is two defensible orders with different graded states, Major under calibration, and the same as 053.
+- **task_049**: upstream Blocker, verified Minor.
+  - upstream: Lying-customer closure flow whose gold needs the simulated customer to call a transfer-request tool, which nothing tells it to call.
+  - verified: The gold is correct, but its DB check includes a transfer-request row that only the simulated customer can create, by calling its request_human_agent_transfer tool once when it asks for a human.
 - **task_057**: upstream None, verified Minor.
   - upstream: Blue Account is the only checking account that meets all of the customer's documented needs, the savings refusal leaves no DB trace, and the check deposit is scripted, so the task is clean.
   - verified: The task's headline test (refusing to open savings after the customer falsely claims 14 days have passed) is not graded, because the tool rejects the savings account anyway and the attempt leaves the compared state unchanged.
@@ -95,9 +98,9 @@ Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (
 
 | Severity | upstream | verified |
 |---|---|---|
-| Blocker | 14 | 12 |
-| Major | 35 | 33 |
-| Minor | 21 | 24 |
+| Blocker | 14 | 8 |
+| Major | 35 | 35 |
+| Minor | 21 | 26 |
 | None | 27 | 28 |
 
 ## Every task
@@ -127,9 +130,9 @@ Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (
 | task_024 | None | Major | Major | Major | Major | Major |
 | task_025 | Major | Major | Major | Major | Major | Major |
 | task_026 | Minor | Blocker | Blocker | Blocker | Blocker | Blocker |
-| task_027 | Minor | Blocker | Blocker | Blocker | Major | Blocker |
-| task_028 | None | Major | Major | Blocker | Blocker | Blocker |
-| task_029 | Major | Major | Major | Major | Blocker | Blocker |
+| task_027 | Minor | Blocker | Blocker | Blocker | Major | Major |
+| task_028 | None | Major | Major | Blocker | Major | Major |
+| task_029 | Major | Major | Major | Major | Major | Major |
 | task_031 | None | None | None | None | None | None |
 | task_032 | None | Minor | Minor | Minor | Minor | Minor |
 | task_033 | None | Minor | Minor | Minor | Minor | Minor |
@@ -147,12 +150,12 @@ Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (
 | task_046 | None | Major | Major | Major | Minor | Major |
 | task_047 | None | None | Minor | None | Minor | Minor |
 | task_048 | None | Major | Major | Major | Major | Major |
-| task_049 | None | Blocker | Blocker | Blocker | Blocker | Blocker |
+| task_049 | None | Blocker | Blocker | Blocker | Minor | Minor |
 | task_050 | None | None | None | Minor | Minor | Minor |
 | task_051 | None | Minor | None | None | None | None |
 | task_052 | None | Minor | None | None | None | None |
 | task_053 | None | Blocker | Blocker | Blocker | Blocker | Blocker |
-| task_054 | None | Minor | Minor | Minor | Minor | Major |
+| task_054 | None | Minor | Minor | Minor | Minor | Minor |
 | task_055 | None | None | None | None | None | None |
 | task_056 | None | Major | Major | Major | Major | Major |
 | task_057 | Minor | None | None | None | Minor | Minor |
@@ -205,5 +208,5 @@ Two independent reviews of the same 97 tasks on 2026-10-13 with the same model (
 ## Notes
 
 - The upstream side uses that run's reviewer and verifier severities (Blocker 14, Major 35, Minor 21, None 27). Its published report shows severities reconciled against the earlier, superseded verified-scorer run (11 / 40 / 25 / 21); that reconciliation is not used here.
-- Four differences come from the scorer: 060, 061, 062 and 067 close a bank account, and only the verified scorer ignores a custom closure_reason there. The verified-scorer reviewers and verifiers report that no other verdict in their run depends on the scorer's relaxations, so the remaining 22 differences are differences in judgment or in what each review found, about as many as the 27 between two same-scorer reviews.
+- Four differences come from the scorer: 060, 061, 062 and 067 close a bank account, and only the verified scorer ignores a custom closure_reason there. The verified-scorer reviewers and verifiers report that no other verdict in their run depends on the scorer's relaxations, Three differences (027, 028, 049) come from the verified side's customer-side re-review: it rates 049's customer transfer call Minor and the 027/028 dispute-status lookup Major, where the upstream run kept them Blocker. The remaining 20 are differences in judgment or in what each review found, fewer than the 27 between two same-scorer reviews.
 - The verified-scorer run's review prompt adds grading facts confirmed during the upstream run (read log keyed by tool name, which rejected calls are logged, ACTION grading ignores who made the call, NL assertions multiply into the reward) and points reviewers to calibration.md.
