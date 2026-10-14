@@ -27,6 +27,7 @@ sys.path.insert(
 from examples.agents.claude_sdk_loop_eval import _retrieval_env_kwargs  # noqa: E402
 from tau2.data_model.simulation import Results  # noqa: E402
 from tau2.runner import build_environment, get_tasks  # noqa: E402
+from tau2.runner.build import _derive_read_log_allowlist  # noqa: E402
 
 DOMAIN = "banking_knowledge"
 ek = _retrieval_env_kwargs(DOMAIN, "alltools", None)
@@ -40,7 +41,14 @@ init = task.initial_state
 
 
 def mk():
-    e = build_environment(DOMAIN, env_kwargs={**ek, "task": task})
+    e = build_environment(
+        DOMAIN,
+        env_kwargs={
+            **ek,
+            "task": task,
+            "read_log_allowlist": _derive_read_log_allowlist(task),
+        },
+    )
     e.set_state(
         initialization_data=init.initialization_data if init else None,
         initialization_actions=init.initialization_actions if init else None,

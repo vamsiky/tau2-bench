@@ -120,9 +120,10 @@ def evaluate_simulation(
               the generation backend changes.
         use_verified_scorer: If True, replace the exact DB-hash comparison with the
               principled "tau2 Verified" relaxation (SABER τ-Bench-Verified style):
-              extra discoverable reads are allowed (gold's calls must be a subset of
-              the agent's), and free-text annotation fields (e.g. closure_reason) are
-              excluded. All other tables are still compared exactly. Has no effect on
+              gold's discoverable calls must be a subset of the agent's, extra ones
+              are allowed only if every call to them was rejected for bad input, and
+              bank-account closure_reason is excluded. All other tables are still
+              compared exactly. Has no effect on
               NL-assertion, action, or communicate scoring.
 
     Returns:

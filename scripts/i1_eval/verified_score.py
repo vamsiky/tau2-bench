@@ -2,13 +2,13 @@
 """Principled "verified" re-scorer (SABER tau-Bench-Verified style) for I1
 (banking_knowledge) trajectories, applied to an existing results.json.
 
-Two changes vs the strict DB-hash scorer:
-  1. agent_discoverable_tools: require gold's called tools to be a SUBSET of the
-     agent's calls (no MISSING required call) but ALLOW extra calls — a harmless
-     extra read is not penalized. This keeps task_047's requirement (a missing
-     required check still fails) while unblocking task_063/task_064's extra read.
-  2. Drop free-text annotation fields (e.g. closure_reason) before comparing —
-     unblocks task_067's descriptive closure reason.
+Uses the same comparison as the SDK driver's verified scorer
+(`_verified_db_match` in src/tau2/evaluator/evaluator_env.py):
+  1. agent_discoverable_tools: gold's called tools must be a SUBSET of the agent's
+     (a MISSING required call still fails, e.g. task_047). An extra call is allowed
+     only if every call to that tool was rejected for bad input.
+  2. Bank-account closure_reason (free text with a hidden default) is dropped before
+     comparing, which unblocks task_067's descriptive closure reason.
 Every other table (accounts, applications, ...) is compared exactly.
 
 Usage:
@@ -18,7 +18,6 @@ Usage:
 Reconstructed from the 2026-06-24 I1 investigation session.
 """
 
-import copy
 import os
 import sys
 
@@ -33,11 +32,15 @@ sys.path.insert(
 
 from examples.agents.claude_sdk_loop_eval import _retrieval_env_kwargs  # noqa: E402
 from tau2.data_model.simulation import Results  # noqa: E402
+from tau2.evaluator.evaluator_env import (  # noqa: E402
+    _input_rejected_discoverable_tools,
+    _verified_db_match,
+)
 from tau2.runner import build_environment, get_tasks  # noqa: E402
+from tau2.runner.build import _derive_read_log_allowlist  # noqa: E402
 
 DOMAIN = "banking_knowledge"
 ek = _retrieval_env_kwargs(DOMAIN, "alltools", None)
-FREE_TEXT_FIELDS = {"closure_reason"}  # annotation-only, no functional effect
 
 # Default per-task best-known result files (used when no CLI args are given).
 DEFAULT_ITEMS = [
@@ -53,13 +56,20 @@ DEFAULT_ITEMS = [
 
 
 def build(tid, res):
-    """Return (gold_db, predicted_db, strict_reward) for a task/result pair."""
+    """Return (gold_db, predicted_db, strict_reward, messages) for a task/result pair."""
     task = get_tasks(DOMAIN, task_ids=[tid])[0]
     sim = next(s for s in Results.load(res).simulations if s.task_id == tid)
     init = task.initial_state
 
     def mk():
-        e = build_environment(DOMAIN, env_kwargs={**ek, "task": task})
+        e = build_environment(
+            DOMAIN,
+            env_kwargs={
+                **ek,
+                "task": task,
+                "read_log_allowlist": _derive_read_log_allowlist(task),
+            },
+        )
         e.set_state(
             initialization_data=init.initialization_data if init else None,
             initialization_actions=init.initialization_actions if init else None,
@@ -80,42 +90,13 @@ def build(tid, res):
         g.tools.db.model_dump(),
         p.tools.db.model_dump(),
         sim.reward_info.reward if sim.reward_info else None,
+        sim.messages,
     )
 
 
-def strip_free_text(d):
-    d = copy.deepcopy(d)
-    for table in d.values():
-        data = table.get("data") if isinstance(table, dict) else None
-        if isinstance(data, dict):
-            for rec in data.values():
-                if isinstance(rec, dict):
-                    for f in FREE_TEXT_FIELDS:
-                        rec.pop(f, None)
-    return d
-
-
-def verified_match(gd, pd):
+def verified_match(gd, pd, messages):
     """Return (is_match, reasons). gd = gold DB dump, pd = predicted DB dump."""
-    gd, pd = strip_free_text(gd), strip_free_text(pd)
-    reasons = []
-
-    # 1) discoverable audit: gold tool_names must be a subset of predicted tool_names
-    def toolnames(db):
-        data = db.get("agent_discoverable_tools", {}).get("data", {}) or {}
-        return {r.get("tool_name") for r in data.values()}
-
-    missing = toolnames(gd) - toolnames(pd)
-    if missing:
-        reasons.append(f"MISSING required discoverable calls: {sorted(missing)}")
-
-    # 2) compare every other table exactly (audit table handled above)
-    for table in sorted(set(gd) | set(pd)):
-        if table == "agent_discoverable_tools":
-            continue
-        if gd.get(table) != pd.get(table):
-            reasons.append(f"table '{table}' differs")
-    return (len(reasons) == 0), reasons
+    return _verified_db_match(gd, pd, _input_rejected_discoverable_tools(messages))
 
 
 def main():
@@ -125,8 +106,8 @@ def main():
         items = DEFAULT_ITEMS
     print(f"{'task':9} {'strict':7} {'verified':9} reason")
     for tid, res in items:
-        gd, pd, strict = build(tid, res)
-        ok, reasons = verified_match(gd, pd)
+        gd, pd, strict, messages = build(tid, res)
+        ok, reasons = verified_match(gd, pd, messages)
         strict_lbl = "PASS" if strict and strict >= 1 else "FAIL"
         ver_lbl = "PASS" if ok else "FAIL"
         print(f"{tid:9} {strict_lbl:7} {ver_lbl:9} {'' if ok else '; '.join(reasons)}")

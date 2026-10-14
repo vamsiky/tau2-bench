@@ -10,11 +10,12 @@ All scripts run from the repo root via `uv run python`.
 
 ## verified_score.py — "tau2-banking Verified" re-scorer
 
-SABER tau-Bench-Verified style. Two relaxations vs the strict DB hash:
+SABER tau-Bench-Verified style, using the same `_verified_db_match` as
+the SDK driver's default scorer. Two relaxations vs the strict DB hash:
 1. **Discoverable-tool audit as a superset:** gold's called tools must be a
-   subset of the agent's calls (a *missing required* call still fails), but
-   extra harmless reads are forgiven.
-2. **Free-text fields excluded:** annotation-only fields (`closure_reason`) are
+   subset of the agent's calls (a *missing required* call still fails). An extra
+   call is forgiven only if every call to that tool was rejected for bad input.
+2. **Free-text fields excluded:** bank-account `closure_reason` is
    dropped before comparison.
 
 ```bash

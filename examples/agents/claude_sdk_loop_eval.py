@@ -98,6 +98,7 @@ from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation  # noqa
 from tau2.orchestrator.modes import CommunicationMode  # noqa: E402
 from tau2.orchestrator.orchestrator import DEFAULT_FIRST_AGENT_MESSAGE  # noqa: E402
 from tau2.runner import build_environment, build_user, get_tasks  # noqa: E402
+from tau2.runner.build import _derive_read_log_allowlist  # noqa: E402
 from tau2.runner.checkpoint import create_checkpoint_fns, try_resume  # noqa: E402
 from tau2.runner.helpers import get_environment_info  # noqa: E402
 from tau2.user.user_simulator import (  # noqa: E402
@@ -654,6 +655,10 @@ async def run_episode(
     # evaluator rebuilds its gold/predicted envs with the SAME variant so the
     # DB/ACTION replay matches. Identical surface to the CLI, so comparable.
     eval_env_kwargs = _retrieval_env_kwargs(domain, retrieval_config, retrieval_kwargs)
+    if domain == "banking_knowledge":
+        # Log the discoverable reads the gold requires, as `tau2 run` does, so a
+        # skipped required read fails the DB check instead of going unrecorded.
+        eval_env_kwargs["read_log_allowlist"] = _derive_read_log_allowlist(task)
     runtime_env_kwargs = dict(eval_env_kwargs)
     if domain == "banking_knowledge":
         # golden_retrieval builds its policy from the task; harmless otherwise.
@@ -1155,8 +1160,8 @@ def main() -> None:
         action="store_false",
         help="Disable the tau2-Verified DB scorer and use the strict exact-hash "
         "comparison instead. By default the verified scorer is on: extra "
-        "discoverable reads are allowed and free-text annotation fields "
-        "(e.g. closure_reason) are excluded.",
+        "discoverable calls are allowed only if every call was rejected for bad "
+        "input, and bank-account closure_reason is excluded.",
     )
     p.set_defaults(verified_scorer=True)
     p.add_argument(
