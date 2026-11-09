@@ -1,0 +1,37 @@
+{
+  "task_id": "task_081",
+  "severity": "Major",
+  "headline": "This is the task_080 lost-wallet scenario plus repeated human-transfer requests, and it inherits the same ambiguous provisional-credit rule on the third fraud dispute that the gold resolves against its own author notes.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The credit-card provisional-credit rule 'has not filed more than 2 disputes in the past 12 months' can be read two ways for the third dispute filed in the same call. The gold marks all three disputes eligible. The task's own author notes say the third ($149.95) must be ineligible, and the user script is built around that limit.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "description.notes: \"Rule is \\u22642 disputes eligible for provisional credit... txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit (eligible_for_provisional_credit: false)\"",
+        "gold[33].arguments: txn_39c2ddb4e1d2 ... \"eligible_for_provisional_credit\": true",
+        "user_scenario: \"If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first\"",
+        "get_user_dispute_history_7291(tm92c4d7e8) returns no prior disputes; transaction_disputes.provisional_credit_given mirrors eligible_for_provisional_credit, so the flag is hashed"
+      ],
+      "gold_action_refs": [
+        31,
+        32,
+        33
+      ],
+      "why_it_matters": "An agent that counts the two disputes it has just filed, as the author did, writes eligible=false on the $149.95 EcoCard dispute and fails the DB hash. An agent that counts only disputes filed before this call passes. Both readings fit the rule text, and the scenario steers toward the first.",
+      "suggested_fix": "Make criterion 4 explicit, e.g. 'count only disputes filed before today's call' (keeps the gold), or change gold txn_39c2ddb4e1d2 to false and reword the rule as 'at most 2 disputes per 12 months may receive provisional credit, including disputes filed today'. Then align description.notes with whichever is chosen."
+    }
+  ],
+  "solution_check": "The work is the same as task_080 minus the card activation: freeze all three cards, unfreeze Green, unfreeze and close Blue and GFF, order the Blue card EXPEDITED/CLASSIC, replace both credit cards, and file three fraud disputes. The customer's four request_human_agent_transfer calls (gold[0], [1], [34], [35]) are user-side writes that the user simulator makes on its own script. transfer_to_human_agents (gold[36]) has mutates_state=False and does not touch the DB. Apart from the third dispute's eligibility flag, the reconstruction matches the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The provisional-credit ambiguity shared with task_080 was not reported.",
+  "notes": "The policy header says 'If the user asks for a human agent 4 times, then you MAY invoke the transfer_to_human_agents tool', which permits but does not require a transfer. That fits the DB not recording the transfer, so whether the agent transfers on the 4th request is ungraded and not counted as a defect. The hash depends on the user simulator making exactly four request_human_agent_transfer calls (record ids transfer_request_1..4). An agent that transfers on request 1 or 2 ends the episode early and correctly fails. description.notes for this task does not restate the provisional-credit intent, but it calls the task 'the exact same scenario as instance 080'."
+}

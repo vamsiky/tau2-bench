@@ -1,0 +1,49 @@
+{
+  "task_id": "task_074",
+  "severity": "Major",
+  "headline": "The four refund amounts now follow the documents, but the Purple refund still depends on a duplicate fee dated after the task's fixed 'today', and some transaction IDs still mark which fees are errors.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "All four accounts carry 'posted' transactions dated 11/15-11/18/2025, after the fixed clock (2025-11-14 03:40). Only one of them matters for grading: Purple's duplicate $2.50 fee on 11/15. The gold Purple credit of $27.00 counts that fee, so an agent that limits its review to transactions on or before today gets $24.50.",
+      "evidence": [
+        "utils.py get_now(): datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"2025-11-14 03:40:00 EST\"",
+        "db.json bank_account_transaction_history[btxn_ar_purple_15f] = {date: \"11/15/2025\", amount: -2.5, type: atm_fee, description: \"NON-RHO ATM FEE\"}",
+        "db.json bank_account_transaction_history[btxn_ar_purple_15f_dup] = {date: \"11/15/2025\", amount: -2.5, type: atm_fee, status: \"posted\"}",
+        "db.json bank_account_transaction_history[btxn_ar_purple_15r] = {date: \"11/15/2025\", amount: 2.5, type: fee_rebate}",
+        "task_074 description.notes: \"(5) Duplicate $2.50 fee on 11/15 withdrawal\"",
+        "gold[9].arguments = {\"account_id\": \"chk_ar72c5d8e3_1\", \"amount\": 27.00, \"credit_type\": \"fee_refund\"}",
+        "Purple recompute, all rows: 2.50 (11/03 fee on RHO-BANK #8734 ATM) + 8.00 (11/07 London foreign fee, Purple foreign fee $0.00) + 10.50 (11/09 Malaysia foreign fee) + 3.50 (11/11 $3.50 NON-RHO fee with no rebate) + 2.50 (11/15 second fee, one rebate) = 27.00; excluding rows dated after 11/14 = 24.50"
+      ],
+      "gold_action_refs": [9],
+      "why_it_matters": "The tool returns rows the bank says posted after 'now'. An agent that treats them as impossible, or limits the review to 'through today', credits Purple $24.50 rather than $27.00 and fails the exact DB-hash match. The other three accounts are unaffected because every after-clock row in them is charged correctly.",
+      "suggested_fix": "Re-date the Purple 11/15-11/18 rows, and the after-clock rows in the other accounts, to on or before 11/13/2025, keeping the duplicate-fee pattern. Alternatively, move the clock forward past 11/18/2025 for this task's data."
+    },
+    {
+      "class": "answer_leak",
+      "severity": "Minor",
+      "summary": "v1.0.1 removed the answer hints from fee descriptions but left them in the transaction IDs. The tool prints each ID ('Record ID: ...' and the transaction_id field), and nine of them still end in '_err' or '_dup'. The marks cover only some errors, and the Light Blue ones match the old one-free-each gold ($8.00), not the current two-free policy ($14.50).",
+      "evidence": [
+        "Flagged IDs: btxn_ar_purple_03f_err, btxn_ar_purple_07f_err, btxn_ar_purple_09f_err, btxn_ar_purple_15f_dup, btxn_ar_lb_03f_err, btxn_ar_lb_05f_err, btxn_ar_lb_08f_err, btxn_ar_dg_02f_err, btxn_ar_ev_03f_err",
+        "Unflagged but erroneous under the docs: btxn_ar_lb_06f (2nd free domestic, 11/06, -2.5), btxn_ar_lb_09f (2nd free foreign, 11/09, -4.0), btxn_ar_lb_13f (-5.5 vs $4.00), btxn_ar_purple_11f, btxn_ar_dg_07f, btxn_ar_dg_12f, btxn_ar_ev_08f, btxn_ar_ev_11f",
+        "tools.py get_bank_account_transactions_9173: formatted_lines.append(f\"{i}. Record ID: {record_id}\") and prints every record field including transaction_id",
+        "changes_since_prior.md: \"all twelve annotated descriptions are scrubbed to plain statement text, so the agent must derive the free allowance from the policy docs\""
+      ],
+      "gold_action_refs": [9, 10, 11, 12],
+      "why_it_matters": "The correct final state does not change. The IDs do give away part of the answer, though, which makes the task easier than intended, and for Light Blue they point to the stale one-free-allowance reading ($2.50 + $2.50 + $4.00 + $1.50 - $2.50 = $8.00). An agent that trusts the markers over light_blue_account_004/006 would under-refund.",
+      "suggested_fix": "Rename the nine records to neutral IDs (for example btxn_ar_lb_05f). No gold action references these IDs, so nothing else changes."
+    }
+  ],
+  "solution_check": "I recomputed every account from the required docs and the seeded rows, netting overcharges against undercharges and missing fees as doc_bank_accounts_bank_accounts_(general)_017 requires ('apply a credit for the net correction'; 'Ensure the credit amount reflects the net correction across all identified fee discrepancies'). Purple: 2.50+8.00+10.50+3.50+2.50 = 27.00, or 24.50 without the 11/15 row. Light Blue (2 free out-of-network at $2.50 after, 2 free foreign at $4.00 after; in-network RHO-BANK free): overcharges 2.50 (11/03 RHO) + 2.50 (11/05) + 2.50 (11/06) + 4.00 (11/08) + 4.00 (11/09) + 1.50 (11/13 $5.50 vs $4.00) = 17.00, minus 2.50 missing on 11/10 (5th of 6 domestic out-of-network withdrawals: 11/05, 11/06, 11/07, 11/10, 11/12, 11/14, 11/16) = 14.50. Dark Green (out-of-network 1% min $1.50, no max; foreign 2.5% max $6.00): overcharges 1.50 (11/02 RHO) + 2.00 (11/07 $200: charged 4.00, should be 2.00) + 4.00 (11/12 $400: charged 10.00, cap 6.00) = 7.50; undercharges 1.00 (11/05 $50: charged 0.50, minimum 1.50) + 1.75 (11/13 $175 with no fee) = 2.75; net 4.75. Evergreen (out-of-network 1% max $2.50; foreign 2% min $3.00): overcharges 1.50 (11/03 RHO) + 1.50 (11/08 $400: 4.00 vs 2.50) + 3.50 (11/11 $350: 10.50 vs 7.00) = 6.50; undercharges 1.00 (11/09 $100: 2.00 vs min 3.00) + 1.80 (11/12 $180 with no fee) = 2.80; net 3.70. All four match the v1.0.1 gold (27.00 / 14.50 / 4.75 / 3.70) with credit_type fee_refund, provided the after-clock rows are counted.",
+  "prior_status": "changed",
+  "prior_note": "Prior Blocker had three parts. The after-clock duplicate persists but is the only thing left that changes the answer (Major). The 'undocumented Purple domestic fee' is not load-bearing: every reading gives $3.50 for the 11/11 row. The netting rule is stated in doc_017, and the Light Blue fix ($17.00 - $2.50 = $14.50) now applies it the same way as the other accounts. The residual transaction-ID leak is new.",
+  "notes": "Grading-model facts confirmed in the snapshot: DB-hash comparison after gold replay (evaluator_env.py); read logging limited to gold-required discoverable reads (build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool), and both required reads (get_all_user_accounts_by_user_id_3847, get_bank_account_transactions_9173) are natural for this task; the agent_discoverable_tools record id is keyed on tool name only, so calling the transactions tool four times writes one record; json.loads(parse_int=float) normalizes 27 vs 27.00; fixed clock 2025-11-14 03:40:00; seeded accounts use 'class'/'level' keys (apply_checking_account_credit_5829 checks account.get('class') == 'checking', which passes for all four). The credit transaction id is seeded from f'{amount}' after float(), so 3.70 and 3.7 hash the same. credit_type: Purple mixes fee refunds with $2.50 of missing rebate, but doc_017's 'use the credit_type that applies to the majority' gives fee_refund under either reading. Purple's domestic out-of-network fee is not documented (purple_account_001/004 give only foreign $0.00 and up-to-$30 rebates), but for the 11/11 $3.50 unrebated fee, gold's '+$1.00 overcharge + $2.50 missing rebate', 'full $3.50 missing rebate' and 'no fee should exist' all give $3.50. Rebate total stays below the $30 cap. In-network (RHO-BANK) fees: no Purple doc states that in-network ATMs are free, but a 'NON-RHO ATM FEE' posted on a RHO-BANK ATM is self-evidently erroneous, and evergreen_account_008 says 'Use in-network ATMs to avoid out-of-network charges'. Netting: doc_017 requires a net correction across 'all fees that differ from what should have been charged'; I treat the netting of undercharges and missing fees as documented, hard reasoning, not a defect. An agent that refunds overcharges only would get 24.50+2.50=27.00 / 17.00 / 7.50 / 6.50. Data nit, not graded: Dark Green 11/12 HSBC $400 withdrawal exceeds that account's documented $300 daily ATM limit (dark_green_account_002); it does not change the fee correction. Not verified: whether the DB hash depends on dict insertion order (credit order across accounts)."
+}

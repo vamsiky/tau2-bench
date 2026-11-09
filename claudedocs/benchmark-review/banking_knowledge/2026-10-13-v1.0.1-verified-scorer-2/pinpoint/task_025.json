@@ -1,0 +1,31 @@
+{
+  "task_id": "task_025",
+  "severity": "Major",
+  "reason": "Gold's Business Platinum (4%) needs Apple Music to be 'media/software'; doc _019 files streaming under Entertainment, making Silver Zoom ($3,000) the winner.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Apple Music's category flips the winning card",
+      "kind": "ambiguous_choice",
+      "step": 0,
+      "gold": {"call": "apply_for_credit_card",
+               "args": {"card_type": "Business Platinum Rewards Card", "customer_name": "Sarah Mitchell", "annual_income": 250000, "rho_bank_subscription": false},
+               "output": "Credit card application submitted:\nYour application has been successfully submitted. ..."},
+      "doc_faithful": {"call": "apply_for_credit_card",
+                       "args": {"card_type": "Silver Zoom Card", "customer_name": "Sarah Mitchell", "annual_income": 250000, "rho_bank_subscription": false},
+                       "output": "Credit card application submitted:\nYour application has been successfully submitted. ...",
+                       "note": "Streaming = Entertainment: Platinum earns 1.5% ($1,500), Silver Zoom promo 3% ($3,000) wins. If Apple Music escapes Silver's 'Apple' exclusion, Business Silver 10% wins instead (also replayed: FAIL/FAIL)."},
+      "refs": [
+        {"source": "doc_business_credit_cards_business_platinum_rewards_card_002", "quote": "Travel, software, and media advertising purchases earn 4.0%."},
+        {"source": "doc_credit_cards_credit_cards_(general)_019", "quote": "**Entertainment**: Movies, concerts, sporting events, and streaming services"},
+        {"source": "doc_credit_cards_credit_cards_(general)_005", "quote": "Media (advertising spend, streaming services)"},
+        {"source": "doc_business_credit_cards_business_silver_rewards_card_005", "quote": "**Hardware/Electronics Merchants (Software Exclusion):**\n- Apple"},
+        {"source": "doc_business_credit_cards_silver_zoom_card_012", "quote": "All other eligible purchases earn 3 × 1.0% during the promo period"}
+      ],
+      "conflict": "Gold assumes Apple Music = Platinum 4% ($4,000) and Silver-excluded 'Apple'. Doc _019 puts streaming in Entertainment → Platinum 1.5%; Silver Zoom 3% = $3,000 wins.",
+      "scorer": {"field": "credit_card_applications: gold row \"Business Platinum Rewards Card\" MISSING, agent row \"Silver Zoom Card\" EXTRA",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "task_038",
+  "severity": "Major",
+  "headline": "The three Amazon disputes are well specified, but the gold card order uses expedited shipping, which the customer's script never addresses for this $10-fee tier.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "gold[4] persists expedited_shipping=true. doc_replacements_001 tells the agent to ask the customer whether they want expedited shipping and to mention the tier fee ($10 for Silver). Unlike tasks 036/037 ('If offered expedited shipping, accept it'), this script says nothing about expedited shipping, so the stored value depends on what the user simulator improvises.",
+      "evidence": [
+        "gold[4].arguments.expedited_shipping = true",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier...)\" and \"Mid-tier (Silver Rewards, ...): $10.00.\"",
+        "task_038 user instructions: section 'Shipping preference for replacement card' covers only the work address; there is no expedited-shipping step (compare task_036/037 step 6)",
+        "tools.py order_replacement_credit_card_7291 stores expedited_shipping in credit_card_orders[order_id]"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "If the user simulator declines the $10 fee or does not answer, or the agent defaults to standard, the order record differs from gold and the DB hash fails, even though the agent did nothing wrong.",
+      "suggested_fix": "Add the step from tasks 036/037 to the user script: 'If offered expedited shipping, accept it.'"
+    }
+  ],
+  "solution_check": "There are five Amazon charges on the Silver card. The user confirms three: txn_e45e7acb56a0 ($89.99, 10/05) fraud, merchant not contacted, eligible=true (first filed, fraud is exempt from merchant contact); txn_28cb62125078 ($124.50, 10/08) goods_services_not_as_described, contacted, not eligible by reason; txn_2017c3b2b119 ($89.99, 10/10) duplicate_charge, merchant not contacted, so not eligible under doc_015 criterion 5 ('For non-fraud disputes... the customer must have attempted to resolve with the merchant first'). All use cancel_and_reissue, last-4 5320, full_refund, noticed 11/14/2025. These match gold[6..8]. The replacement order matches gold[4] except for the unscripted expedited flag.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The dispute flags check out; the new finding is the unscripted expedited-shipping choice.",
+  "notes": "The task notes call the 10/10 duplicate 'eligible', but the gold correctly marks it false (merchant not contacted). The notes are wrong, the gold is right. The 10/10 charge could arguably be classed as fraud (the user says 'clearly their system error or fraud'), which would flip eligibility, but doc_014 says to have the user pick the reason and the script frames it as a DUPLICATE, so I left it in notes. The customer is not given her account id for get_card_last_4_digits; the agent can supply it."
+}

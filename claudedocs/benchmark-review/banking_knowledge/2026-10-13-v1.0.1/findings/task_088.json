@@ -1,0 +1,50 @@
+{
+  "task_id": "task_088",
+  "severity": "Major",
+  "headline": "For the cloned-card fraud, the decline-code guide says to freeze the card while the gold only closes it, and the customer is never told whether the Miami charge used a PIN, so two stored dispute fields are guesswork.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The CODE 82 protocol, in a required document, says to recommend freezing the card until the replacement arrives. The dispute card-action mapping says close_and_reissue, and the gold closes without ever freezing. Any freeze leaves frozen_date, plus unfrozen_date when the card is then unfrozen to close it, and a freeze tool-log row that the gold lacks.",
+      "evidence": [
+        "doc_checking_accounts_purple_account_007 (CODE 82): \"If suspicious transactions found: Follow stolen card protocol to assist the customer. Recommend freezing the card until a replacement arrives.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_present_fraud' -> 'close_and_reissue'\"",
+        "user_scenario: \"If agent says they'll freeze the card: Okay, if that's what needs to happen.\"",
+        "Replay: gold with freeze_debit_card_3892 + unfreeze_debit_card_3893 on dbc_c8feebe975cf inserted before the close -> hash mismatch (frozen_date/unfrozen_date and freeze/unfreeze agent_discoverable_tools rows)"
+      ],
+      "gold_action_refs": [
+        12,
+        14
+      ],
+      "why_it_matters": "An agent that follows the CODE 82 text and freezes the card ends in a different DB state from the gold, even though it completes the dispute, closure and replacement.",
+      "suggested_fix": "Change CODE 82 to 'close the card and order a replacement (stolen card protocol)' or drop the freeze recommendation."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The gold dispute for ELECTRO MART MIAMI fixes transaction_type 'signature_purchase' and pin_compromised 'no'. The customer script says nothing about how the fraudulent purchase was authorized or whether the PIN may be compromised.",
+      "evidence": [
+        "gold[10].arguments: \"transaction_type\": \"signature_purchase\", \"pin_compromised\": \"no\"",
+        "doc_..._031: \"transaction_type (string) - Determine from user circumstances\"; pin_compromised options include 'unknown': Customer unsure",
+        "user_scenario PART 1.5 gives only card condition and transaction confirmations; no PIN/signature line"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "The simulator must improvise (e.g. 'I don't know'), and an agent recording 'pin_purchase' or 'unknown' fails the hash for reasons outside its control.",
+      "suggested_fix": "Add script lines such as 'The statement shows it was signed, not PIN' and 'I don't think anyone has my PIN', or relax those fields."
+    }
+  ],
+  "solution_check": "Reconstructed: Green card CODE 51 from a check hold ($200 available of the $3,000 deposit), informational only. Evergreen CODE 82 with an undamaged card: review transactions, find ELECTRO MART MIAMI $347.99, file card_present_fraud, close fraud_suspected, and reorder STANDARD/CLASSIC ('standard option is fine'). Blue CODE 43 stolen-reported by unknown_caller: transfer to the security team (no DB write). The writes match gold[0..14], subject to the two field and path ambiguities above.",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor (guidelines doc not listed; soft liability) no longer applies under the full-KB model; the CODE 82 freeze-vs-close conflict and the unscripted PIN/signature fields are the real exposure under exact-hash grading.",
+  "notes": "Liability 50 is consistent here: the transaction is 11/09, it was discovered and reported 11/14, and the amount is 347.99. The transfer_to_human_agents reason/summary are not DB-recorded (mutates_state=False). Gold reads (get_debit_cards_by_account_id_7823 x3, get_bank_account_transactions_9173 x2) are all needed for the diagnosis. The task file did not change in v1.0.1."
+}

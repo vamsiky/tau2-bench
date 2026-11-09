@@ -1,0 +1,119 @@
+{
+  "task_id": "task_091",
+  "severity": "Blocker",
+  "headline": "For the Evergreen and Light Blue replacements the gold ignores the tier rules: it orders standard shipping and design when the customer asked for the most premium free option, and it orders a Light Blue replacement immediately despite the 48-hour wait. Several other choices are also left open.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The customer asks for 'the most premium free option for both' on the Evergreen replacement. Evergreen is PREMIUM tier, where EXPEDITED shipping and the PREMIUM design both cost $0, yet the gold orders STANDARD with CLASSIC. Sibling task_090's gold charges $0 for EXPEDITED on Evergreen, which is only valid under the same Premium-tier rule.",
+      "evidence": [
+        "user_scenario line 20: \"I want the most premium free option for both.\"",
+        "doc_bank_accounts_bank_accounts_(general)_029: \"When using order_debit_card_5739, you must provide the exact delivery_fee and design_fee amounts based on the tier rules below.\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"Free expedited shipping on all replacements (delivery_fee: $0 for both STANDARD and EXPEDITED)\" and \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"PREMIUM TIER (Evergreen Account)\"",
+        "gold[14].arguments: delivery_option \"STANDARD\", card_design \"CLASSIC\"",
+        "task_090 gold[10]: Evergreen order with delivery_option \"EXPEDITED\", delivery_fee 0",
+        "Replay: EXPEDITED+PREMIUM changes debit_card_orders and debit_cards (verified match False)"
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "An agent that applies the tier table it is told to use orders EXPEDITED/PREMIUM and fails. The gold matches only an agent that never looks up Evergreen's tier and falls back to doc_bank_accounts_bank_accounts_(general)_023's generic fees, and that doc itself says 'fees may vary based on account tier'.",
+      "suggested_fix": "Change gold[14] to EXPEDITED/PREMIUM with $0 fees, or change the customer's request to 'the standard free option'."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "The gold orders a Light Blue (ENTRY tier) replacement right after closing the card, but the ENTRY-tier rules impose a 48-hour wait between closure and replacement.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029 ENTRY TIER: \"48-hour waiting period after card closure before a replacement can be ordered\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"ENTRY TIER (Light Blue Account, Light Green Account, Green Fee-Free Account)\"",
+        "gold[23] close_debit_card_4721 dbc_tw34a7d9e2_lightblue, then gold[24] order_debit_card_5739 chk_tw34a7d9e2_lightblue in the same conversation",
+        "Replay: gold without gold[24] changes debit_card_orders and debit_cards"
+      ],
+      "gold_action_refs": [
+        24
+      ],
+      "why_it_matters": "An agent that follows the tier rules (which the Evergreen order needs anyway) tells the customer to wait 48 hours and places no order, so the DB differs from the gold.",
+      "suggested_fix": "Remove gold[24] (and have the agent explain the 48-hour wait), or move the Light Blue card to a tier with no waiting period."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The Light Blue card scores VERY HIGH (cannot unlock). Step 6 then offers closure plus replacement, a transfer to security, or a PIN reset, and the customer script accepts each one. Closure is only 'recommended if fraud suspected', but the customer confirms the Bellevue attempts were his. The gold picks closure with reason fraud_suspected.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041 STEP 6: \"Card closure and replacement (recommended if fraud suspected)\" / \"Transfer to security team for investigation\" / \"PIN reset (issues new PIN, invalidates potential compromise)\"",
+        "user_scenario 41: \"Yes, that was definitely me.\"; 44: \"Fine, close it and send me a new one.\"; 45: \"Ugh, okay... I guess I can wait\"; 47: \"Sure, set it to 4121.\"",
+        "gold[23].arguments.reason = \"fraud_suspected\"",
+        "Replay: transfer only (no gold[23]/[24]) fails; a reset would leave the card ACTIVE and unlocked"
+      ],
+      "gold_action_refs": [
+        23,
+        24
+      ],
+      "why_it_matters": "Transferring to security is at least as defensible when fraud is not suspected, and it writes nothing, so the gold's closure and order are missing.",
+      "suggested_fix": "Give a tie-breaker for VERY HIGH scores with no unauthorized transactions (e.g. 'offer transfer to security; do not close'), and align the gold and script with it."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "Both disputes record pin_compromised 'yes_observed', but the customer says he is unsure, which is exactly how the doc defines 'unknown'.",
+      "evidence": [
+        "user_scenario 22: \"I never shared it with anyone. Maybe someone watched me at an ATM? I really don't know.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'yes_observed': Customer believes PIN was observed/skimmed\" / \"'unknown': Customer unsure\"",
+        "gold[16], gold[17] arguments.pin_compromised = \"yes_observed\"",
+        "Replay: pin_compromised 'unknown' changes debit_card_disputes"
+      ],
+      "gold_action_refs": [
+        16,
+        17
+      ],
+      "why_it_matters": "pin_compromised is stored in the dispute record, so 'unknown', a literal reading of the customer's answer, fails.",
+      "suggested_fix": "Change the script to a clear belief ('I think someone watched me enter it') or change the gold to 'unknown'."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The customer script gives DOB 09/22/1991, but the DB and the stated age 24 imply 09/22/2001. Verification still passes on 2 of 4 fields, and the gold logs the DB value.",
+      "evidence": [
+        "user_scenario: \"DOB: 09/22/1991\" and \"a 24-year-old\"",
+        "initial_state users.tw34a7d9e2.date_of_birth = \"09/22/2001\"",
+        "gold[0].arguments.date_of_birth = \"09/22/2001\"",
+        "Replay: logging 09/22/1991 changes verification_history"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that logs the DOB the customer stated fails, and a cautious agent may treat the mismatch as a verification red flag.",
+      "suggested_fix": "Change the script DOB to 09/22/2001."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The Green card scores LOW ('Unlock after standard identity verification'), but no unlock tool exists. The only way to clear pin_locked is reset_debit_card_pin_6284, which the docs describe as a forgotten-PIN reset, and this customer says he knows his PIN.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"0-4 | LOW | Unlock after standard identity verification\"",
+        "doc_bank_accounts_bank_accounts_(general)_027: \"PIN Reset Steps (Customer Forgot PIN)\"",
+        "tools.py reset_debit_card_pin_6284 sets card[\"pin_locked\"] = False",
+        "user_scenario 8: \"Yeah, I know my PIN.\"; 10: \"Sure, if you think that's best. Set it to 2589.\""
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "Most agents will offer a reset, which the customer accepts. An agent that looks for an unlock path and finds none may leave the card locked.",
+      "suggested_fix": "Document that a PIN reset is how chat agents clear a PIN lock, or add an unlock tool."
+    }
+  ],
+  "solution_check": "I replayed the gold (25 actions; all succeed and it matches itself). Green: score 2 (B3=2 for the 87 s/95 s gaps), so reset with 2589. Evergreen: $400 and $300 succeeded in Las Vegas at 02:02-02:05 while the customer was asleep in Seattle, so close as fraud_suspected, file two card_present_fraud disputes ($50 liability, provisional credit, close_and_reissue), and order a replacement. Blue: 4 locks, so a mandatory reset; 9876 is rejected, then 5739. Light Blue: 13-14 points (12 after the location flags are removed), VERY HIGH regardless (the author says 11). Applying the documented tier rules, my Evergreen order (EXPEDITED/PREMIUM) and Light Blue handling (no immediate replacement) both diverge from the gold, and each divergence fails on replay.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The task data is unchanged; the tier, pin_compromised, Light Blue option, and DOB defects were not raised before.",
+  "notes": "doc_bank_accounts_bank_accounts_(general)_005 (the only tier mapping) is not in this task's required_documents, though doc_bank_accounts_bank_accounts_(general)_029 is, so under golden_retrieval the agent sees tier rules with no tier assignment. Under the default full-KB retrieval it is one search away, and task_090 requires it. written_statement_provided=true needs the agent to ask, and the customer script is silent; the simulator will likely agree. police_report_filed=false fits because each dispute is under $500. The 9876 rejection ('Error: PIN cannot be sequential') matches _INPUT_ERROR_RE, but reset_debit_card_pin_6284 is a gold tool anyway. The closure-to-dispute order does not affect the DB. The verified scorer's relaxations do not rescue any of the divergences above (debit-card closure reasons and orders are compared exactly)."
+}

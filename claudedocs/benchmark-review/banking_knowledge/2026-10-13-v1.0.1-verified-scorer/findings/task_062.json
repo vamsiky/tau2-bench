@@ -1,0 +1,17 @@
+{
+  "task_id": "task_062",
+  "severity": "None",
+  "headline": "Clean: Navy Blue and Silver Plus are uniquely determined, and the documented eligibility rules force opening both new accounts before either closure.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Business checking: a genuine $0 monthly fee, no minimum balance and not startup-only leave only Navy Blue (Cobalt $20, Hunter/Lime $25, True Blue $75, World Blue $50, Beige $200, Sky Blue $0 only for a 6-month free period). Savings: a $2.5-3k balance, 10-15 withdrawals, daily compounding, relationship bonus and ATM rebates give Silver Plus. Ordering: general_003 requires 'no accounts with status CLOSED' for business checking. general_002 needs a checking account held at least 14 days for savings; Evergreen is 244 days old, Light Blue 12 days. So both openings must precede both closures. Then $150 Bronze -> Silver Plus, close Bronze, $2,500 and $1,000 out of Evergreen, close Evergreen. Replays: swapping the two openings gives the same state, while opening business checking after any closure fails. This matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; that still holds, though the two closures depend on the verified scorer (see notes).",
+  "notes": "Scorer dependence: two close_bank_account_7392 calls store free-text closure_reason, which the verified scorer ignores; under upstream grading a non-default reason fails. The Bronze savings is stored with class 'saving' (not 'savings'), so close_bank_account_7392 finds no early-closure config. It is 674 days old, so no fee would apply anyway. The verification info omits a phone; the gold logs DB phone 206-555-0847. Notice periods in general_005/006 (7 days Evergreen, 1 day Bronze) are undefined; the gold closes immediately."
+}

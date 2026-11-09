@@ -1,0 +1,51 @@
+{
+  "task_id": "task_063",
+  "severity": "Blocker",
+  "headline": "Two credit cards tie exactly for the customer's goal (both add 0.15% to Silver Plus at no fee and both check credit), but only the Silver Rewards Card is accepted.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "On the optimal savings account (Silver Plus, 3.0% at $8,000), Bronze Rewards and Silver Rewards each add +0.15% with $0 annual fees and credit-score floors below the user's 700, so both give 3.15% ($252). Gold accepts only 'Silver Rewards Card', and the application id is keyed on card_type.",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_009: \"| Bronze Rewards Card | +0.15% |\" and \"| Silver Rewards Card | +0.15% |\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\", \"Annual fee: $0.00\"",
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\", \"Annual fee: $0.00\", \"Purchases outside top categories earn 1.0% back\" (groceries/gas earn 1.0% on both cards)",
+        "user_scenario: \"which ONE combination of credit card and savings account will give me the absolute highest return?\" (objective is savings return; no card-level tie-breaker given)",
+        "gold[1].arguments.card_type = \"Silver Rewards Card\"",
+        "tools.py apply_for_credit_card: application_id = generate_application_id(card_type, customer_name, annual_income, rho_bank_subscription)"
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "An agent that recommends the equally optimal Bronze Rewards Card leads the user to apply for it, creating a different credit_card_applications row and scoring 0. The outcome is a coin flip between equally correct answers.",
+      "suggested_fix": "Make the bonuses differ (for example, Bronze Rewards +0.10% on Silver Plus) or add a user constraint only Silver Rewards satisfies; alternatively accept either card."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Gold has no funding transfer, but doc (general)_002 step 5 has the agent offer to transfer the opening deposit from checking, and the user's script (unlike 058/059) never declines; it says 'let's get the savings account opened with my $8,000 deposit'.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_002: \"Ask the customer if they would like you to transfer the opening deposit from their checking account now.\"",
+        "user_scenario step 7: \"Great! Now let's get the savings account opened with my $8,000 deposit.\"",
+        "db.json accounts[chk_tb58a3c9d2].current_holdings = \"2500.00\""
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "If the simulator accepts a partial transfer (for example the $1,000 Silver Plus opening minimum from the $2,500 checking), balances change and the DB match fails. An $8,000 transfer would fail for insufficient funds and change nothing.",
+      "suggested_fix": "Add 'If offered a transfer from checking, decline; you will deposit the $8,000 yourself.'"
+    }
+  ],
+  "solution_check": "Constraints: paper statements (Green savings requires paperless), $8,000 (Gold needs $10k; Gold's $5k reduction needs the Gold Rewards Card, which needs Rho-Bank+ and 720), score 700 (Platinum 750, Diamond invitation/780), and no no-credit-check cards (EcoCard). Savings at $8k: Silver Plus tier 1 3.0%, Silver tier 1 2.5%, Bronze 2.0%. Best: Silver Plus 3.0% + 0.15% = 3.15% -> $252 with either Bronze or Silver Rewards. Silver + Crypto 3.0% -> $240 (-$75 fee), Silver Plus + Green Rewards (business) 3.1%. Gold picks Silver Rewards; the tie is exact, so gold is not uniquely derivable.",
+  "prior_status": "persists",
+  "prior_note": "Prior v1.0.0 Blocker (Bronze vs Silver Rewards tie on Silver Plus) re-derived and unchanged: task file and silver_plus_009 are identical in v1.0.1.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. Same user id (tb58a3c9d2) and checking as task_058. initialization_data uses unsupported top-level keys (ignored; the DB already has the records). Card credit-score floors are written with a stray '$' ('$640', '$680'), a cosmetic corruption."
+}

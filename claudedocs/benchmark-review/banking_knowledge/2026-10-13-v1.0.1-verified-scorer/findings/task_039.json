@@ -1,0 +1,54 @@
+{
+  "task_id": "task_039",
+  "severity": "Blocker",
+  "headline": "The written rule says a customer with no past disputes qualifies for provisional credit, but the official answer denies it on the fourth qualifying dispute, which only makes sense if disputes filed earlier in the same call count and are filed in a particular order.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "doc_015 criterion 4 (\"has not filed more than 2 disputes in the past 12 months\") supports two readings. Read as a pre-session history check, it passes all four fraud/duplicate disputes (user has 0 prior disputes). Read as a running count that includes disputes filed earlier in the session, only the first three filed qualify. The gold uses the running count and also depends on a filing order (eligible disputes first, by descending amount) that the KB never prescribes.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "db.json transaction_disputes has no record for user 01f21c9970 (gold[2] history read returns none)",
+        "gold[6..8] eligible=true for txn_f7ce44574766 ($312.87 dup), txn_a450807f1148 ($234.56 fraud), txn_182e896e1c97 ($215.67 dup); gold[9] eligible=false for txn_2f16599b9075 ($129.45 fraud), which meets every other criterion (Gold tier max $10000, acct opened 06/15/2024, fraud needs no merchant contact)",
+        "task_039 description.notes: \"maximum 3 disputes can receive provisional credit (the policy states 'has not filed more than 2 disputes' which means up to 2 prior disputes is allowed\" (author interpretation, not KB text); 'provisional_credit_max' appears in no doc or code",
+        "Replay: same disputes with all four reason-eligible = true -> verified match False (transaction_disputes differs); reversing filing order with gold flags -> match True (order matters only through the flags)"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "An agent that checks the history once (0 prior disputes, as gold[2] itself does) and applies the criteria writes eligible=true on all four and fails. Even agents using the running count fail unless they file the four reason-eligible disputes before the four ineligible ones, because ineligible filings also count toward 'filed'. The ordering hint (\"biggest charges first\") is only given if the agent brings up provisional credit.",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the same conversation count toward the 12-month limit and that eligible disputes should be filed first in descending amount, or change gold[9] to eligible=true (pre-session history reading)."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The user script specifies neither the replacement-card shipping preference nor the resolution wanted for each dispute, yet gold fixes expedited_shipping=true, the home address, partial_refund $50 for the incorrect-amount dispute, and full_refund for the other seven.",
+      "evidence": [
+        "task_039 user_scenario: no shipping, expedited, or 'resolution requested' lines (compare task_038 step 9 \"I want a full refund for all three\")",
+        "gold[11]: \"resolution_requested\": \"partial_refund\", \"partial_refund_amount\": 50; gold[15]: \"expedited_shipping\": true",
+        "doc_credit_card_replacements_001: Premium-tier expedited \"$0.00 (complimentary)\"; \"strongly recommend expedited shipping\" for fraud"
+      ],
+      "gold_action_refs": [
+        11,
+        15
+      ],
+      "why_it_matters": "The likely answers match the gold (free and recommended expedited; '$50 extra' implies a $50 partial refund), but the simulator could answer otherwise and fail a correct agent.",
+      "suggested_fix": "Script the expedited and resolution answers (e.g., \"Full refund on all except the $198.23 Costco one, where I only want the $50 overcharge back; expedited shipping is fine\")."
+    }
+  ],
+  "solution_check": "All 8 transactions identified from the DB match the gold ids, dates, and reasons. Reason/merchant/amount criteria give eligible candidates txn_f7ce44574766, txn_a450807f1148, txn_182e896e1c97, txn_2f16599b9075. With the pre-session history check (0 prior), I get eligible=true on all four, which differs from gold[9]. The gold is reproduced only with the running-count reading plus filing the four reason-eligible disputes first in descending amount (replay confirmed both the mismatch and that order alone does not affect the DB).",
+  "prior_status": "persists",
+  "prior_note": "Prior Blocker persists. One correction: the running-count reading is textually supportable ('has not filed more than 2 disputes in the past 12 months' is literally true of in-session filings), so the defect is two defensible readings plus an unstated filing order, not a cap that appears nowhere.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. Gold requires the discoverable read get_user_dispute_history_7291 (gold[1-2]). It is allowlisted, and skipping it fails both the upstream and the verified scorer (replay: missing required discoverable call); doc_016 documents it and criterion 4 needs it, so that is fair. The 'duplicate' charges ($312.87 Costco, $215.67 Amazon) each appear only once in credit_card_transaction_history; the agent follows the customer's stated reason per doc_014 ('Ask user to select one'). partial_refund_amount 50 vs 50.0 makes no difference (replay match True)."
+}

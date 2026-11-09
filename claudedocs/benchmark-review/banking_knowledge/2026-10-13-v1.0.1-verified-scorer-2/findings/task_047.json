@@ -1,0 +1,32 @@
+{
+  "task_id": "task_047",
+  "severity": "Minor",
+  "headline": "The two-card retention flow (Business Platinum for the Silver Zoom, then a $50 credit on the under-2-year Platinum) is derivable, but the second closure reason is stated two ways.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "For the Platinum card the customer cites both the annual fee and low usage in one breath. The gold logs annual_fee.",
+      "evidence": [
+        "user_scenario step 6: \"The annual fee on that one is really bothering me. I don't use it as much as I used to.\"",
+        "gold[12] (047_7).arguments.closure_reason = \"annual_fee\""
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "credit_card_closure_reasons is compared exactly. not_using_card is a defensible label that fails, though the scenario goal ('because the annual fee is too high') and the downgrade branch both point to annual_fee.",
+      "suggested_fix": "Drop 'I don't use it as much as I used to' or make the fee the stated main reason."
+    }
+  ],
+  "solution_check": "Silver Zoom: no disputes, no replacement orders, $0 balance, no closure history, so log found_better_card. Business Platinum is the only business card with 4% on travel/media advertising and a 0% foreign fee, and the customer applies (income 135000, no subscription). Platinum: no history; customer since 03/10/2024 (checking) or 06/20/2024 (card), under 2 years, so offer the downgrade (declined), then the Step 5 'Premium and above' offer of a $50 statement credit with reason retention_offer. This matches the gold, which re-logs nothing for the dispute read.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. The second-card closure-reason ambiguity is a new Minor finding, rated the same as the parallel cases in tasks 045 and 049.",
+  "notes": "The customer already holds a personal Platinum Rewards Card (10% on everything, 0% foreign fee) that beats the competitor, but the script asks for a business card, so Business Platinum is the expected answer. Required docs include replacements_002, which places Platinum Rewards in 'Premium-tier and above'. A debit card with issue_date 01/05/2026 (after the clock) is irrelevant. The gold keeps Silver Zoom open after the customer applies for Business Platinum, consistent with logistics_003 Step 4 ('offer to help them apply instead of closing')."
+}

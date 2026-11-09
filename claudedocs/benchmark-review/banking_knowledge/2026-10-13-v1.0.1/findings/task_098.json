@@ -1,0 +1,17 @@
+{
+  "task_id": "task_098",
+  "severity": "None",
+  "headline": "Clean: given a $600 deposit, the Blue Account is the unique best combined referral bonus, and the rolling window allows one more referral.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Tenure runs from 09/14/2025 (earliest checking), which is 61 days. With a $600 deposit, the eligible programs are Blue $65, Green Fee-Free $55, Green $50, Light Blue $50, and Light Green $40. Evergreen, Purple, Dark Green, and Bluest need larger deposits, and Gold Years needs age 62+. All annual caps have room. The friend lives across town, so the same-address rule does not apply. In the window, 11/04 (COMPLETE) is 10 days old and outside it, and 11/10 (IN_PROGRESS) is inside, so at most one counts and a referral can go through. Blue Account is the gold's submit_referral, and the customer is told to append 'Account'.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. submit_referral (user tool, no tool-gating) writes {referral_id=hash(user_id, account_type), referred_account_type, NO_PROGRESS, date=11/14/2025}, so the DB records only the account_type string and whether the referral was submitted, not who was referred. get_referrals_by_user is an always-available read (not logged). get_all_user_accounts_by_user_id_3847 is discoverable and is logged only when the gold calls it. Personal referral terms (referrer+referred; deposit; tenure; cap/yr): Blue 35+30 $500 30d 5; Bluest 75+50 $2,000 60d 8; Dark Green 40+30 $1,000 45d 6 (age 17-26); Evergreen 35+25 $750 45d 6; Gold Years 50+75 $1,000 30d 6 (age 62+); Green 20+30 $500 30d 5; Green Fee-Free 20+35 $300 30d 4; Light Blue 30+20 $500 30d 5; Light Green 15+25 $100 14d 3; Purple 45+35 $1,000 45d 6. Under both readings of the rolling window (count referral records by date, or count only bonuses received) one referral is allowed, so the reading does not change the outcome here. Replay: an extra get_all_user_accounts_by_user_id_3847 call (not allowlisted for this task) leaves the hash unchanged."
+}

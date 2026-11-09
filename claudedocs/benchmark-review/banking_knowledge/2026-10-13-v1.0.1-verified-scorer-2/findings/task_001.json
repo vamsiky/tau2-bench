@@ -1,0 +1,17 @@
+{
+  "task_id": "task_001",
+  "severity": "None",
+  "headline": "Clean: among no-annual-fee personal cards, Gold Rewards (2.5% flat, needs Rho-Bank+, which the customer has) clearly gives the most cash back on everyday spending.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I listed every personal card in the KB with its annual fee and cash-back rate. Bronze is $0 at 1.0% (doc_credit_cards_bronze_rewards_card_002), Silver is $0 at 1.0% outside its 4% travel/software categories (silver_001/002), Gold is $0 at 2.5% flat and requires Rho-Bank+ (gold_001), and Platinum ($200), Crypto-Cash Back ($75), EcoCard ($50) and Diamond Elite ($495, invitation-only) all charge a fee. Her travel goes on a corporate card, so Silver's 4% categories don't help, and Gold at 2.5% is the unique answer once the agent asks about Rho-Bank+. That matches gold[0] (Gold Rewards Card, Sarah Bosch, 100000, rho_bank_subscription=true). Replaying the gold in the snapshot env succeeds, and annual_income 100000 vs 100000.0 gives an identical DB.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and it still holds. The v1.0.1 edit to gold_001 ('$105 days' -> '105 days') is cosmetic and does not touch the deciding facts.",
+  "notes": "The DB outcome depends on the simulated customer passing rho_bank_subscription=true. Omitting it stores False and fails both the exact and verified comparisons (credit_card_applications differs), so the agent has to ask about Rho-Bank+, since Gold requires it ('Rho-Bank+ premium subscription required: Yes'). Gold's minimum credit score is printed as '$720' (cosmetic, not deciding: the customer's score is never given). In the earlier Opus trials, 3 of 4 passed; trial 2 applied for Bronze without the subscription flag."
+}

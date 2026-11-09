@@ -1,0 +1,51 @@
+{
+  "task_id": "task_085",
+  "severity": "Major",
+  "headline": "Verifying the customer's claims against the transaction history works, but the gold's liability amounts and provisional-credit flag for the duplicate charge rest on readings the documents do not settle.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "customer_max_liability_amount is 50 for all three disputes, including the $14.99 subscription charge, so the gold does not cap at the disputed amount, while task_084's gold does cap. Counting business days from the stated discovery dates also puts the ATM and duplicate disputes in the $500 tier.",
+      "evidence": [
+        "tool docstring: \"based on Regulation E reporting timing rules and the disputed amount\"",
+        "gold[12].arguments: \"disputed_amount\": 14.99, \"customer_max_liability_amount\": 50",
+        "task_084 gold[14]: disputed 412.88 -> liability 412.88 (capped)",
+        "Discovery: ATM 11/05/2025 (7 business days before 11/14), duplicate 11/08/2025 (4 business days incl. 11/11 holiday); gold[9], gold[10] liability 50"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        12
+      ],
+      "why_it_matters": "An agent that applies the cap the docstring implies writes 14.99, and one that counts business days writes 100/89.99. Both differ from the hashed gold record.",
+      "suggested_fix": "Document a single liability formula (anchor date, cap, applicability to non-fraud categories) and regenerate gold[9], gold[10], gold[12]."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The duplicate-charge dispute has contacted_merchant=false but provisional_credit_eligible=true, although doc_032's not-required list includes non-fraud disputes where the merchant was not contacted.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes)\"",
+        "gold[10].arguments: \"dispute_category\": \"duplicate_charge\", \"contacted_merchant\": false, \"provisional_credit_eligible\": true",
+        "user_scenario: \"If asked about merchant contact: No, I haven't contacted them yet.\""
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "Writing false here is a faithful reading of doc_032 and fails the hash.",
+      "suggested_fix": "Exempt duplicate_charge from the merchant-contact condition in doc_032, or set gold[10] to false."
+    }
+  ],
+  "solution_check": "Reconstructed: dispute 1 (Rho-Bank ATM, $300 debited, $200 received) is disputed_amount 100. Dispute 2 is the CityFit duplicate: the v1.0.1 listing shows btxn_c3d4e5f6g703 then btxn_b2c3d4e5f602 for 11/06, so the earliest is b2c3 = gold. Dispute 3 is skipped because the record shows a $200 withdrawal, not the claimed $500, and the customer says skip. Dispute 4 is corrected to $14.99 recurring_charge_after_cancellation with provisional credit false. Transaction ids, categories and amounts match the gold; liability and the duplicate's provisional flag are reading-dependent.",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor (duplicate tie) is resolved by the #403 fixture swap and newest-first sort. Liability and provisional-credit ambiguities that matter under exact-hash grading remain.",
+  "notes": "Duplicate transaction_type 'recurring_payment' is not stated by the customer; it is inferable from 'CITYFIT GYM MONTHLY'. get_debit_dispute_status_7483 is not in the gold, so a prudent dispute-limit check is not logged and is harmless. Rho-Bank ATM provisional credit=true is supported by doc_..._033 ('provisional credit is issued immediately')."
+}

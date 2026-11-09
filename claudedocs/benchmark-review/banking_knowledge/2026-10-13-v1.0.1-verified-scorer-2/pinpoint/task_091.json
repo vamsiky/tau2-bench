@@ -1,0 +1,107 @@
+{
+  "task_id": "task_091",
+  "severity": "Blocker",
+  "reason": "Customer asks for the most premium free option; Evergreen tier makes EXPEDITED and PREMIUM design $0, but gold step 14 orders STANDARD/CLASSIC.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Evergreen replacement ignores premium-tier free options",
+      "kind": "gold_value_wrong",
+      "step": 14,
+      "gold": {
+        "call": "order_debit_card_5739",
+        "args": {"account_id": "chk_tw34a7d9e2_evergreen", "delivery_option": "STANDARD", "delivery_fee": 0, "card_design": "CLASSIC", "design_fee": 0},
+        "output": "Debit Card Order Confirmed\nOrder ID: dcord_df1440ead4ad\n...\nDelivery Option: STANDARD\nCard Design: CLASSIC\n...\nTotal Fees: $0 (No additional charges)"
+      },
+      "doc_faithful": {
+        "call": "order_debit_card_5739",
+        "args": {"account_id": "chk_tw34a7d9e2_evergreen", "delivery_option": "EXPEDITED", "delivery_fee": 0, "card_design": "PREMIUM", "design_fee": 0},
+        "output": "Debit Card Order Confirmed\nOrder ID: dcord_bbd20728f4fa\n...\nDelivery Option: EXPEDITED\nCard Design: PREMIUM\n...\nTotal Fees: $0 (No additional charges)",
+        "note": "user_id and shipping_address unchanged from gold."
+      },
+      "refs": [
+        {"source": "instructions", "quote": "I want the most premium free option for both."},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_029", "quote": "Free expedited shipping on all replacements (delivery_fee: $0 for both STANDARD and EXPEDITED)"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_029", "quote": "PREMIUM design (metallic silver): design_fee $0 (complimentary)"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_005", "quote": "PREMIUM TIER (Evergreen Account)"}
+      ],
+      "conflict": "Evergreen is PREMIUM tier: EXPEDITED and PREMIUM design both $0. Customer wants most premium free. Gold step 14: STANDARD/CLASSIC. Siblings task_086/087 use EXPEDITED/PREMIUM.",
+      "scorer": {"field": "debit_cards[dbc_501e099f3e64].card_design: gold=\"CLASSIC\" agent=\"PREMIUM\"; debit_card_orders[dcord_df1440ead4ad]: MISSING row (gold STANDARD/CLASSIC)", "upstream": "FAIL", "verified": "FAIL"}
+    },
+    {
+      "issue": 2,
+      "severity": "Blocker",
+      "title": "Light Blue reorder breaks ENTRY-tier 48-hour wait",
+      "kind": "gold_call_extra",
+      "step": 24,
+      "gold": {
+        "call": "order_debit_card_5739",
+        "args": {"account_id": "chk_tw34a7d9e2_lightblue", "delivery_option": "STANDARD", "delivery_fee": 0, "card_design": "CLASSIC", "design_fee": 0},
+        "output": "Debit Card Order Confirmed\nOrder ID: dcord_cf74872371cb\nCard ID: dbc_6c31d8c7ee6d\nLinked Account: chk_tw34a7d9e2_lightblue"
+      },
+      "doc_faithful": {
+        "call": "order_debit_card_5739",
+        "args": {},
+        "output": "",
+        "note": "Agent closes the card (step 23) and tells the customer to wait 48 hours; no order placed."
+      },
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_029", "quote": "48-hour waiting period after card closure before a replacement can be ordered"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_005", "quote": "ENTRY TIER (Light Blue Account, Light Green Account, Green Fee-Free Account)"}
+      ],
+      "conflict": "Doc _029 ENTRY tier: 48-hour wait after closure. Gold closes Light Blue at step 23, orders replacement at step 24. task_080 gold and task_084 notes obey the wait.",
+      "scorer": {"field": "debit_card_orders[dcord_cf74872371cb]: MISSING row (gold has); debit_cards[dbc_6c31d8c7ee6d]: MISSING row (gold has)", "upstream": "FAIL", "verified": "FAIL"}
+    },
+    {
+      "issue": 3,
+      "severity": "Major",
+      "title": "VERY HIGH score allows three outcomes; gold picks closure",
+      "kind": "ambiguous_choice",
+      "step": 23,
+      "gold": {
+        "call": "close_debit_card_4721",
+        "args": {"card_id": "dbc_tw34a7d9e2_lightblue", "reason": "fraud_suspected"},
+        "output": "Debit Card Closed Successfully\nCard ID: dbc_tw34a7d9e2_lightblue\n...\nClosure Reason: Fraud Suspected"
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {"reason": "fraud_or_security_concern", "summary": "Light Blue card VERY HIGH PIN-lock score"},
+        "output": "Transfer successful (reason: fraud_or_security_concern). A human agent will assist you shortly.",
+        "note": "Steps 23-24 dropped; transfer to security appended. Customer confirmed the Bellevue attempts were his, so fraud is not suspected."
+      },
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_041", "quote": "- Card closure and replacement (recommended if fraud suspected)\n   - Transfer to security team for investigation\n   - PIN reset (issues new PIN, invalidates potential compromise)"},
+        {"source": "instructions", "quote": "Yes, that was definitely me."},
+        {"source": "instructions", "quote": "I don't have much time but I guess I can wait a few minutes."}
+      ],
+      "conflict": "Doc _041 Step 6 offers closure (if fraud suspected), security transfer, or PIN reset; script accepts all. Customer confirms attempts were his. Gold step 23 closes as fraud_suspected.",
+      "scorer": {"field": "debit_cards[dbc_tw34a7d9e2_lightblue].status: gold=\"CLOSED\" agent=\"ACTIVE\"; debit_cards[dbc_tw34a7d9e2_lightblue].closure_reason: gold=\"fraud_suspected\" agent=null", "upstream": "FAIL", "verified": "FAIL"}
+    },
+    {
+      "issue": 4,
+      "severity": "Major",
+      "title": "Unsure customer recorded as yes_observed",
+      "kind": "gold_value_wrong",
+      "step": 16,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {"transaction_id": "btxn_92867e549ff2", "disputed_amount": 400.0, "pin_compromised": "yes_observed"},
+        "output": "Dispute ID: dsp_215c254f5cb8\n...\nDisputed Amount: $400.00"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {"transaction_id": "btxn_92867e549ff2", "disputed_amount": 400.0, "pin_compromised": "unknown"},
+        "output": "Dispute ID: dsp_215c254f5cb8\nTransaction: btxn_92867e549ff2\n...\nCategory: Card Present Fraud\nDisputed Amount: $400.00",
+        "note": "Same change at step 17 (btxn_e5341d2942ef, $300); other args unchanged."
+      },
+      "refs": [
+        {"source": "instructions", "quote": "Maybe someone watched me at an ATM? I really don't know."},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_031", "quote": "- 'yes_observed': Customer believes PIN was observed/skimmed"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_031", "quote": "- 'unknown': Customer unsure"}
+      ],
+      "conflict": "Customer says \"I really don't know\"; doc _031 maps unsure to 'unknown'. Gold steps 16 and 17: 'yes_observed'.",
+      "scorer": {"field": "debit_card_disputes[dsp_1ec6cc1b785a].pin_compromised: gold=\"yes_observed\" agent=\"unknown\"; debit_card_disputes[dsp_215c254f5cb8].pin_compromised: gold=\"yes_observed\" agent=\"unknown\"", "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

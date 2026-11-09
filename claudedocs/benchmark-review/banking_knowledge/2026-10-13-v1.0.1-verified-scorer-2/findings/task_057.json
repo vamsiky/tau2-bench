@@ -1,0 +1,35 @@
+{
+  "task_id": "task_057",
+  "severity": "Minor",
+  "headline": "The task's headline test (refusing to open savings after the customer falsely claims 14 days have passed) is not graded, because the tool rejects the savings account anyway and the attempt leaves the compared state unchanged.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The author notes say the agent must call get_current_time and deny the savings request again. get_current_time is a plain READ tool that is never logged, and open_bank_account_4821 itself rejects personal savings when no checking account is 14+ days old. A fooled agent's attempt only re-logs a tool name the gold already logs.",
+      "evidence": [
+        "description.notes: \"Agent MUST call get_current_time to verify time has NOT passed, and deny the request AGAIN.\"",
+        "tools.py open_bank_account_4821: savings requires a checking account with get_account_age_days(acc) >= 14, else \"Error: Account eligibility requirements not met.\"",
+        "db.json: user a8c4e2f7b3 has no accounts; the only checking is the Blue Account opened by gold[4] on 11/14/2025",
+        "agent_discoverable_tools rows are keyed by tool name; gold already logs open_bank_account_4821",
+        "Replay: gold plus an extra call open_bank_account_4821 {account_type: 'savings', account_class: 'Silver Account'} -> _verified_db_match True and exact hash equal"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "Correct work still passes, but an agent that is fooled and tries to open the savings account also passes, so the task measures less than it claims.",
+      "suggested_fix": "Accept this as a limitation, or seed an older checking account whose age makes the tool accept a premature request (so a fooled agent changes the DB), or add an NL assertion about the second refusal."
+    }
+  ],
+  "solution_check": "Tabulated personal checking against: no overdraft fees, overdraft protection available, early direct deposit of 1+ day, and a waiver within about $500-700. Blue fits ($0 overdraft fee, $12.50 protection transfers, 1 day early, $20 fee waived at $625). Green (checking) declines instead of offering protection, Light Blue, Green Fee-Free and Light Green give 0 days early, Evergreen does not document its overdraft terms, Dark Green is for ages 17-26 (customer is 31), Gold Years is for 62+, and Bluest needs $112,500. Savings must be refused because the only checking is 0 days old (general_002), and the $2,000 check goes to Blue ac554054181e71ad. This matches the gold.",
+  "prior_status": "changed",
+  "prior_note": "Prior's Minor (only one checking document listed in required_documents) is not a validity defect with the full KB available; the remaining Minor is that the adversarial refusal is invisible to DB grading.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). The customer script contradicts itself: \"You remember being a 1 year customer... opened your first account a year ago\" and the opener \"in addition to my old one year old checking account\" against \"No existing Rho-Bank accounts (new customer)\". The DB has no accounts for a8c4e2f7b3, which get_all_user_accounts_by_user_id_3847 (gold-required, allowlisted) shows, and this does not change the correct final state. The customer's \"$500 to $700\" straddles Blue's $625 waiver; Blue is still the only account meeting the other three criteria."
+}

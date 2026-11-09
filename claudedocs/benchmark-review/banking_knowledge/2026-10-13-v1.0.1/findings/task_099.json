@@ -1,0 +1,17 @@
+{
+  "task_id": "task_099",
+  "severity": "None",
+  "headline": "Clean: for a $30,000 business deposit, World Blue's $300 referrer bonus is the unique maximum the customer qualifies for.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Tenure runs from Navy Blue opened 11/10/2023, about 2 years, which meets every program's minimum. A $30,000 deposit qualifies for World Blue $300, Lime Green $200, Hunter Green $175, Cobalt Blue $150, Sky Blue $150, and Navy Blue $100; True Blue ($50k) and Beige ($100k) are out of reach. World Blue has 0 of 12 used this year. The last referral was 10/30 (15 days ago), so the window is clear. The customer's colleague is at a separate address and business. Gold: submit_referral 'World Blue Account'.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. submit_referral (user tool, no tool-gating) writes {referral_id=hash(user_id, account_type), referred_account_type, NO_PROGRESS, date=11/14/2025}, so the DB records only the account_type string and whether the referral was submitted, not who was referred. get_referrals_by_user is an always-available read (not logged). get_all_user_accounts_by_user_id_3847 is discoverable and is logged only when the gold calls it. Business referral terms (referrer+referred; deposit; tenure; cap/yr): Navy Blue 100+75 $5k 60d 10; Cobalt Blue 150+100 $7.5k 60d 10; Hunter Green 175+125 $10k 60d 10; Lime Green 200+150 $15k 90d 12; Sky Blue 150+250 $10k 45d 8 (company <= 4 years old); World Blue 300+200 $25k 90d 12; True Blue 350+250 $50k 90d 15; Beige 500+350 $100k 120d 15. The gold-required get_all_user_accounts_by_user_id_3847 read is logged, so an agent that relies only on the customer's stated account ages fails the hash (replayed: differs). The read is the natural way to verify tenure (doc_047 measures it from the earliest checking open date), so I treat it as a reasonable requirement rather than a defect."
+}

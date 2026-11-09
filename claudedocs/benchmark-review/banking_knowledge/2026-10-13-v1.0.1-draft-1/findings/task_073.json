@@ -1,0 +1,32 @@
+{
+  "task_id": "task_073",
+  "severity": "Major",
+  "headline": "The three refunds can be derived from the documents, but the Green Account refund includes a duplicate fee dated Nov 15, after the benchmark's fixed 'today', so an agent that ignores future-dated charges refunds $6.00 instead of $9.00.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The Green Account gold credit of $9.00 includes $3.00 for a duplicate out-of-network fee dated 11/15/2025, after the fixed clock (2025-11-14 03:40). Without it the Green credit is $6.00. Light Green also has two after-clock discrepancies (+1.50 on 11/15, -1.50 on 11/17), but they cancel, so its $1.50 does not depend on the clock.",
+      "evidence": [
+        "utils.get_now() = datetime(2025, 11, 14, 3, 40, 0)",
+        "db.json chk_kj93a7b2e1_2 rows on \"11/15/2025\": ATM WITHDRAWAL - PNC BANK #1357 IRVINE CA -250.0; NON-RHO ATM FEE -3.0; NON-RHO ATM FEE -3.0",
+        "doc_checking_accounts_green_account_(checking)_010: \"The fee for out-of-network withdrawals is $3.00 per withdrawal.\"",
+        "gold[9].arguments = {\"account_id\": \"chk_kj93a7b2e1_2\", \"amount\": 9.00, \"credit_type\": \"fee_refund\"}"
+      ],
+      "gold_action_refs": [9],
+      "why_it_matters": "The agent must call get_current_time to log verification, so it knows today is 11/14. It then sees the duplicate fee marked 'posted' for 11/15. An agent that limits the review to activity up to today, or will not refund a charge that has not occurred yet, credits $6.00. That gives a different transaction id and DB hash, and the run scores 0.",
+      "suggested_fix": "Move the duplicate-fee rows (and the other 11/15-11/19 rows on these accounts) to on or before 11/14/2025, or move the fixed clock past 11/19/2025."
+    }
+  ],
+  "solution_check": "I recomputed each account from the docs. Blue (out-of-network 1% max $3.00, blue_001; foreign 3% min $5.00, blue_012): 11/05 $300 withdrawal charged $4.50 against $3.00 (+1.50); 11/09 $500 Seoul charged $20.00 against $15.00 (+5.00); 11/13 withdrawal at a RHO-BANK (in-network) ATM charged $3.00 against $0 (+3.00). Total $9.50. Green (out-of-network $3.00 flat; foreign 3% min $5.00, green_012): 11/07 RHO-BANK ATM charged $3.00 (+3.00); 11/09 $400 Seoul charged $15.00 against $12.00 (+3.00); 11/15 duplicate $3.00 (+3.00). Total $9.00. Light Green (4 free out-of-network then $1.50; foreign tiers): the 11/03 2nd withdrawal was charged $1.50 (+1.50); the 11/15 $150 foreign withdrawal was charged $5.00 against $3.50 (+1.50); the 11/17 7th withdrawal was not charged (-1.50). Net $1.50. All three match the gold, all corrections are fees so fee_refund is correct, and only Green depends on after-clock data.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Major because the in-network-fee inference and the netting were non-obvious. I find both documented (in-network ATMs avoid the out-of-network fee, and doc_017 requires the net correction), so they are difficulty, not defects. The task is still Major for a different reason: the Green credit depends on an after-clock duplicate fee.",
+  "notes": "The in-network inference is supported: blue_001 says \"Use in-network ATMs to avoid the 1% out-of-network fee\", green_001 says \"Using a non-network ATM incurs a $3.00 fee\", and the withdrawal rows say \"ATM WITHDRAWAL - RHO-BANK #1234\" and \"RHO-BANK #5678\", so a NON-RHO fee on a Rho-Bank ATM is identifiably wrong. One trap: on Blue the $400 RHO-BANK withdrawal's $3.00 fee equals the correct out-of-network capped fee, so an agent that skips the ATM name will miss it. Netting the Light Green 11/17 undercharge follows doc_(general)_017: \"Ensure the credit amount reflects the net correction across all identified fee discrepancies\". An overcharge-only agent would credit $3.00, but that misreads the doc rather than exposing a doc gap. If you drop all after-clock rows, Light Green is still $1.50 (11/03 +1.50 only) and Blue is unaffected. v1.0.1 changed three Light Green fee descriptions (11/03, 11/09, 11/11) from \"NON-RHO ATM FEE - AFTER FREE ALLOWANCE\" to \"NON-RHO ATM FEE\". In v1.0.0 the 11/03 label was false (it was a free withdrawal), so it was misleading rather than leaking the answer. Now that it is scrubbed, the agent must count withdrawals itself; no grading impact. Non-load-bearing fixture oddity: the Light Green 11/19 $350 foreign withdrawal exceeds the documented $150 daily ATM limit. Grading-model facts confirmed: the read-log allowlist (all reads in the gold are needed anyway to get account ids and fees), number normalization, and the fixed clock. log_verification arguments match db.json users[kj93a7b2e1]."
+}

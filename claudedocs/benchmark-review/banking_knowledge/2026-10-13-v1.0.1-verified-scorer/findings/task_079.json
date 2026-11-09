@@ -1,0 +1,60 @@
+{
+  "task_id": "task_079",
+  "severity": "Minor",
+  "headline": "Stolen-wallet task is solvable, but it records the freeze-then-unfreeze history and leans on reading a pending refund as a refund rather than a pending transaction.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Same as task_078: the gold freezes all three cards, then unfreezes all three to close them, and the freeze/unfreeze dates persist on the closed cards. Closing the confirmed-stolen cards directly gives the same outcome but a different debit_cards table.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "doc_bank_accounts_bank_accounts_(general)_026: \"CLOSE: Permanent deactivation - cannot be reversed. Use when card is confirmed lost/stolen\"",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\" (a FROZEN card must be unfrozen first)",
+        "freeze_debit_card_3892 writes card[\"frozen_date\"]; unfreeze_debit_card_3893 writes card[\"unfrozen_date\"]; both fields stay on the closed card in the gold DB",
+        "gold[4..6] freeze ev/lb/green; gold[13..15] unfreeze ev/lb/green; gold[17..19] close reason \"stolen\""
+      ],
+      "gold_action_refs": [
+        4,
+        5,
+        6,
+        13,
+        14,
+        15,
+        17,
+        18,
+        19
+      ],
+      "why_it_matters": "An agent that follows doc_026 for a confirmed theft fails, even though every card ends CLOSED as in the gold.",
+      "suggested_fix": "Do not persist freeze/unfreeze timestamps on cards that end CLOSED, or exclude them from the comparison."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Green account's refund appears as a transaction with status \"pending\". doc_025 requirement 4 forbids closing a card with any pending transaction and has no bypass. Requirement 5 allows closing with a pending refund after written acknowledgment. The gold uses requirement 5.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_025: \"4. No pending transactions: The card must not have any pending or processing transactions. If pending transactions exist, inform the customer they must wait for all transactions to settle\"",
+        "doc_bank_accounts_bank_accounts_(general)_025: \"5. No pending refunds: ... or acknowledge in writing that the refunds will be credited to the linked checking account instead.\"",
+        "db (task agent_data) btxn_d0b8b00ed468: account chk_cr89a2b3c4_3, \"REFUND - AMAZON.COM RETURN\", amount 89.99, type \"refund\", status \"pending\"",
+        "gold[19] close dbc_cr89a2b3c4_green; gold[24] order chk_cr89a2b3c4_3 STANDARD/CLASSIC"
+      ],
+      "gold_action_refs": [
+        19,
+        24
+      ],
+      "why_it_matters": "An agent that applies requirement 4 literally refuses to close the Green card and orders no replacement, so debit_cards and debit_card_orders differ from the gold. The refund-specific clause is the more natural reading, and the customer script supplies the acknowledgment, so the risk is small.",
+      "suggested_fix": "Say in requirement 4 that pending refunds are governed by requirement 5, or give the refund row a non-\"pending\" status such as \"refund_pending\"."
+    }
+  ],
+  "solution_check": "Reconstructed: Evergreen is PREMIUM (RUSH $35, PREMIUM design $0), Light Blue is ENTRY with two lost-replacements in 12 months (04/05/2025, 08/10/2025), so the customer accepts the $25 fee but the 48-hour post-closure wait still blocks an order today; Green is MID with a pending refund the customer acknowledges in writing, so close and order STANDARD/CLASSIC. All three cards close with reason stolen. Matches the gold, which replays without errors.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the gold only gained the accounts read in v1.0.1, and neither the freeze-path sensitivity nor the pending-refund overlap was reported before.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. Reason \"stolen\" matters even under the verified scorer: it becomes issue_reason \"stolen\" on both new cards. Ordering a replacement before closing (allowed while the old card is FROZEN) yields issue_reason first_card; noted, not counted."
+}

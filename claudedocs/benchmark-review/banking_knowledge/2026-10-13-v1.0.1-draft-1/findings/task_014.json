@@ -1,0 +1,37 @@
+{
+  "task_id": "task_014",
+  "severity": "Blocker",
+  "headline": "Broken: the gold expects a transfer to a human, but the knowledge base's referral-link procedure explicitly says not to transfer when the requested card has no documented referral program.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Blocker",
+      "summary": "The Crypto-Cash Back card has no documented referral program. The internal referral-link doc says that in this case the agent must explain and 'Do not transfer to a human in these cases', yet the only gold action is transfer_to_human_agents with reason 'unconfirmed_external_communication'.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009 (title 'Generating a Credit Card Referral Link (Internal)'): \"If no referral program is documented for the requested card, or if the user’s claimed terms are incorrect, or if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool. Do not transfer to a human in these cases.\"",
+        "No doc_credit_cards_crypto-cash_back_* doc mentions a referral program (grep -il referral over doc_credit_cards_crypto* returns nothing)",
+        "gold[0]: transfer_to_human_agents {reason: 'unconfirmed_external_communication'} with reward_basis ['ACTION'], compare_args ['reason']",
+        "Policy header guideline 5: \"This guidance may be overridden by specific scenario-based transfer guidance in the knowledge base.\"",
+        "doc_bank_accounts_bank_accounts_(general)_042: \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
+        "task_014.required_documents omits doc_credit_cards_credit_cards_(general)_009",
+        "task_015 opens with the identical Crypto-Cash Back letter claim, and its gold has no transfer (the customer moves on), consistent with (general)_009"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that searches 'referral link' retrieves (general)_009, the scenario-specific internal procedure, and the system prompt says such KB transfer guidance overrides the general transfer rule. A policy-faithful agent therefore declines without transferring, and since the customer is scripted only to accept a transfer offered by the agent (never to demand one), no transfer call happens and the ACTION check scores 0. Only an agent that misses or ignores (general)_009 can match the gold, so correct work fails.",
+      "suggested_fix": "Either (a) change task_014's gold to a no-transfer outcome (e.g. empty actions with an NL/communicate assertion that the agent explains no Crypto-Cash Back referral program exists and gives no link tool), or (b) edit (general)_009 to carve out claims backed by an external communication, e.g. 'If the customer cites an official letter/email for an undocumented program, offer a transfer with reason unconfirmed_external_communication.' Option (b) must stay consistent with task_015, whose DB grading ignores transfers."
+    }
+  ],
+  "solution_check": "A careful reconstruction searches for a Crypto-Cash Back referral program and finds none (crypto docs 001-009 contain no referral terms). It then follows the referral-link procedure (general)_009: explain, do not give get_referral_link, and do not transfer. Under that procedure no transfer_to_human_agents call is made, which contradicts gold[0]. The gold only follows from doc 042's Tier-2 reason table read in isolation.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. It apparently checked only the listed required_documents, which omit (general)_009, the doc that forbids the transfer.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). The customer has all four verification fields but is told not to volunteer them; no verification is needed for the gold. If the agent does transfer, the reason is unambiguous: Tier 1 'customer_demands_after_unavailable_offer_refusal' requires the customer to demand a human, which this script never does, so Tier 2 'unconfirmed_external_communication' is the right code. The defect is whether to transfer at all."
+}

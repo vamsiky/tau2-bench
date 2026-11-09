@@ -1,0 +1,73 @@
+{
+  "task_id": "task_081",
+  "severity": "Major",
+  "headline": "This is the same stolen-wallet case as task 080 and inherits its ambiguous provisional-credit call. It also cannot check whether the agent finally transfers on the fourth request.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The provisional-credit flag on the third same-session dispute ($149.95 SuperGaming) is ambiguous. Doc 015 limits eligibility to customers who have 'not filed more than 2 disputes in the past 12 months'. Gold sets the third dispute to eligible=true (2 prior filings are not more than 2). The task's own notes and customer script assume a 2-dispute cap that makes the third one ineligible.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "task_080 description.notes (task_081 notes say it is 'the exact same scenario as instance 080'): \"txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit\"",
+        "gold[33] file_credit_card_transaction_dispute_4829 txn_39c2ddb4e1d2 \"eligible_for_provisional_credit\": true",
+        "instructions: \"If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first\"",
+        "tools.py file_credit_card_transaction_dispute_4829 stores eligible_for_provisional_credit and provisional_credit_given in transaction_disputes",
+        "Replay check: gold with txn_39c2ddb4e1d2 eligible=false gives a different DB hash (task_080)"
+      ],
+      "gold_action_refs": [
+        33
+      ],
+      "why_it_matters": "An agent that counts the dispute being filed ('this would be the 3rd dispute in 12 months') sets false for the $149.95 charge, which is exactly what the customer script and author notes expect, and fails the hash. An agent that counts only prior filings, or decides eligibility before filing anything, sets true and passes. The result depends on which reading the agent picks.",
+      "suggested_fix": "Pick one rule and make all three artifacts agree. Either reword criterion 4 (e.g. 'including the dispute being filed, no more than 2 disputes in 12 months') and set gold to false for txn_39c2ddb4e1d2, or keep gold true and delete the limit language from the notes and customer script."
+    },
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The task's stated purpose is that the agent transfers only on the 4th human-agent request. transfer_to_human_agents writes nothing to the DB, and the 4th request is logged by the user tool before the agent replies, so transferring and refusing on request 4 produce the same hash.",
+      "evidence": [
+        "tools.py transfer_to_human_agents: @is_tool(ToolType.GENERIC), returns a string only",
+        "tools.py request_human_agent_transfer (user tool): writes human_transfer_requests rows transfer_request_{n}",
+        "gold[36] transfer_to_human_agents {\"summary\": \"\"}; reward_basis [\"DB\"]",
+        "prompts/components/policy_header.md rule 6: \"If the user asks for a human agent 4 times, then you may invoke the transfer_to_human_agents tool.\" (notes call it 'rule 7')"
+      ],
+      "gold_action_refs": [
+        36
+      ],
+      "why_it_matters": "An agent that refuses the 4th request scores the same as one that transfers. A premature transfer is still caught indirectly, because the remaining work or later user requests go missing.",
+      "suggested_fix": "Add an env assertion or action check on transfer_to_human_agents, or log transfers to the DB."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Freezing a lost/stolen card leaves 'frozen_date' and 'unfrozen_date' fields on the card record, and a frozen card must be unfrozen before close_debit_card_4721 will accept it, so the final DB depends on whether the agent froze first. Doc 026 tells agents to recommend closing instead of freezing once loss/theft is confirmed, which gives a second defensible path with a different final state.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "tools.py freeze_debit_card_3892: card[\"frozen_date\"] = get_today_str(); unfreeze_debit_card_3893: card[\"unfrozen_date\"] = get_today_str()",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\"",
+        "task_081 instructions step 1: \"I want to freeze all of them right away.\""
+      ],
+      "gold_action_refs": [
+        10,
+        11,
+        18,
+        19,
+        21,
+        22
+      ],
+      "why_it_matters": "An agent that follows doc 026, recommends closing outright, and gets the simulated customer's agreement (the script says to follow the agent's guidance) closes the cards without the freeze/unfreeze round trip. Its card records then lack the two date fields and the unfreeze tool is never logged, so the hash differs from gold. A replay that drops the freeze/unfreeze calls for the closed cards confirmed the mismatch for task_078. The customer's explicit opening request to freeze makes the gold path the usual one, so this is rated Minor.",
+      "suggested_fix": "Exclude transient freeze bookkeeping fields (frozen_date/unfrozen_date) from the hash, or have close_debit_card_4721 accept FROZEN cards and clear those fields, so both paths converge."
+    }
+  ],
+  "solution_check": "Same reconstruction as task_080 minus the card activation, plus helping through requests 1-3 and transferring on request 4. All writes match gold except the ambiguous eligibility flag on txn_39c2ddb4e1d2. Gold replays without errors.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The provisional-credit ambiguity and the ungraded transfer are newly reported.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. The user-side hash depends on the simulator calling request_human_agent_transfer exactly 4 times (gold[0,1,34,35]). A simulator that skips one call fails the task whatever the agent does."
+}

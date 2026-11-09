@@ -1,0 +1,17 @@
+{
+  "task_id": "task_051",
+  "severity": "None",
+  "headline": "Entry-tier CLI: cap the request at 25%, deny for 75% utilization, pay the balance, then approve; deterministic.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze is entry tier (doc_015). The customer asks for 30%, but the cap is 25% of $4,000 = $1,000 (doc_006, Step 0), so the customer adjusts. Submit 1000. Checks: CLI history empty, 6 on-time payments (6 required), no disputes or replacements, utilization $3,000/$4,000 = 75%, which is at or above 70%, so deny with high_utilization. The customer pays $3,000 from chk_5e4c1a83b0 ($5,000), found via get_all_user_accounts_by_user_id_3847. Denials do not trigger cooldown (doc_005), so the agent resubmits and approves new_credit_limit 5000. This matches the gold and the replay is clean.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior clean; still clean.",
+  "notes": "Tool quirk: the second submit_credit_limit_increase_request_7392 for the same 1000 returns \"Error: A similar request may already exist.\" because the request id is derived from (account, user, amount). It does not change the DB, and the gold without the resubmit gives the same hash (verified). An agent could still be derailed by the error and stop before approving. logistics_007 requires submitting before checking eligibility, which rules out paying down first and skipping the denial."
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "task_019",
+  "severity": "Minor",
+  "headline": "The documented 2.5% Gold and 5x/1x EcoCard rates with round-down rounding give exactly the four gold disputes; the only gap is the rounding doc missing from the required list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding rule that makes the gold dispute set exact (doc_credit_cards_credit_cards_(general)_007) is not in this task's required_documents, so the golden_retrieval variant never shows it.",
+      "evidence": [
+        "task_019.required_documents does not include doc_credit_cards_credit_cards_(general)_007 (grep: only task_028 lists it)",
+        "src/tau2/domains/banking_knowledge/retrieval.py golden_prompt: replaces {{required_documents}} with task.required_documents only",
+        "src/tau2/domains/banking_knowledge/retrieval.py build_tools: \"# No retrieval tools (no_knowledge, full_kb, golden_retrieval)\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under golden_retrieval the agent cannot search the KB, so it must guess the rounding convention; round-half-up flags 11 extra transactions (e.g. txn_f2a3b4c5d6e7 Sprouts 112.58x5=562.9 -> 563 vs stored 562). Search-based configs (default alltools, bm25, etc.) can retrieve doc_007, so headline scores are unaffected.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Computed all 23 transactions for af0581dcbf: Gold Rewards 2.5% on everything (doc_..._gold_rewards_card_001 \"Cash back on all purchases: 2.5%\"), EcoCard 5/$ on Green, 1/$ otherwise. Under floor the only mismatches are the gold four: f093f9 (Thrive Market Green 175x5=875 vs 175), 580773 (Uber 240x2.5=600 vs 240), d39854 (Tentree Green 200x5=1000 vs 600), 37b5b8 (Nordstrom 320x2.5=800 vs 775). Round-half-up adds 11 false positives.",
+  "prior_status": "resolved",
+  "prior_note": "Prior (Major) said the rounding convention was undocumented; doc_credit_cards_credit_cards_(general)_007 states floor rounding, is unchanged since v1.0.0, and reproduces the gold exactly, so that defect never applied to search-based configs. Only the required_documents omission remains.",
+  "notes": "Required doc doc_credit_cards_gold_rewards_card_001 changed in v1.0.1 only cosmetically (\"$105 days\" -> \"105 days\"); it still carries the corrupted \"Minimum credit score required: $720\", which is irrelevant here. Thrive Market is an online marketplace, and doc_..._ecocard_003 says marketplace purchases \"may not qualify\"; the row's category is Green and ecocard_004's exclusion list names only Target/Walmart/Amazon/ThredUp, so 5x is the better-supported reading (and Thrive Market earns 5x in task_022's seed data)."
+}

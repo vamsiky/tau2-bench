@@ -1,0 +1,57 @@
+{
+  "task_id": "task_075",
+  "severity": "Major",
+  "reason": "Gold step 2 picks Green Fee-Free only if Purple's $2.50 out-of-network fee stacks abroad; Purple doc _001 says foreign withdrawals cost $0.00, tying both.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Purple foreign withdrawals $0.00 ties Green Fee-Free",
+      "kind": "ambiguous_choice",
+      "step": 2,
+      "gold": {
+        "call": "open_bank_account_4821",
+        "args": {
+          "user_id": "mv93f8a7b2",
+          "account_type": "checking",
+          "account_class": "Green Fee-Free Account"
+        },
+        "output": "Bank account opened successfully!\n  - Account ID: 4331e92d1f21702f\n  ...\n  - Account Class: Green Fee-Free Account"
+      },
+      "doc_faithful": {
+        "call": "open_bank_account_4821",
+        "args": {
+          "user_id": "mv93f8a7b2",
+          "account_type": "checking",
+          "account_class": "Purple Account"
+        },
+        "output": "Bank account opened successfully!\n  - Account ID: 2e186e760e69e28a\n  ...\n  - Account Class: Purple Account",
+        "note": "Non-stacking reading (as seeded in tasks 072-074): Purple foreign withdrawals cost $0, equal to Green Fee-Free, and Purple also refunds operator surcharges up to $30/month."
+      },
+      "refs": [
+        {
+          "source": "doc_checking_accounts_purple_account_001",
+          "quote": "No foreign ATM withdrawal fees: $0.00 per withdrawal (third-party ATM operator fees may still apply)"
+        },
+        {
+          "source": "doc_checking_accounts_purple_account_012",
+          "quote": "You are charged $2.50 per cash withdrawal made at an out-of-network ATM."
+        },
+        {
+          "source": "doc_checking_accounts_green_fee-free_account_005",
+          "quote": "Foreign ATM withdrawals are also fee-free: $0.00 per withdrawal."
+        },
+        {
+          "source": "instructions",
+          "quote": "You'll need to withdraw cash regularly from out of network ATMs abroad in a foreign currency."
+        }
+      ],
+      "conflict": "Gold needs fee stacking: Purple 18 x $2.50 = $45 vs GFF $0. Without stacking (purple_001): Purple $0 = GFF $0. Customer's wording favours stacking.",
+      "scorer": {
+        "field": "accounts[2e186e760e69e28a]: EXTRA row (Purple Account); accounts[4331e92d1f21702f]: MISSING row (Green Fee-Free Account)",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

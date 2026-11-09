@@ -1,0 +1,37 @@
+{
+  "task_id": "task_056",
+  "severity": "Major",
+  "headline": "The product choices are unique, but the business-savings opening guide tells the agent to use account type 'savings', which opens a different (personal) account than the gold's 'business_savings'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc (general)_004 instructs open_bank_account_4821 with account_type 'savings' for a business savings account, contradicting the tool docstring (business_savings). Because the account id is hashed from account_type, following the doc creates a different account, and the transfer then goes to that id.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004 (Agent Tool Instructions > open_bank_account_4821 > How to call): \"Set account_type to 'savings'.\"",
+        "tools.py open_bank_account_4821 docstring: \"account_type (string): Type of account to open. Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"",
+        "gold[5].arguments: {\"user_id\": \"b5e8f2a1c9\", \"account_type\": \"business_savings\", \"account_class\": \"Silver Plus Saver Account\"} -> account id c1b48f17bb35e876",
+        "Snapshot probe: same call with account_type 'savings' succeeds (user has OPEN personal checking chk_b5e8f2a1c9 opened 09/10/2023, passing the personal-savings 14-day check) and returns account id 3e54498f671ab53f",
+        "gold[7].arguments.destination_account_id = \"c1b48f17bb35e876\""
+      ],
+      "gold_action_refs": [
+        5,
+        7
+      ],
+      "why_it_matters": "An agent that follows the KB procedure literally opens a personal savings row with account_type 'savings' and funds it, so the accounts table differs from gold and the task fails even though the product choice is right.",
+      "suggested_fix": "Change doc (general)_004 to \"Set account_type to 'business_savings'.\""
+    }
+  ],
+  "solution_check": "Business checking (8 products): zero overdraft fee and fee < $50 rule out True Blue ($75), World Blue ($50), and Beige ($200). Lime Green waives at $15,000 and Sky Blue charges $25 after a 6-month startup period with no waiver, both above the user's $3-5k. Navy Blue rebates $10 and has no debit cashback; Hunter Green's 2.0% cashback is only at certified eco vendors. Cobalt Blue ($20 fee waived at $2,500, $0 overdraft, $15 ATM rebates, 1.0% debit cashback on eligible purchases) is the unique fit. Business savings: same-day ACH is 'No' for Bronze Saver, Silver Saver, and Emerald; Gold Plus ($25k), Platinum Reserve ($100k), and Diamond Vault ($500k) minimums are out; Gold Saver documents no relationship bonus (only business-card APY bonuses the user does not hold) and charges $10/month. Silver Plus Saver ($5,000 minimum, 20 free withdrawals, same-day ACH Yes, 0.025% relationship bonus) is the unique fit. Transfer of $3,200 from biz_chk_b5e8f2a1c9 is explicit. Gold replay matches.",
+  "prior_status": "new",
+  "prior_note": "Prior v1.0.0 review rated this clean; the 'savings' vs 'business_savings' contradiction in doc (general)_004 was not reported and is unchanged in v1.0.1.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. Author notes justify excluding Gold Saver as 'sweep-focused' with too few withdrawals, but no Gold Saver doc states a withdrawal limit; the relationship-bonus criterion still separates it from Silver Plus Saver, so the answer stays unique. Class strings 'Cobalt Blue' (doc (general)_003: 'Navy Blue, Cobalt Blue, True Blue') and 'Silver Plus Saver Account' (doc 004: name ending with 'Account') are derivable."
+}

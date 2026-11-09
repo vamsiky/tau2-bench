@@ -1,0 +1,17 @@
+{
+  "task_id": "task_003",
+  "severity": "None",
+  "headline": "Clean: Silver and Gold both meet the hard requirements at a $0 fee, and for a travel-heavy spender Silver's 4% travel rate beats Gold's flat 2.5%.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Filtered personal cards on 0% foreign fee, purchase protection, and a possible $100,000 limit: Bronze (2.75% FTF) and EcoCard (1.0% FTF) fail; Crypto-Cash Back has no purchase protection; Diamond Elite is invitation-only and the customer has received no bank communications. Silver (0% FTF with the premium subscription, 90-day protection, $10,000-$100,000), Gold ($17,500-$112,500) and Platinum ($25,000-$150,000, $200 fee) pass. Lowest fee ties Silver and Gold at $0; the higher cash back for a travel-dominant spender is Silver at 4.0% vs Gold 2.5%, so Silver. Replay matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean and still holds; the gold_rewards_card_001 edit is cosmetic.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. The Silver docs say \"Foreign transaction fee with a premium subscription: 0%\" without naming Rho-Bank+; the link comes from gold_rewards_card_001 \"Rho-Bank+ premium subscription required\". The inference is natural and not counted as a defect. \"Initial credit limits typically range from $10,000 to $100,000\" makes $100,000 possible (inclusive). The Silver $500 sign-up promo window (2025-01-01 to 2025-06-30) is expired and irrelevant."
+}

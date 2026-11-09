@@ -1,0 +1,127 @@
+{
+  "task_id": "task_026",
+  "severity": "Blocker",
+  "reason": "Step 10 writes 1500 points for Zoom $149.99 at 10% where doc _007's floor rule gives 1499.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Gold rounds 1499.9 up; doc _007 floors",
+      "kind": "gold_value_wrong",
+      "step": 10,
+      "gold": {
+        "call": "update_transaction_rewards_3847",
+        "args": {
+          "transaction_id": "txn_a8f1c2d3e411",
+          "new_rewards_earned": "1500 points"
+        },
+        "output": "Transaction rewards updated successfully. ... Transaction updated:\n  - Transaction ID: txn_a8f1c2d3e411\n  - New Rewards: 1500 points"
+      },
+      "doc_faithful": {
+        "call": "update_transaction_rewards_3847",
+        "args": {
+          "transaction_id": "txn_a8f1c2d3e411",
+          "new_rewards_earned": "1499 points"
+        },
+        "output": "Transaction rewards updated successfully. ... Transaction updated:\n  - Transaction ID: txn_a8f1c2d3e411\n  - New Rewards: 1499 points",
+        "note": ""
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_007",
+          "quote": "All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer."
+        },
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_004",
+          "quote": "new_rewards_earned: a string formatted as 'X points' where X is the correct whole-number point value"
+        }
+      ],
+      "conflict": "Zoom $149.99 × 10% (Business Silver, promo ended) = 1499.9. Doc _007 floors → 1499; gold step 10 writes 1500.",
+      "scorer": {
+        "field": "credit_card_transaction_history[txn_a8f1c2d3e411].rewards_earned: gold \"1500 points\" vs agent \"1499 points\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Documented dispute-status lookup has no agent tool",
+      "kind": "info_unavailable",
+      "step": 6,
+      "gold": {
+        "call": "unlock_discoverable_agent_tool",
+        "args": {
+          "agent_tool_name": "update_transaction_rewards_3847"
+        },
+        "output": "Tool unlocked: update_transaction_rewards_3847 ..."
+      },
+      "doc_faithful": {
+        "call": "update_transaction_rewards_3847",
+        "args": {},
+        "output": "",
+        "note": "Agent cannot run doc _004's cash_back_disputes lookup, does not ask what each submission returned, and declines to update on the unverified claim; steps 6-10 dropped."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_004",
+          "quote": "Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments."
+        },
+        {
+          "source": "tool:submit_cash_back_dispute_0589",
+          "quote": "status_msg = \"Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.\""
+        },
+        {
+          "source": "instructions",
+          "quote": "I just got a notification that they've all been approved and resolved!"
+        }
+      ],
+      "conflict": "No agent tool reads cash_back_disputes. Customer's results (steps 2-5) say 'queued for review' then 'Status: RESOLVED'; gold updates four rows (steps 7-10).",
+      "scorer": {
+        "field": "missing required discoverable calls: ['update_transaction_rewards_3847']; credit_card_transaction_history[txn_a8f1c2d3e403].rewards_earned: gold \"6300 points\" vs agent \"3150 points\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    },
+    {
+      "issue": 3,
+      "severity": "Major",
+      "title": "Seed rewards rounded half-up; floor adds 9 disputes",
+      "kind": "gold_call_missing",
+      "step": 5,
+      "gold": {
+        "call": "submit_cash_back_dispute_0589",
+        "args": {
+          "user_id": "755bcb4d5d",
+          "transaction_id": "txn_a8f1c2d3e411"
+        },
+        "output": "Cash back dispute submitted successfully. ... Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated."
+      },
+      "doc_faithful": {
+        "call": "submit_cash_back_dispute_0589",
+        "args": {
+          "user_id": "755bcb4d5d",
+          "transaction_id": "txn_a8f1c2d3e402"
+        },
+        "output": "Cash back dispute submitted successfully. ... Dispute ID: dsp_765604a736a2\nStatus: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.",
+        "note": "Inserted after step 5, plus 8 more one-point overcredits (e404, e406, e409, e414, f503, f507, f509, f512)."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_007",
+          "quote": "For example, a $126.77 purchase on a 1% cash back card earns 126 points (not 127)"
+        },
+        {
+          "source": "db:credit_card_transaction_history[txn_a8f1c2d3e402]",
+          "quote": "Adobe Creative Cloud $54.99, Software, Business Silver, rewards_earned \"1100 points\""
+        }
+      ],
+      "conflict": "Adobe $54.99 × 10% × 2 promo = 1099.8 → floor 1099, seed 1100. Nine such rows overcredited by 1; gold (after step 5) disputes none.",
+      "scorer": {
+        "field": "cash_back_disputes: 9 EXTRA rows (e.g. txn_a8f1c2d3e402); user_discoverable_tool_calls: 9 EXTRA rows",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

@@ -283,6 +283,14 @@ try:
     registry.register_user(UserSimulator, "user_simulator")
     registry.register_user(DummyUser, "dummy_user")
     try:
+        from tau2.user.user_simulator_sdk import SDKUserSimulator
+
+        registry.register_user(SDKUserSimulator, "sdk_user_simulator")
+    except ImportError:
+        logger.debug(
+            "claude-agent-sdk not installed, skipping SDK user simulator registration"
+        )
+    try:
         from tau2.user.user_simulator_streaming import VoiceStreamingUserSimulator
 
         registry.register_user(

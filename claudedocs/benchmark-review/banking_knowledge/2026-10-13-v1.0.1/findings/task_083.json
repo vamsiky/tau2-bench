@@ -1,0 +1,37 @@
+{
+  "task_id": "task_083",
+  "severity": "Blocker",
+  "headline": "This task is graded by exact text match on the dispute-call arguments, but the official answer leaves out a field the tool requires and spells numbers as no tool call would, so no agent can match it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Blocker",
+      "summary": "reward_basis is ACTION with compare_args unset, so each call_discoverable_agent_tool's 'arguments' JSON string must equal the gold string exactly. The four gold dispute strings omit the required customer_max_liability_amount and write numbers as 150.00 / 189.50 / 475.00, so no valid agent call can equal them.",
+      "evidence": [
+        "evaluation_criteria.reward_basis = [\"ACTION\"]; gold[6..9] compare_args = null",
+        "Action.compare_with_tool_call: \"if self.compare_args is None: compare_args = tool_call.arguments.keys()\" ... \"return tool_args == action_args\" (string equality on 'arguments')",
+        "file_debit_card_transaction_dispute_6281 signature: \"customer_max_liability_amount: float,\" (no default); omitting it raises TypeError -> \"Error: Invalid arguments\"",
+        "gold[6].arguments: \"...\\\"disputed_amount\\\": 150.00, ... \\\"card_action\\\": \\\"keep_active\\\"}\" (no customer_max_liability_amount)"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "A correct agent has to send customer_max_liability_amount, which makes its string differ from the gold. Even an agent that omits it would need the gold's exact key order and the non-canonical '150.00' spelling that json.dumps never emits. The action reward is therefore 0 for every trajectory.",
+      "suggested_fix": "Switch the task to DB grading with gold values that include customer_max_liability_amount, or set compare_args=['agent_tool_name'] on the dispute actions and check the content through the DB."
+    }
+  ],
+  "solution_check": "Reconstructed four disputes: third-party ATM atm_cash_discrepancy for 150 (250 requested, 100 dispensed); goods_services_not_received 189.50 with discretionary provisional credit false; duplicate_charge 67.25 on btxn_d937eaa1d21d; and unauthorized_transaction 475 with pin 'yes_shared' and provisional credit false. The semantic values match the gold, but the grading compares serialized strings that cannot be reproduced.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker stands: the task file did not change in v1.0.1, and the gold still omits the required liability argument under exact-string ACTION grading. The prior secondary duplicate-tie concern is now resolved by #403.",
+  "notes": "Duplicate tie under v1.0.1: get_bank_account_transactions_9173(chk_dk83f5c2a1_gff) lists btxn_ff7d3926dee0 then btxn_d937eaa1d21d (both 11/11). The tool comment and doc_..._018 ('most recent first') make the later-listed d937 the earliest, matching gold[8]. ACTION also requires unlocking get_debit_cards_by_account_id_7823 (gold[2]) even though the customer supplies the card ids, and the GFF card's most severe action (freeze, from unauthorized_transaction) is not in the gold; under ACTION, extra calls are ignored. Doc_032 also lists 'Customer has not contacted merchant first (for non-fraud disputes)' as not required, while the gold sets the duplicate (no merchant contact) to true. That contradiction is moot here because of the Blocker; see task_084/085."
+}

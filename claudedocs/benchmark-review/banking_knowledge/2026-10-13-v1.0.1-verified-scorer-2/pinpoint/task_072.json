@@ -1,0 +1,61 @@
+{
+  "task_id": "task_072",
+  "severity": "Major",
+  "reason": "Gold refunds $14.00 and $3.50 by counting fee errors dated 11/20 and 11/15, after the 11/14/2025 clock; posted fees give $13.50 and $3.00.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Gold refunds count fee rows dated after today",
+      "kind": "gold_value_wrong",
+      "step": 7,
+      "gold": {
+        "call": "apply_checking_account_credit_5829",
+        "args": {
+          "account_id": "chk_lj82d4f1a9",
+          "amount": 14.0,
+          "credit_type": "fee_refund"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_c23cb7ee097281e4\n  ...\n  - Amount: $14.00"
+      },
+      "doc_faithful": {
+        "call": "apply_checking_account_credit_5829",
+        "args": {
+          "account_id": "chk_lj82d4f1a9",
+          "amount": 13.5,
+          "credit_type": "fee_refund"
+        },
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_ef6d58a37349c63f\n  ...\n  - Amount: $13.50",
+        "note": "Reviews only fees posted through 11/14. Step 8 likewise becomes chk_538bfb9cba 3.0 (gold 3.5): \"Transaction ID: txn_323de4c8907d002b ... Amount: $3.00\"."
+      },
+      "refs": [
+        {
+          "source": "tool:get_current_time",
+          "quote": "The current time is 2025-11-14 03:40:00 EST."
+        },
+        {
+          "source": "db:bank_account_transaction_history[btxn_fcd7ef3a24ed]",
+          "quote": "account_id: chk_lj82d4f1a9, date: 11/20/2025, description: NON-RHO ATM FEE, amount: -2.5"
+        },
+        {
+          "source": "doc_checking_accounts_bluest_account_010",
+          "quote": "| Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal |"
+        },
+        {
+          "source": "db:bank_account_transaction_history[btxn_49c0c0b3b8c1]",
+          "quote": "account_id: chk_538bfb9cba, date: 11/15/2025, description: FOREIGN ATM FEE - 2% OF WITHDRAWAL (MIN $3.00), amount: -4.0"
+        },
+        {
+          "source": "doc_checking_accounts_light_green_account_013",
+          "quote": "| More than $100 and up to and including $300 | $3.50 |"
+        }
+      ],
+      "conflict": "Clock 11/14. Step 7 adds $0.50 for 11/20 Bluest fee ($2.50 vs $2.00): 14.00 vs 13.50. Step 8 adds $0.50 for 11/15 Light Green fee: 3.50 vs 3.00.",
+      "scorer": {
+        "field": "accounts[chk_538bfb9cba].current_holdings: gold \"$1851.00\" vs agent \"$1850.50\"; accounts[chk_lj82d4f1a9].current_holdings: gold \"$127464.00\" vs agent \"$127463.50\"; bank_account_transaction_history[txn_c23cb7ee097281e4]: MISSING row",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

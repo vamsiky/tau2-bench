@@ -1,0 +1,33 @@
+{
+  "task_id": "task_070",
+  "severity": "Minor",
+  "headline": "The active November promotion picks Sky Blue among the three accounts that fit, but Sky Blue's startup-age eligibility can't be confirmed because the customer is never told when her business was formed.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Sky Blue is a startup account whose docs tell the customer to confirm the company is within 4 years of formation. The customer's instructions never give a formation date, so an agent that checks this gets an improvised answer from the simulator.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "doc_bank_accounts_bank_accounts_(general)_003 eligibility list (verified, personal checking OPEN, <=6 business checking, no CLOSED accounts, balance >= $500) has no company-age rule",
+        "db.json credit_card_accounts[cc_224959b99e_bsilver].date_of_account_open = \"03/15/2023\" (a business card, consistent with a business under 4 years old)"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "If the simulator answers 'more than 4 years', a careful agent would skip Sky Blue and open Lime Green, and the accounts table would differ. The internal opening procedure doesn't require this check and the seeded data suggests a young business, so the most likely outcome is unchanged.",
+      "suggested_fix": "Add a line to the instructions such as 'Brightwave Digital was founded in 2023.'"
+    }
+  ],
+  "solution_check": "Requirements: ATM rebates of at least $15/month, $0 overdraft fee, minimum balance under $10,000, APY of at least 1%. Sky Blue (rebate 15, OD $0.00, funding requirement 0, 1.25% APY), Lime Green ($25, $0.00, $5,000, 1.5%) and Hunter Green ($20, $0.00, $5,000 fee waiver, 1.0%) qualify. Navy Blue (rebate $10), Cobalt Blue (0.5%), True Blue (OD $25, $25k min), World Blue ($10k min) and Beige ($250k) fail. doc_..._(general)_013 (active 11/01-11/30/2025, clock 11/14/2025) ranks Sky Blue first, and doc_014 (expired 11/12) is a distractor. Gold = Sky Blue, account_type business_checking, class 'Sky Blue'. Gold replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean and did not raise Sky Blue's company-age eligibility.",
+  "notes": "The opening line ('easiest to use and gives me the most perks') could tempt an agent toward Lime Green (higher APY and rebate), but the active promotion explicitly governs ties among accounts that meet the stated requirements. Under the verified scorer, skipping the gold-required get_all_user_accounts_by_user_id_3847 fails ('missing'). It is the documented eligibility check (doc_..._009). Business checking class names follow doc_003's examples without 'Account' ('Navy Blue, Cobalt Blue, True Blue'). Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

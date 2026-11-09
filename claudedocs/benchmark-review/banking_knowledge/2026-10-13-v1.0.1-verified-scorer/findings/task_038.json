@@ -1,0 +1,34 @@
+{
+  "task_id": "task_038",
+  "severity": "Major",
+  "headline": "The gold requires expedited shipping for the replacement card, which costs this customer $10, but her script never says whether she wants it, so the result depends on how the simulated customer improvises.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "gold[4] sets expedited_shipping=true. The KB tells the agent to ask the customer and disclose the $10 Silver fee, but unlike task_036/037 the script has no 'If offered expedited shipping, accept it' line, so the answer is improvised.",
+      "evidence": [
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier...)\" and \"Mid-tier (Silver Rewards...): $10.00\"",
+        "task_036/037 user_scenario step 6: \"If offered expedited shipping, accept it\" -- absent from task_038",
+        "gold[4].arguments: \"expedited_shipping\": true",
+        "Replay: gold with expedited_shipping=false -> verified match False (credit_card_orders differs)"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An agent that correctly asks and discloses the fee gets whatever the simulator says. A 'standard is fine' or 'no fees please' answer leads to a correct order that fails. The KB's 'strongly recommend expedited' for fraud makes acceptance likely but not guaranteed.",
+      "suggested_fix": "Add the task_036/037 line to the user script: \"If offered expedited shipping, accept it.\""
+    }
+  ],
+  "solution_check": "The Silver card has 5 Amazon charges. The user identifies $89.99 10/05 (fraud, no merchant contact, eligible=true), $124.50 10/08 (not as described, merchant contacted, ineligible by reason), and $89.99 10/10 (duplicate, merchant NOT contacted, so ineligible under criterion 5). Gold flags true/false/false match doc_015. card_action cancel_and_reissue, full_refund, noticed 11/14/2025, last4 5320, replacement to the scripted work address with reason fraud_suspected: all match except that the expedited choice is unscripted.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this task clean and did not flag the unscripted expedited-shipping preference.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. description.notes says the duplicate is 'eligible', but the gold correctly sets false (no merchant contact, criterion 5). Notes are not agent-visible. The user calls the 10/10 charge \"a duplicate of that first fraudulent one\" and says \"it's clearly their system error or fraud\". An agent could classify it as fraud (eligible=true), which replay shows fails, but the user's primary framing is 'duplicate', so duplicate_charge is the natural choice. Under the running-count reading of criterion 4 there is no conflict here: only one dispute is eligible."
+}

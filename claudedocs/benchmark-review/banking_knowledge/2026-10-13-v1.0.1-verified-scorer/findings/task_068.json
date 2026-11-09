@@ -1,0 +1,36 @@
+{
+  "task_id": "task_068",
+  "severity": "Major",
+  "headline": "The right accounts are clear, but the bank's own procedure tells the agent to name the checking account 'Green Account (checking)', while the answer key only accepts 'Green Account'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The procedure for opening personal checking accounts gives 'Green Account (checking)' as an example of the full official account_class name, but the gold opens the account with account_class 'Green Account'. open_bank_account_4821 derives the account id from the class string, so the two spellings create different records.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"MID TIER (Blue Account, Green Account (checking))\"",
+        "doc_checking_accounts_green_account_(checking)_001 title: \"Green Account (checking) at a glance\"",
+        "gold[3].arguments.arguments = {\"user_id\": \"rp65a7b3c4\", \"account_type\": \"checking\", \"account_class\": \"Green Account\"}",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"",
+        "Replay: gold with account_class 'Green Account (checking)' -> _verified_db_match False ['table accounts differs']"
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "An agent that copies the documented example writes a different account_id and account_class and fails on the accounts table, even though it chose the correct product. The gold value follows only from the 'ending with Account' rule, which the same sentence's own example breaks.",
+      "suggested_fix": "Change the doc_001 example to 'Green Account', or have open_bank_account_4821 normalize the parenthetical type qualifier before deriving the id."
+    }
+  ],
+  "solution_check": "Constraints: travel insurance on the card (only the Silver Rewards Card documents it, silver_rewards_card_005), early direct deposit on the checking account (Green Fee-Free is 0 days), age 34 (Gold Years needs 62+), and savings minimum at or below $25,000. Gold 5.5% + Green checking +0.75% + Silver Rewards +0.2% = 6.45%. Gold Plus 6.0% has no eligible checking pairing, so it reaches only 6.1% with Silver Rewards. Silver tier 2 4.0% + Green +0.25% + Silver Rewards +0.1% = 4.35%. Platinum needs $50,000. The gold product choice is unique and the gold replays cleanly. Only the account_class spelling is at risk.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean and did not check the account_class string against doc_001's example.",
+  "notes": "The benchmark's seed DB stores Green checking accounts with level 'Green Account', and close_bank_account_7392's fee table uses 'Green Account', so the gold follows the code's convention. The agent cannot see either. doc_001 is not in required_documents but is the retrievable procedure for opening a personal checking account. Validity here does not depend on the verified scorer's relaxations; the accounts table is compared exactly under both scorers. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

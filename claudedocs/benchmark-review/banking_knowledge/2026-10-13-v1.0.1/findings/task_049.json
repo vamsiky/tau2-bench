@@ -1,0 +1,36 @@
+{
+  "task_id": "task_049",
+  "severity": "Blocker",
+  "headline": "Lying-customer closure flow whose gold needs the simulated customer to call a transfer-request tool, which nothing tells it to call.",
+  "ratings": {
+    "instructions_sufficient": "Insufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Blocker",
+      "summary": "The gold includes one user-side request_human_agent_transfer call, which writes a human_transfer_requests record. The customer's instructions only say to ask aloud for a transfer. The simulator's guidelines tell it to call tools only when the agent requests it, and no document tells the agent to ask for that call. Whether the record exists is up to the user simulator, not the agent.",
+      "evidence": [
+        "gold[17]: requestor \"user\", name \"request_human_agent_transfer\", arguments {}",
+        "user_scenario.instructions step 9: \"But I want to speak to a supervisor or someone else. ... Transfer me to a human agent.\" (no tool named)",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"Only call a tool if the agent has requested it or if it is necessary to answer a question the agent has asked.\"",
+        "tools.py KnowledgeUserTools.request_human_agent_transfer writes record transfer_request_<n> to human_transfer_requests on every call",
+        "No document under documents/ mentions request_human_agent_transfer (grep)",
+        "Cross-task: task_034 and task_081 also require this call but their instructions name the tool; task_049 is the only one that does not"
+      ],
+      "gold_action_refs": [
+        17
+      ],
+      "why_it_matters": "Replay check: the gold without the user call does not match, and the gold with two user calls does not match either. A flawless agent passes only if the simulator spontaneously calls the tool exactly once, so the reward is chance.",
+      "suggested_fix": "Add to step 9: \"Use your request_human_agent_transfer tool once to ask for the transfer.\" Or drop gold[17] so the transfer is graded only by the agent's no-op transfer_to_human_agents."
+    }
+  ],
+  "solution_check": "Green: eligible, and closure history has an 08/20/2025 record, so the agent skips retention and closes. EcoCard: ccord_h1i2j3k4l5_eco_001 is SHIPPED, so it is blocked, and the customer's 'it arrived' lie must be refuted. Gold Rewards: $175 balance but checking 08 holds $50.00, so it cannot be paid and the fake payment claim must be rejected. Crypto: tenure under 2 years (checking 02/01/2024, Crypto opened 07/10/2024), so the agent offers a downgrade, which is refused, then Step 5 entry tier gives a $5 credit, reason retention_offer, and refuses the $50 demand. Reason annual_fee. All agent-side actions match the gold; the only problem is the user-side gold call.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The required unscripted user-tool write was not reported.",
+  "notes": "Under v1.0.1, reading the checking balance via get_all_user_accounts_by_user_id_3847 is not allowlisted and does not change the hash (verified). An agent that tries pay_credit_card_from_checking_9182 without checking funds gets 'Insufficient funds', but the call is still logged as a write and fails the task (verified); logistics_009 does say to confirm funds first. Required doc doc_credit_cards_credit_cards_(general)_010 covers transfers for purchase declines only; applying it here (initial_transfer_to_human_agent_0218) would log an extra write. Crypto reason: \"The annual fee is too high for what I'm getting. The crypto rewards aren't worth it anymore.\" annual_fee is the natural reading; unhappy_with_rewards is a residual risk. transfer_to_human_agents writes nothing to the DB, so its summary text is not graded."
+}

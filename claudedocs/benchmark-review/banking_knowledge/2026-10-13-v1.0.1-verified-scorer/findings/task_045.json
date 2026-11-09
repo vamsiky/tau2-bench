@@ -1,0 +1,17 @@
+{
+  "task_id": "task_045",
+  "severity": "None",
+  "headline": "Clean: after the balance payoff, the agent recommends the Business Platinum card and, when the customer declines, gives the documented mid-tier $20 retention credit.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "cc_224959b99e_bsilver has a $125.00 balance, paid from checking 05 ($2850.00). There is no closure-reason history. The reason is found_better_card. Business Platinum is the only card with 4% on travel, software, and media advertising plus a 0% FX fee (Business Silver has no advertising category and a 1.5% FX fee). The customer declines it. Step 5 gives the mid-tier offer: Business Silver is mid-tier per doc_credit_cards_credit_card_replacements_002, so $20 via apply_statement_credit_8472 with reason retention_offer. This matches gold[8], gold[12] and gold[14].",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also found it clean, and the task files are unchanged.",
+  "notes": "The customer gives three reasons (found a better card, rarely uses the card, simplifying finances). Under exact grading the closure_reason value would be ambiguous. The verified scorer strips it, so this run does not penalize it. Step 5 says '2,000 bonus points or a $20 statement credit'. No tool exists to grant bonus points, and the simulator is scripted to accept a statement credit."
+}

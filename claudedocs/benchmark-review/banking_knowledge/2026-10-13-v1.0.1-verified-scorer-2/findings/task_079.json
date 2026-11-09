@@ -1,0 +1,35 @@
+{
+  "task_id": "task_079",
+  "severity": "Minor",
+  "headline": "The gold is right, but the card-closing rules say both 'no pending transactions' and 'pending refunds can be waived', and the Green account's only pending row is a refund.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The only pending row on the Green account is a refund. Requirement 4 forbids closing a card with any pending transaction, while requirement 5 lets a pending refund be waived by written acknowledgment. The gold applies requirement 5.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_025 req 4: \"No pending transactions: The card must not have any pending or processing transactions.\"",
+        "doc_bank_accounts_bank_accounts_(general)_025 req 5: \"No pending refunds ... or acknowledge in writing that the refunds will be credited to the linked checking account instead.\"",
+        "task_079 initialization bank_account_transaction_history: account chk_cr89a2b3c4_3, 11/11/2025, type 'refund', status 'pending', amount 89.99, 'REFUND - AMAZON.COM RETURN'",
+        "gold[19] close_debit_card_4721 card_id dbc_cr89a2b3c4_green reason 'stolen'; gold[24] order_debit_card_5739 chk_cr89a2b3c4_3 STANDARD/CLASSIC"
+      ],
+      "gold_action_refs": [
+        19,
+        24
+      ],
+      "why_it_matters": "An agent that reads requirement 4 literally refuses to close the Green card and does not order its replacement, which leaves debit_cards and debit_card_orders different from the gold. The specific refund rule wins on any careful reading, because requirement 5 would otherwise never apply, so a careful agent still reaches the gold.",
+      "suggested_fix": "Add to requirement 4: \"(pending refunds are handled under requirement 5)\"."
+    }
+  ],
+  "solution_check": "Reconstructed: Evergreen (PREMIUM) RUSH $35 + PREMIUM design $0; Light Blue (ENTRY) already has two 2025 'lost' replacements (08/10/2025, 04/05/2025), so the customer's accepted $25 excess fee still runs into the ENTRY 48-hour wait after closure, so close only; Green (MID) closed after refund acknowledgment and reordered STANDARD/CLASSIC. All three cards are frozen, unfrozen (close requires ACTIVE) and closed as 'stolen'. My independent action sequence matched the gold exactly under both verified and exact comparison.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the refund-versus-pending-transaction wording is a new minor finding and does not change the gold.",
+  "notes": "Transaction type 'refund' is not in doc_bank_accounts_bank_accounts_(general)_018's type list (it lists 'fee_refund'); cosmetic. The ENTRY 48-hour wait is documented in doc_bank_accounts_bank_accounts_(general)_029 (\"48-hour waiting period after card closure before a replacement can be ordered\") and is not enforced by order_debit_card_5739, so ordering the Light Blue card would wrongly succeed and fail the task, which is the intended test."
+}

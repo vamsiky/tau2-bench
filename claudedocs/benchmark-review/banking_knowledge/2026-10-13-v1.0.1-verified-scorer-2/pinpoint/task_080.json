@@ -1,0 +1,57 @@
+{
+  "task_id": "task_080",
+  "severity": "Minor",
+  "reason": "Author notes and customer script assume a two-dispute provisional-credit cap denying the $149.95 txn_39c2ddb4e1d2; doc _015 and gold make all three eligible.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Script assumes provisional-credit cap the docs lack",
+      "kind": "instruction_conflict",
+      "step": 31,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_39c2ddb4e1d2",
+          "card_action": "cancel_and_reissue",
+          "card_last_4_digits": "5147",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "contact fields as gold"
+        },
+        "output": "Dispute ID: dsp_d20972e8adca\nTransaction: txn_39c2ddb4e1d2\n...\nProvisional Credit: ELIGIBLE - Credit will be applied within 2 business days."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_39c2ddb4e1d2",
+          "eligible_for_provisional_credit": false,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_d20972e8adca\nTransaction: txn_39c2ddb4e1d2\n...\nProvisional Credit: Not eligible at this time.",
+        "note": "Plausible misreading: counts the current filing toward a two-dispute cap (the author notes' reading); the script's prioritisation line fires only after the agent raises a cap. Gold true matches the docs: never 'more than 2' prior."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "instructions",
+          "quote": "If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first - the $299.99 and $199.99 ones are really hurting my budget right now."
+        },
+        {
+          "source": "task:description.notes",
+          "quote": "txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit (eligible_for_provisional_credit: false) because it's the lowest value and the limit is reached."
+        }
+      ],
+      "conflict": "Dispute history empty (step 27): third filing sees 2 prior disputes, not 'more than 2' → eligible. Gold step 31: true. Notes/script expect false.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_d20972e8adca].eligible_for_provisional_credit: gold true vs agent false; .provisional_credit_given: gold true vs agent false",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "task_id": "task_048",
+  "severity": "Major",
+  "reason": "Gold step 18 requires a Silver Rewards application, but Platinum Rewards and Business Silver also beat the competitor's 3.25%; doc _003 has no tie-breaker.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Several Rho-Bank cards qualify; gold accepts Silver only",
+      "kind": "ambiguous_choice",
+      "step": 18,
+      "gold": {
+        "call": "apply_for_credit_card",
+        "args": {
+          "card_type": "Silver Rewards Card",
+          "customer_name": "Valentina Kostopoulos",
+          "annual_income": 125000,
+          "rho_bank_subscription": false
+        },
+        "output": "Credit card application submitted:\nYour application has been successfully submitted. You will receive a decision within 5-7 business days via email."
+      },
+      "doc_faithful": {
+        "call": "apply_for_credit_card",
+        "args": {
+          "card_type": "Platinum Rewards Card",
+          "customer_name": "Valentina Kostopoulos",
+          "annual_income": 125000,
+          "rho_bank_subscription": false
+        },
+        "output": "Credit card application submitted:\nYour application has been successfully submitted. You will receive a decision within 5-7 business days via email.",
+        "note": "Agent recommends Platinum Rewards (10% on everything); under script step 8 the customer applies for whichever competitive card is presented."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_card_account_logistics_003",
+          "quote": "Found a better card: Ask what features attracted them. If Rho-Bank offers a card with similar or better benefits, offer to help them apply instead of closing the current account."
+        },
+        {
+          "source": "doc_credit_cards_silver_rewards_card_002",
+          "quote": "- Pay with your card for eligible travel and software transactions to earn 4.0% back"
+        },
+        {
+          "source": "doc_credit_cards_platinum_rewards_card_002",
+          "quote": "- You earn 10.0% cash back on all eligible purchases."
+        },
+        {
+          "source": "doc_business_credit_cards_business_silver_rewards_card_002",
+          "quote": "- Earn 10.0% cash back on eligible travel and software purchases"
+        }
+      ],
+      "conflict": "Competitor: 3.25% travel/software. Doc _003 allows any 'similar or better' card: Silver 4%, Platinum 10%, Business Silver 10%. Gold step 18 accepts only Silver Rewards Card.",
+      "scorer": {
+        "field": "credit_card_applications[128ca98041beb963]: EXTRA row (Platinum Rewards Card); credit_card_applications[58141e96e8835ce3]: MISSING row (Silver Rewards Card)",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

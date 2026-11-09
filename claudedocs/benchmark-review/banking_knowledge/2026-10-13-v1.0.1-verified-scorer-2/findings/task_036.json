@@ -1,0 +1,17 @@
+{
+  "task_id": "task_036",
+  "severity": "None",
+  "headline": "Clean: the replacement-card order (reason, work address, expedited shipping) follows directly from the script and the replacement procedure.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Verify with phone and email, then list the transactions. The two disputed charges (Electronics Express Miami $487.99, 09/04/2025; GamerZone LA $299.95, 09/06/2025) are on the Silver card. Doc replacements_001 says to record a reason from the fixed list (the customer's 'someone stole my card information' maps to fraud_suspected) and to ship to the confirmed address (the work address the customer dictates). It also says to strongly recommend expedited shipping for fraud, and the script accepts if offered. Calling order_replacement_credit_card_7291 with those values reproduces the gold credit_card_orders row and closes the Silver account.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "Author notes give the fraud dates as 11/04/2024 and 11/06/2024; the DB has 09/04/2025 and 09/06/2025. The agent never sees the notes and the gold does not use the dates. Doc replacements_001 lists tool fields that do not exist (Shipping_speed, Expedited_fee_acknowledgement, Notes), but unlocking shows the real schema (expedited_shipping bool). Cosmetic. The pending-order check (get_pending_replacement_orders_5765) is an optional discoverable read outside the gold allowlist, so it is not logged. There are no prior orders for this account. shipping_address is free text, and the gold uses the customer's exact wording."
+}

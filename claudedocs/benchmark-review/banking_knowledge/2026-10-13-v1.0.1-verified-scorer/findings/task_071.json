@@ -1,0 +1,48 @@
+{
+  "task_id": "task_071",
+  "severity": "Major",
+  "headline": "The right accounts (Sky Blue and Gold Saver) follow from the active promotions, but the bank's business-savings procedure tells the agent to open it as a personal 'savings' account, which creates the wrong record.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The internal procedure for business savings accounts tells the agent to call open_bank_account_4821 with account_type 'savings', but the gold (and the tool docstring) use 'business_savings'. The tool accepts 'savings' for this customer (she has a 3-year-old personal checking account) and silently opens a personal savings record with a different id.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004 Tool Instructions: \"Set account_type to 'savings'.\"",
+        "tools.py open_bank_account_4821 docstring: \"Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "gold[5].arguments.arguments = {\"user_id\": \"yt71c9e4f2\", \"account_type\": \"business_savings\", \"account_class\": \"Gold Saver Account\"}",
+        "Replay: gold with account_type 'savings' for Gold Saver Account -> tool returns 'Bank account opened successfully!' and _verified_db_match False ['table accounts differs']"
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "An agent that follows the business-savings procedure exactly writes account_type 'savings' and a different account_id and fails on the accounts table. The tool gives no error that would correct it.",
+      "suggested_fix": "Change doc_004 to \"Set account_type to 'business_savings'\" (or make the tool reject personal 'savings' for business account classes)."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "As in task_070, Sky Blue's docs ask to confirm the company is within 4 years of formation, and the customer's instructions give no formation date.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "db.json accounts[biz_chk_yt71c9e4f2].date_opened = \"09/15/2025\" (Cobalt Blue opened about 2 months ago)"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An improvised 'over 4 years' answer would move a careful agent to Lime Green. It is unlikely given the context and is not part of the internal eligibility list.",
+      "suggested_fix": "State the studio's founding year in the instructions."
+    }
+  ],
+  "solution_check": "Checking requirements (mobile deposit >= $10,000/day, $0 overdraft fee, minimum under $10,000, APY >= 1%) leave Sky Blue ($25,000/day, 1.25%), Lime Green ($15,000, 1.5%) and Hunter Green ($10,000, 1.0%), and active doc_013 picks Sky Blue. Savings requirements (same-day ACH, minimum under $50,000, wire <= $15) leave Gold Saver (same-day Yes, wire 15), Silver Plus Saver (Yes, $5,000, wire 15) and Gold Plus Saver (Yes, $25,000, wire $10). Bronze, Emerald and Silver Saver have no same-day ACH, and Diamond Vault and Platinum Reserve exceed the minimum. Active doc_015 picks Gold Saver Account. Eligibility: Cobalt Blue business checking has been OPEN since 09/15/2025 (60 days) with a $12,500 balance. Gold matches this reconstruction and replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean and did not check doc_004's account_type instruction against the tool.",
+  "notes": "The defect does not depend on the verified scorer, since the accounts table is compared exactly under both scorers. get_all_user_accounts_by_user_id_3847 is gold-required and documented as the eligibility check. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

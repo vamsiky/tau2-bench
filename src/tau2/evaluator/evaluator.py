@@ -94,6 +94,8 @@ def evaluate_simulation(
     mode: CommunicationMode = CommunicationMode.HALF_DUPLEX,
     env_kwargs: dict = None,
     strict_replay: bool = True,
+    use_sdk_nl_judge: bool = False,
+    use_verified_scorer: bool = False,
 ) -> RewardInfo:
     """
     Evaluate the simulation based on the evaluation type.
@@ -112,6 +114,17 @@ def evaluate_simulation(
               Live evaluation keeps the default (True); trajectory re-grading
               passes False so recorded outputs that cosmetically predate
               current tool code do not abort the replay.
+        use_sdk_nl_judge: If True, run the NL-assertions judge through the Claude
+              Agent SDK (subscription auth, claude-opus-4-8 / high effort by
+              default) instead of litellm. Same prompts, tools, and parsing; only
+              the generation backend changes.
+        use_verified_scorer: If True, replace the exact DB-hash comparison with the
+              principled "tau2 Verified" relaxation (SABER τ-Bench-Verified style):
+              gold's discoverable calls must be a subset of the agent's, extra ones
+              are allowed only if every call to them was rejected for bad input, and
+              bank-account closure_reason is excluded. All other tables are still
+              compared exactly. Has no effect on
+              NL-assertion, action, or communicate scoring.
 
     Returns:
         RewardInfo with the evaluation results.
@@ -144,9 +157,23 @@ def evaluate_simulation(
     EnvEvaluator = (
         FullDuplexEnvironmentEvaluator if is_full_duplex else EnvironmentEvaluator
     )
-    NLEvaluator = (
-        FullDuplexNLAssertionsEvaluator if is_full_duplex else NLAssertionsEvaluator
-    )
+    if use_sdk_nl_judge:
+        # Lazy import: only pull in the Claude Agent SDK when the SDK judge is
+        # actually requested, so the default litellm path has no SDK dependency.
+        from tau2.evaluator.evaluator_nl_assertions_sdk import (
+            FullDuplexSDKNLAssertionsEvaluator,
+            SDKNLAssertionsEvaluator,
+        )
+
+        NLEvaluator = (
+            FullDuplexSDKNLAssertionsEvaluator
+            if is_full_duplex
+            else SDKNLAssertionsEvaluator
+        )
+    else:
+        NLEvaluator = (
+            FullDuplexNLAssertionsEvaluator if is_full_duplex else NLAssertionsEvaluator
+        )
     CommEvaluator = (
         FullDuplexCommunicateEvaluator if is_full_duplex else CommunicateEvaluator
     )
@@ -176,6 +203,7 @@ def evaluate_simulation(
             solo_mode=solo_mode,
             env_kwargs=env_kwargs,
             strict_replay=strict_replay,
+            use_verified_scorer=use_verified_scorer,
         )
     elif evaluation_type == EvaluationType.NL_ASSERTIONS:
         reward_info = NLEvaluator.calculate_reward(
@@ -201,6 +229,7 @@ def evaluate_simulation(
             solo_mode=solo_mode,
             env_kwargs=env_kwargs,
             strict_replay=strict_replay,
+            use_verified_scorer=use_verified_scorer,
         )
         action_reward_info = ActEvaluator.calculate_reward(
             task=task,
@@ -283,6 +312,7 @@ def evaluate_simulation(
             full_trajectory=trajectory,
             solo_mode=solo_mode,
             env_kwargs=env_kwargs,
+            use_verified_scorer=use_verified_scorer,
         )
         action_reward_info = ActEvaluator.calculate_reward(
             task=task,

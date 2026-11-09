@@ -1,0 +1,30 @@
+{
+  "task_id": "task_021",
+  "severity": "Minor",
+  "headline": "Applying the KB's documented round-down rule and the card exclusions gives exactly the two gold disputes; the rounding document is just missing from the required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rewards rounding rule that fixes the dispute set lives in doc_credit_cards_credit_cards_(general)_007, which is retrievable from the KB but is not listed in required_documents.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "Under round-half-up, six correctly credited transactions become +1 false positives (ThredUp 50.92 -> 51 vs 50, HBO Max 142.55 -> 143 vs 142, Spotify, Tesla Supercharger, Patagonia 10/30, DTE)."
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under the default retrieval configs the agent can find the floor rule, so the gold is reachable. Under configs that inline only required_documents (golden_retrieval / required_docs prompts) the rule is absent, the natural round-half-up convention flags many correctly credited transactions, and the extra disputes change the DB hash.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "User d2e5bc4124: Business Bronze 1%, with WeWork/Regus/Industrious/payroll processors at 0% (doc_..._business_bronze_rewards_card_003); EcoCard 5/$ Green except Target/Walmart/Amazon/ThredUp, with EV charging only at Tesla/ChargePoint/EVgo (doc_..._ecocard_004); floor rounding. Of 17 transactions, exactly two mismatch: ccbb948 Chipotle (369 vs 184) and 5b30a5 Everlane Green (1352 vs 270). This matches gold[2..3]. WeWork stored 0 and ThredUp stored at 1x are correct policy differences, as the user script expects.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round down') does not hold because doc_..._(general)_007 states the floor rule; only the Minor required_documents omission remains.",
+  "notes": "The user gives DOB and email; the gold log_verification includes the phone 718-555-0519 from the DB, which the agent reads with get_user_information_by_*. No SaaS-after-12-months merchants appear in this user's transactions. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

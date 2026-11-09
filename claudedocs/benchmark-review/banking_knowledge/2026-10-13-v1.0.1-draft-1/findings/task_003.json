@@ -1,0 +1,17 @@
+{
+  "task_id": "task_003",
+  "severity": "None",
+  "headline": "Clean: Silver and Gold both meet the hard requirements with a $0 fee, and the tie-break on cash back for a travel-heavy spender correctly picks Silver's 4% travel rate.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Hard filters: 0% FTF, purchase protection, $100k limit possible. Bronze fails (FTF 2.75%). Silver passes with Rho-Bank+ ('Foreign transaction fee with a premium subscription: 0%', '90 days ... up to $3,000', limits '$10,000 to $100,000'). Gold passes (0% FTF, 105-day protection, up to $112,500). Platinum passes but has a $200 fee (its first-year waiver promo window ended 2024-12-31). Silver and Gold tie at a $0 fee. On the cash-back tie-break, her main spend is travel, so Silver's 4.0% travel rate beats Gold's flat 2.5%. That gives gold[0] apply_for_credit_card(Silver Rewards Card, Catherine Wells, 180000, true).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and nothing that affects the decision changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). Crypto-Cash Back has no purchase protection ('Purchase protection on this card is No'), and EcoCard/Diamond Elite have fees, so they lose on the hard filters or the fee tie-break. Silver's maximum limit is exactly $100,000, which satisfies 'at least 100,000'."
+}

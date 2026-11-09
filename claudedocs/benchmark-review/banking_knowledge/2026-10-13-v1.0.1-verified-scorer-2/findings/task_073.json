@@ -1,0 +1,35 @@
+{
+  "task_id": "task_073",
+  "severity": "Major",
+  "headline": "The Green account's gold refund ($9.00) includes a duplicate fee dated 11/15, after the benchmark's fixed \"today\", so an agent that only reviews fees posted so far credits $6.00.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "Fixed clock is 2025-11-14 03:40, but the Green account's duplicate $3.00 fee (one of three errors in the $9.00 credit) is dated 11/15/2025. The Light Green credit also uses post-clock rows (11/15 overcharge +$1.50, 11/17 missing fee -$1.50), which happen to cancel.",
+      "evidence": [
+        "tools.py get_current_time: \"2025-11-14 03:40:00 EST\"",
+        "db.json btxn_kj18k9l0m1n3 and btxn_kj18k9l0m1n4: both 11/15/2025, atm_fee -3.0, for one $250 PNC withdrawal",
+        "gold[9].amount = 9.00 (chk_kj93a7b2e1_2)",
+        "db.json btxn_kj28y9z0a1b3: 11/15/2025 -5.0 on $150 KB Kookmin (tier 2 = $3.50); btxn_kj29c3d4e5f6: 11/17/2025 TD Bank withdrawal with no fee"
+      ],
+      "gold_action_refs": [
+        9,
+        10
+      ],
+      "why_it_matters": "Green through 11/14: Rho-Bank ATM fee $3.00 + Woori $15 vs $12 = $6.00, not $9.00. Both readings are defensible; the credit amount is hashed into the transaction id and balance.",
+      "suggested_fix": "Re-date the post-clock rows to on or before 11/14/2025 (or move the clock), keeping the intended errors."
+    }
+  ],
+  "solution_check": "Blue (out-of-network 1% max $3, foreign 3% min $5; in-network free): Wells $300 $4.50 vs $3 (+1.50), Shinhan $500 $20 vs $15 (+5.00), RHO-BANK 11/13 $3 (+3.00) = $9.50, all before the clock. Green ($3 out-of-network, foreign 3% min $5): RHO-BANK 11/07 $3 (+3), Woori $400 $15 vs $12 (+3), 11/15 duplicate (+3) = $9.00. Light Green: 11/03 2nd withdrawal charged (+1.50), 11/15 $150 tier 3 vs tier 2 (+1.50), 11/17 7th withdrawal uncharged (-1.50) = $1.50 net. All three match the gold when post-clock rows are counted; netting follows doc_017.",
+  "prior_status": "changed",
+  "prior_note": "Prior rated it Major for several non-obvious inferences (in-network fees, duplicate, netting); those are documented, but the gold still depends on post-clock data, so it stays Major for a different reason.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. The in-network inference is supported by the docs (\"Use in-network ATMs to avoid the 1% out-of-network fee\", blue_account_001) and the fee line reads \"NON-RHO ATM FEE\" on a RHO-BANK ATM. Kim Junho is 31 (DOB 09/14/1994) yet holds a Light Green Account, which doc_light_green_account_002 limits to ages 13-24; not graded. Fee-stacking: seeded foreign withdrawals carry only the foreign fee and the gold treats that as correct, while tasks 075/076 assume out-of-network and foreign fees stack."
+}

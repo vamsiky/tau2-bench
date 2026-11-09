@@ -1,0 +1,57 @@
+{
+  "task_id": "task_080",
+  "severity": "Major",
+  "headline": "For the third fraud dispute, the official answer grants provisional credit, while the task's own notes and customer script say the limit should block it; the document can be read either way.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The provisional-credit flag on the third same-session dispute ($149.95 SuperGaming) is ambiguous. Doc 015 limits eligibility to customers who have 'not filed more than 2 disputes in the past 12 months'. Gold sets the third dispute to eligible=true (2 prior filings are not more than 2). The task's own notes and customer script assume a 2-dispute cap that makes the third one ineligible.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "task_080 description.notes: \"txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit (eligible_for_provisional_credit: false) because it's the lowest value and the limit is reached\"",
+        "gold[31] file_credit_card_transaction_dispute_4829 txn_39c2ddb4e1d2 \"eligible_for_provisional_credit\": true",
+        "instructions: \"If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first\"",
+        "tools.py file_credit_card_transaction_dispute_4829 stores eligible_for_provisional_credit and provisional_credit_given in transaction_disputes",
+        "Replay check: gold with txn_39c2ddb4e1d2 eligible=false gives a different DB hash (task_080)"
+      ],
+      "gold_action_refs": [
+        31
+      ],
+      "why_it_matters": "An agent that counts the dispute being filed ('this would be the 3rd dispute in 12 months') sets false for the $149.95 charge, which is exactly what the customer script and author notes expect, and fails the hash. An agent that counts only prior filings, or decides eligibility before filing anything, sets true and passes. The result depends on which reading the agent picks.",
+      "suggested_fix": "Pick one rule and make all three artifacts agree. Either reword criterion 4 (e.g. 'including the dispute being filed, no more than 2 disputes in 12 months') and set gold to false for txn_39c2ddb4e1d2, or keep gold true and delete the limit language from the notes and customer script."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Freezing a lost/stolen card leaves 'frozen_date' and 'unfrozen_date' fields on the card record, and a frozen card must be unfrozen before close_debit_card_4721 will accept it, so the final DB depends on whether the agent froze first. Doc 026 tells agents to recommend closing instead of freezing once loss/theft is confirmed, which gives a second defensible path with a different final state.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "tools.py freeze_debit_card_3892: card[\"frozen_date\"] = get_today_str(); unfreeze_debit_card_3893: card[\"unfrozen_date\"] = get_today_str()",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\"",
+        "task_080 instructions step 1: \"I want to freeze all of them right away.\""
+      ],
+      "gold_action_refs": [
+        8,
+        9,
+        16,
+        17,
+        19,
+        20
+      ],
+      "why_it_matters": "An agent that follows doc 026, recommends closing outright, and gets the simulated customer's agreement (the script says to follow the agent's guidance) closes the cards without the freeze/unfreeze round trip. Its card records then lack the two date fields and the unfreeze tool is never logged, so the hash differs from gold. A replay that drops the freeze/unfreeze calls for the closed cards confirmed the mismatch for task_078. The customer's explicit opening request to freeze makes the gold path the usual one, so this is rated Minor.",
+      "suggested_fix": "Exclude transient freeze bookkeeping fields (frozen_date/unfrozen_date) from the hash, or have close_debit_card_4721 accept FROZEN cards and clear those fields, so both paths converge."
+    }
+  ],
+  "solution_check": "Debit side, worked independently: freeze all three. Unfreeze Green after the customer finds it. No pending rows on Blue or GFF, so unfreeze and close both as 'stolen'. Blue is MID: EXPEDITED $15 with CLASSIC. GFF is ENTRY with a 48-hour wait, so no order. Activate the arrived Blue card with 8292 (issue_reason 'stolen'). Replay confirms the generated card dbc_afdc39c0e904 has last4 7648 and CVV 547. Credit side: replace Gold and EcoCard expedited (fees $0 and $15 are not stored), then file three fraud disputes with cancel_and_reissue and noticed date 11/14/2025. Everything matches gold except the eligibility flag on the third dispute, which depends on how criterion 4 is read.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The gold eligibility value has not changed (the #402 diff only added reads), but it contradicts the task's own notes, which the prior review did not flag.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Gold replays without errors. get_user_dispute_history_7291 (gold[27]) is a discoverable read in the allowlist, which an agent checking criterion 4 would call anyway."
+}

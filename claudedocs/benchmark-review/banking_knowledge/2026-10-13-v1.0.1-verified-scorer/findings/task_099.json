@@ -1,0 +1,34 @@
+{
+  "task_id": "task_099",
+  "severity": "Minor",
+  "headline": "World Blue ($300) is the best referrer bonus a $30,000 deposit qualifies for; the only soft spots are a corrupted value and \"international businesses\" wording in the World Blue documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The required World Blue documents carry a corrupted value (\"$140 supported regions\"), and doc_007 frames the program as referring \"other international businesses\". The qualification list in doc_001 has no international requirement, so World Blue remains correct.",
+      "evidence": [
+        "doc_business_checking_accounts_world_blue_001: \"within the $140 supported regions\" / \"Supported regions for payments | $140\"",
+        "doc_business_checking_accounts_world_blue_007: \"you can earn rewards by referring other international businesses to World Blue\"",
+        "doc_business_checking_accounts_world_blue_001: \"For a referral to qualify: The referred business must open a World Blue account; They must deposit at least $25,000 within 90 days\"",
+        "replay: submit_referral \"Lime Green Account\" instead -> verified match False (referrals differs)"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An agent that treats \"international\" as an eligibility condition for a domestic consulting LLC would recommend Lime Green ($200) and fail. The documented qualification criteria do not support that reading, so the defect is cosmetic.",
+      "suggested_fix": "Fix the \"$140\" template value and drop \"international\" from the world_blue_007 referral sentence."
+    }
+  ],
+  "solution_check": "Tenure: Navy Blue opened 11/10/2023, about 2 years, so every tenure threshold is met. Last referral 10/30, 15 days ago, so the window is clear. With a $30,000 deposit: World Blue $300 ($25k minimum, 90-day tenure), Lime Green $200, Hunter Green $175 (9/10 used), Cobalt $150, Navy $100; True Blue ($50k) and Beige ($100k) do not qualify. World Blue is the unique maximum and matches gold[4].",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean. The doc corruption/wording is a newly noted cosmetic Minor that does not change the answer.",
+  "notes": "The gold read get_all_user_accounts_by_user_id_3847 is required; skipping it fails even under the verified scorer, because the gold tool name is then missing from agent_discoverable_tools (same mechanism replayed on task_100). The v1.0.1 fix to beige_012 (\"$120 days\" to \"120 days\") has no effect here."
+}

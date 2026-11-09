@@ -1,0 +1,93 @@
+{
+  "task_id": "task_081",
+  "severity": "Minor",
+  "reason": "The task's stated test, transferring on the fourth human request (gold step 36), writes nothing to the DB, so DB-only grading cannot see it.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Fourth-request transfer is invisible to DB grading",
+      "kind": "other",
+      "step": 36,
+      "gold": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: other). A human agent will assist you shortly."
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {},
+        "output": "",
+        "note": "Plausible misreading: agent never transfers (ignores the fourth request) and still matches the gold DB exactly."
+      },
+      "refs": [
+        {
+          "source": "task:description.notes",
+          "quote": "Per policy rule 7, the agent should help with requests 1-3 and only transfer on the 4th request."
+        },
+        {
+          "source": "task:evaluation_criteria.reward_basis",
+          "quote": "[\"DB\"]"
+        },
+        {
+          "source": "tool:transfer_to_human_agents",
+          "quote": "return f\"Transfer successful (reason: {reason}). A human agent will assist you shortly.\""
+        }
+      ],
+      "conflict": "Notes say the task tests transfer only on the 4th request; transfer_to_human_agents only returns a string and reward_basis is DB, so dropping step 36 still passes.",
+      "scorer": {
+        "field": "(none): no DB field differs with gold step 36 dropped",
+        "upstream": "PASS",
+        "verified": "PASS"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Minor",
+      "title": "Script assumes provisional-credit cap the docs lack",
+      "kind": "instruction_conflict",
+      "step": 33,
+      "gold": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_39c2ddb4e1d2",
+          "card_action": "cancel_and_reissue",
+          "card_last_4_digits": "5147",
+          "dispute_reason": "unauthorized_fraudulent_charge",
+          "resolution_requested": "full_refund",
+          "eligible_for_provisional_credit": true,
+          "...": "contact fields as gold"
+        },
+        "output": "Dispute ID: dsp_d20972e8adca\nTransaction: txn_39c2ddb4e1d2\n...\nProvisional Credit: ELIGIBLE - Credit will be applied within 2 business days."
+      },
+      "doc_faithful": {
+        "call": "file_credit_card_transaction_dispute_4829",
+        "args": {
+          "transaction_id": "txn_39c2ddb4e1d2",
+          "eligible_for_provisional_credit": false,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_d20972e8adca\nTransaction: txn_39c2ddb4e1d2\n...\nProvisional Credit: Not eligible at this time.",
+        "note": "Plausible misreading: counts the current filing toward a two-dispute cap (the author notes' reading); the script's prioritisation line fires only after the agent raises a cap. Gold true matches the docs: at most 2 prior disputes at the third filing."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_015",
+          "quote": "4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months"
+        },
+        {
+          "source": "instructions",
+          "quote": "If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first"
+        }
+      ],
+      "conflict": "Dispute history empty (step 29): third filing sees 2 prior disputes, not 'more than 2' → eligible. Gold step 33: true. Notes/script expect false.",
+      "scorer": {
+        "field": "transaction_disputes[dsp_d20972e8adca].eligible_for_provisional_credit: gold true vs agent false; .provisional_credit_given: gold true vs agent false",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

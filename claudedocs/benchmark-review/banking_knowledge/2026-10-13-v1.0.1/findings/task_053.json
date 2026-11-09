@@ -1,0 +1,37 @@
+{
+  "task_id": "task_053",
+  "severity": "Blocker",
+  "headline": "CLI plus dispute task whose gold leaves out the customer's card-number lookup, yet the dispute needs that lookup's result, so a fully correct run can never match.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The gold gives the customer the get_card_last_4_digits tool and files the dispute with card_last_4_digits \"2791\", but has no user-side call to that tool. The only way to learn \"2791\" is for the customer to call it, and that call writes a user_discoverable_tool_calls record the gold does not have.",
+      "evidence": [
+        "gold[13]: give_discoverable_user_tool {\"discoverable_tool_name\": \"get_card_last_4_digits\"}; gold has no call_discoverable_user_tool action",
+        "gold[15].arguments: \"card_last_4_digits\": \"2791\"",
+        "user_scenario.instructions: \"Card last 4 digits? 'I don't have my card in front of me right now ...' (If the agent provides you with the get_card_last_4_digits tool, use it to retrieve the number.)\"",
+        "tools.py get_card_last_4_digits: self._log_user_tool_call(...) adds a record to user_discoverable_tool_calls, then derives last-4 from sha256(\"card_last4:<account_id>\"), a value stored nowhere in the DB",
+        "unlock_discoverable_agent_tool(\"get_card_last_4_digits\") returns \"Error: Unknown agent tool ... not available\" (agent cannot look it up itself)",
+        "Cross-check: task_041's gold does include the user-side get_card_last_4_digits calls (041_4..041_7)"
+      ],
+      "gold_action_refs": [
+        13,
+        15
+      ],
+      "why_it_matters": "Replay check: inserting the customer's call_discoverable_user_tool(get_card_last_4_digits, cc_e9d195fe8e_silver) into the gold changes the hash. A trajectory that gets the right last 4 digits always has that record and fails. One without it cannot know \"2791\" and files a different dispute record. No trajectory matches.",
+      "suggested_fix": "Add the user action {requestor: user, name: call_discoverable_user_tool, arguments: {discoverable_tool_name: get_card_last_4_digits, arguments: '{\"credit_card_account_id\": \"cc_e9d195fe8e_silver\"}'}} after gold[13], as task_041 does."
+    }
+  ],
+  "solution_check": "CLI: Silver Rewards is mid tier; $15,000 to $22,500 is +50%, exactly the mid-tier maximum. The account was opened 11/15/2024 (364 days, at least 90), utilization is $4,500/$15,000 = 30% (below 80%), there is no CLI history, 3+ on-time payments, and no disputes or replacements, so submit 7500 and approve 22500. The dispute must come after the approval, because approve_credit_limit_increase_5847 rejects while a SUBMITTED dispute exists (verified: filing the dispute first makes approval return an error). Dispute: goods_services_not_received, purchased 10/10/2025 (35 days, more than 30), contacted merchant, $1,247.99 under the mid-tier $5,000 cap, no prior disputes, so eligible_for_provisional_credit true; noticed 10/31/2025, full_refund, keep_active. All of this matches the gold except the missing user lookup.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean, probably because its scorer tolerated extra discoverable calls. Under exact v1.0.1 hashing the missing user call makes the gold unreachable.",
+  "notes": "Ordering: the customer asks for the dispute first. The gold requires the CLI to be processed first, which an agent can deduce from logistics_007 Step 2 item 3 (\"No Pending Disputes\"). An agent that files the dispute first would have to deny the CLI with pending_disputes. I treated the CLI-first order as reasoning the documents support, not a separate defect, though it is a strict ordering dependency. One payment_history row is dated 2025-11-15, a day after the fixed clock; this is cosmetic. compare_args on gold[13]/[15] only matter for ACTION grading; reward_basis is DB."
+}

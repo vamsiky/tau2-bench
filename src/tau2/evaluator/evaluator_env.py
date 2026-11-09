@@ -1,3 +1,5 @@
+import copy
+import re
 from typing import Callable
 
 from loguru import logger
@@ -5,13 +7,130 @@ from loguru import logger
 from tau2.data_model.message import (
     AssistantMessage,
     Message,
+    MultiToolMessage,
     Tick,
+    ToolMessage,
     UserMessage,
 )
 from tau2.data_model.simulation import DBCheck, EnvAssertionCheck, RewardInfo
 from tau2.data_model.tasks import RewardType, Task
 from tau2.environment.environment import Environment
 from tau2.evaluator.evaluator_base import EvaluatorBase
+
+# Free-text annotation fields that carry no functional state and are excluded
+# from the verified DB comparison (SABER "τ-Bench Verified" style), per table.
+# Only bank-account closures qualify: close_bank_account_7392 takes an optional
+# free-text reason with a hidden default. Debit-card and credit-card closure
+# reasons are fixed categories the policy asks the agent to choose, so they
+# are compared like any other field.
+_FREE_TEXT_ANNOTATION_FIELDS: dict[str, frozenset[str]] = {
+    "accounts": frozenset({"closure_reason"}),
+}
+
+# Tool results that reject a call for malformed input (missing, mistyped, or
+# out-of-range arguments, or an ID that does not exist) before any state change.
+# Rejections for status, eligibility, balance, ownership, or duplicates are not
+# input errors: they block an action the policy forbids.
+_INPUT_ERROR_RE = re.compile(
+    r"^Error: (?:Missing required parameter|Invalid |Unexpected parameter|"
+    r".*(?: is required| are required|must be (?:a number|numbers|an integer|"
+    r"positive|a positive|a whole number|exactly \d+ digits)|PIN cannot be"
+    r"| not found\.))"
+)
+
+
+def _strip_free_text(db: dict) -> dict:
+    db = copy.deepcopy(db)
+    for table_name, fields in _FREE_TEXT_ANNOTATION_FIELDS.items():
+        table = db.get(table_name)
+        data = table.get("data") if isinstance(table, dict) else None
+        if isinstance(data, dict):
+            for rec in data.values():
+                if isinstance(rec, dict):
+                    for field in fields:
+                        rec.pop(field, None)
+    return db
+
+
+def _input_rejected_discoverable_tools(messages: list[Message]) -> set[str]:
+    """Names of agent discoverable tools whose every call was rejected for bad input.
+
+    Such a call changes nothing but still logs a row in agent_discoverable_tools,
+    e.g. when the agent tries a tool variant with malformed arguments and then
+    switches to the right one.
+    """
+    results = {}
+    for message in messages:
+        tool_messages = (
+            message.tool_messages
+            if isinstance(message, MultiToolMessage)
+            else [message]
+            if isinstance(message, ToolMessage)
+            else []
+        )
+        for tm in tool_messages:
+            results[tm.id] = tm.content or ""
+
+    outcomes: dict[str, bool] = {}
+    for message in messages:
+        if not isinstance(message, AssistantMessage) or not message.tool_calls:
+            continue
+        for tc in message.tool_calls:
+            if tc.name != "call_discoverable_agent_tool":
+                continue
+            name = tc.arguments.get("agent_tool_name")
+            rejected = bool(_INPUT_ERROR_RE.match(results.get(tc.id, "")))
+            outcomes[name] = outcomes.get(name, True) and rejected
+    return {name for name, rejected in outcomes.items() if rejected}
+
+
+def _verified_db_match(
+    gold_db: dict,
+    predicted_db: dict,
+    input_rejected_tools: set[str] = frozenset(),
+) -> tuple[bool, list[str]]:
+    """
+    Principled relaxed DB comparison (SABER "τ-Bench Verified" style).
+
+    Two relaxations vs. exact hash match:
+    1. agent_discoverable_tools — gold's called tool_names must be a SUBSET of
+       the agent's (missing a required call still fails). An extra tool name is
+       allowed only if every call to it was rejected for bad input
+       (input_rejected_tools); any other extra call fails.
+    2. Free-text annotation fields (bank-account closure_reason) are stripped
+       before comparing (a descriptive value is equivalent to the default).
+
+    All other tables are still compared exactly.
+    Returns (match: bool, reasons: list[str]).
+    """
+    gold_db = _strip_free_text(gold_db)
+    predicted_db = _strip_free_text(predicted_db)
+    reasons: list[str] = []
+
+    def _tool_names(db: dict) -> set:
+        return {
+            r.get("tool_name")
+            for r in (
+                db.get("agent_discoverable_tools", {}).get("data", {}) or {}
+            ).values()
+        }
+
+    gold_tools = _tool_names(gold_db)
+    predicted_tools = _tool_names(predicted_db)
+    missing = gold_tools - predicted_tools
+    if missing:
+        reasons.append(f"missing required discoverable calls: {sorted(missing)}")
+    extra = predicted_tools - gold_tools - set(input_rejected_tools)
+    if extra:
+        reasons.append(f"extra discoverable calls: {sorted(extra)}")
+
+    for table in sorted(set(gold_db) | set(predicted_db)):
+        if table == "agent_discoverable_tools":
+            continue
+        if gold_db.get(table) != predicted_db.get(table):
+            reasons.append(f"table '{table}' differs")
+
+    return len(reasons) == 0, reasons
 
 
 class EnvironmentEvaluator(EvaluatorBase[Message]):
@@ -30,6 +149,7 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
         solo_mode: bool = False,
         env_kwargs: dict = None,
         strict_replay: bool = True,
+        use_verified_scorer: bool = False,
     ) -> RewardInfo:
         """
         Calculate the reward for the simulation.
@@ -41,6 +161,11 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
             strict_replay: forwarded to Environment.set_state(strict=...). Set
                 False when re-grading historical trajectories whose recorded
                 tool outputs may cosmetically differ from current tool code.
+            use_verified_scorer: If True, replace the exact DB-hash comparison with the
+                principled "tau2 Verified" relaxation: gold's discoverable calls must be a
+                subset of the agent's, extra ones are allowed only if every call to them
+                was rejected for bad input, and bank-account closure_reason is excluded.
+                All other tables are still compared exactly.
         Returns:
             RewardInfo
         """
@@ -115,12 +240,45 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
                 )
 
         # Comparing the environments
-        agent_db_hash = gold_environment.get_db_hash()
-        user_db_hash = gold_environment.get_user_db_hash()
-        predicted_agent_db_hash = predicted_environment.get_db_hash()
-        predicted_user_db_hash = predicted_environment.get_user_db_hash()
-        agent_db_match = agent_db_hash == predicted_agent_db_hash
-        user_db_match = user_db_hash == predicted_user_db_hash
+        if (
+            use_verified_scorer
+            and hasattr(gold_environment, "tools")
+            and gold_environment.tools is not None
+            and hasattr(gold_environment.tools, "db")
+            and gold_environment.tools.db is not None
+        ):
+            gold_db = gold_environment.tools.db.model_dump()
+            predicted_db = predicted_environment.tools.db.model_dump()
+            input_rejected = _input_rejected_discoverable_tools(full_trajectory)
+            agent_db_match, _ = _verified_db_match(
+                gold_db, predicted_db, input_rejected
+            )
+            # Apply the same relaxed comparison for user_db. In domains where
+            # user_tools.db is the same object as tools.db (e.g. banking), the exact
+            # hash would undo the agent_discoverable_tools relaxation above.
+            if (
+                gold_environment.user_tools is not None
+                and gold_environment.user_tools.db is not None
+            ):
+                gold_user_db = gold_environment.user_tools.db.model_dump()
+                predicted_user_db = predicted_environment.user_tools.db.model_dump()
+                user_db_match, _ = _verified_db_match(
+                    gold_user_db, predicted_user_db, input_rejected
+                )
+            else:
+                user_db_match = (
+                    gold_environment.get_user_db_hash()
+                    == predicted_environment.get_user_db_hash()
+                )
+        else:
+            agent_db_match = (
+                gold_environment.get_db_hash() == predicted_environment.get_db_hash()
+            )
+            user_db_match = (
+                gold_environment.get_user_db_hash()
+                == predicted_environment.get_user_db_hash()
+            )
+
         if agent_db_match and user_db_match:
             db_reward = 1.0
             db_match = True
@@ -234,6 +392,7 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
         solo_mode: bool = False,
         env_kwargs: dict = None,
         strict_replay: bool = True,
+        use_verified_scorer: bool = False,
     ) -> RewardInfo:
         """
         Calculate the reward for the simulation.
@@ -246,6 +405,8 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
             strict_replay: forwarded to Environment.set_state(strict=...). Set
                 False when re-grading historical trajectories whose recorded
                 tool outputs may cosmetically differ from current tool code.
+            use_verified_scorer: If True, replace the exact DB-hash comparison with the
+                principled "tau2 Verified" relaxation. See EnvironmentEvaluator for details.
         Returns:
             RewardInfo
         """
@@ -322,12 +483,47 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
                 )
 
         # Comparing the environments
-        agent_db_hash = gold_environment.get_db_hash()
-        user_db_hash = gold_environment.get_user_db_hash()
-        predicted_agent_db_hash = predicted_environment.get_db_hash()
-        predicted_user_db_hash = predicted_environment.get_user_db_hash()
-        agent_db_match = agent_db_hash == predicted_agent_db_hash
-        user_db_match = user_db_hash == predicted_user_db_hash
+        if (
+            use_verified_scorer
+            and hasattr(gold_environment, "tools")
+            and gold_environment.tools is not None
+            and hasattr(gold_environment.tools, "db")
+            and gold_environment.tools.db is not None
+        ):
+            gold_db = gold_environment.tools.db.model_dump()
+            predicted_db = predicted_environment.tools.db.model_dump()
+            input_rejected = _input_rejected_discoverable_tools(
+                predicted_message_history
+            )
+            agent_db_match, _ = _verified_db_match(
+                gold_db, predicted_db, input_rejected
+            )
+            # Apply the same relaxed comparison for user_db. In domains where
+            # user_tools.db is the same object as tools.db (e.g. banking), the exact
+            # hash would undo the agent_discoverable_tools relaxation above.
+            if (
+                gold_environment.user_tools is not None
+                and gold_environment.user_tools.db is not None
+            ):
+                gold_user_db = gold_environment.user_tools.db.model_dump()
+                predicted_user_db = predicted_environment.user_tools.db.model_dump()
+                user_db_match, _ = _verified_db_match(
+                    gold_user_db, predicted_user_db, input_rejected
+                )
+            else:
+                user_db_match = (
+                    gold_environment.get_user_db_hash()
+                    == predicted_environment.get_user_db_hash()
+                )
+        else:
+            agent_db_match = (
+                gold_environment.get_db_hash() == predicted_environment.get_db_hash()
+            )
+            user_db_match = (
+                gold_environment.get_user_db_hash()
+                == predicted_environment.get_user_db_hash()
+            )
+
         if agent_db_match and user_db_match:
             db_reward = 1.0
             db_match = True

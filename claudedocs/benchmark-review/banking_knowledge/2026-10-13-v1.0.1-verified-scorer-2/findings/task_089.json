@@ -1,0 +1,17 @@
+{
+  "task_id": "task_089",
+  "severity": "None",
+  "headline": "ATM-limit task is clean: the one write (a $900 temporary limit on the Green card) is the only value that both covers the customer's need and stays within the 150% cap.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Reconstructed: Green limit $600 (doc_checking_accounts_green_account_(checking)_012). Today's ATM withdrawals are 100+80+60+60+50 = $350, leaving $250 against $550 needed, so the new limit must be at least $900, and the cap is 150% x 600 = $900, giving a unique 900. Blue is ineligible: OVERDRAFT FEE -$35 on 11/01/2025 is within 30 days (doc_040 \"No overdraft fees in the last 30 days\"). For the teen Light Green card the tool rejects any increase, writing nothing beyond the tool row the gold already logs. A replay with an extra rejected teen attempt matched exactly.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior review rated this clean and nothing in v1.0.1 changed the task.",
+  "notes": "If an agent counts a rolling 24 hours that includes the 11/13 $100 Chase withdrawal, it still cannot exceed the $900 cap, so the value stays 900. request_temporary_debit_card_limit_increase_8374 does not check overdraft history itself, so the Blue ineligibility is an agent-side check, as the task intends. No document I found explicitly says Light Green ATM limits cannot be raised (doc_checking_accounts_light_green_account_005 gives the $150/day cap and says not to modify parental controls without the guardian's authorization, and the guardian is the caller); the fixed-limit rule is enforced only by the tool's error message. Because a rejected attempt changes nothing beyond the already-logged tool row, this does not affect grading."
+}

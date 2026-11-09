@@ -1,0 +1,34 @@
+{
+  "task_id": "task_015",
+  "severity": "Minor",
+  "headline": "The customer walks through five claimed referral offers and only the Platinum one matches the KB, so the gold of giving the referral-link tool for Platinum is sound; an over-cautious identity check would add an extra DB write and fail.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The referral-link pre-check tells the agent to withhold the tool if the referral is likely to be auto-rejected, and reminds it of the weekly cap. Checking the cap needs the customer's referral history, which needs identity verification and a log_verification write the gold does not make.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009: \"if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool\"",
+        "doc_credit_cards_credit_cards_(general)_009: \"Weekly limit: Customers can receive at most 2 referral bonuses in any rolling 7-day window\"",
+        "policy additional_instructions.md: verification needed for \"Looking up account balances, transaction history, referral history\"; \"After verification, you must call the verification logging tool\"",
+        "Replay: log_verification(Fatima Al-Hassan, ...) + gold -> verified match False, reason \"table verification_history differs\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "A diligent agent that checks Fatima's referral history before handing over the tool (she has none in db.json, so the check passes) adds a verification_history row and fails, although its tool hand-off and final referral match the gold. The gold assumes no check is needed because nothing in the conversation suggests auto-rejection, which is the more natural reading.",
+      "suggested_fix": "State in credit_cards_(general)_009 whether the weekly-limit check needs an account lookup, or exclude verification_history from DB comparison for this task (or add the verification to the gold)."
+    }
+  ],
+  "solution_check": "Card by card against the KB: Crypto-Cash Back has no referral doc (refuse, no transfer per credit_cards_(general)_009); Business Gold is \"accepts new referrals until 2025-09-15\" (expired); EcoCard pays \"50\" not $200 (terms wrong); Silver Zoom pays $150 for $7,500 and \"No new referrals are accepted after 2025-10-01\" (wrong and expired); Platinum pays $100 for $1,500 within 90 days (platinum_rewards_card_008), matching the claim. So the agent gives get_referral_link and the customer calls it with user_id 890389b165 and \"Platinum Rewards Card\". Replaying the gold matches; passing arguments to give_discoverable_user_tool or a different JSON key order does not change the DB (args are not stored on the GIVEN row and are parsed on the call).",
+  "prior_status": "new",
+  "prior_note": "Prior marked this clean; the verification side-effect is newly reported, and the core reasoning is unchanged.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. A different card_name spelling in the user's call (e.g. \"Platinum Rewards\") changes the referral id and fails; the scenario names the card exactly, so this is user-sim variance. The customer holds a Business Platinum Rewards Card, not the personal Platinum card; the KB states no rule that a referrer must hold the card, and business_platinum_rewards_card_001 is titled \"Platinum Rewards Card: Elite Business Credit Card Application\", a naming collision that did not change the answer here. This task's gold (no transfer after the Crypto refusal) is the opposite of task_014's for the same opening request; see task_014. The verified-scorer relaxations do not affect this task (user_discoverable_tools and user_discoverable_tool_calls are compared exactly)."
+}

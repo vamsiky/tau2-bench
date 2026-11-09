@@ -1,0 +1,36 @@
+{
+  "task_id": "task_087",
+  "severity": "Major",
+  "headline": "Fixing three declined cards is well specified, but one security document says to hand the customer to the security team when they report a charge they did not make, which would skip the gold's dispute and replacement.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "When the Evergreen customer-initiated fraud alert turns out to cover a real fraudulent charge, doc_039 says to escalate to the security team. The gold instead files a dispute, closes the card, and orders a replacement.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_039 'Escalate to security team when': \"Customer reports transactions they did not make\"",
+        "doc_checking_accounts_checking_accounts_(general)_003 CODE 05 step 3: \"If fraud_alert_active is TRUE and alert_source is 'customer_initiated' -> Ask customer to verify recent transactions. If they confirm all transactions are legitimate, clear the alert.\" (silent on the fraud case)",
+        "gold[15] file_debit_card_transaction_dispute_6281 card_present_fraud close_and_reissue; gold[17] close fraud_suspected; gold[19] order EXPEDITED PREMIUM",
+        "transfer_to_human_agents writes nothing to the DB"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "An agent that follows doc_039 transfers once the $499.99 charge is denied. The dispute, closure, and replacement never happen, and debit_card_disputes, debit_cards, and debit_card_orders differ from the gold.",
+      "suggested_fix": "Add to doc_039 that a customer-initiated alert with a confirmed unauthorized charge is handled through the debit dispute flow (doc_031) rather than escalation, or accept escalation as an alternative path."
+    }
+  ],
+  "solution_check": "Reconstructed: Blue is FROZEN and velocity_blocked, so unfreeze and clear with velocity_clear (final state does not depend on the order). GFF is FROZEN, so unfreeze. Evergreen has a customer-initiated alert and the customer denies the $499.99 TechZone charge, so do not clear the alert; file card_present_fraud, close as fraud_suspected, and order EXPEDITED/PREMIUM at $0 each (best free options for Premium tier). The gold matches. Clearing the Evergreen alert as well fails, as the replay confirms, and the CODE 05 doc supports not clearing it.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the escalation instruction in doc_039 is a newly recorded competing reading.",
+  "notes": "customer_max_liability_amount 50 for a charge noticed 11/06 (6 business days before 11/14) is defensible because the customer notified the bank on 11/06 by replying to its fraud text; under a strict discovery-to-report count it would be 500 (see the liability issue in tasks 082/085/086). required_documents omits doc_bank_accounts_bank_accounts_(general)_032 (provisional credit guidelines), which the dispute needs; it is retrievable, so Minor per calibration (not listed as a separate issue because the task is already Major)."
+}

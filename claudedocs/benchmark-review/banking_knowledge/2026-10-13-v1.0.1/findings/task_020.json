@@ -1,0 +1,38 @@
+{
+  "task_id": "task_020",
+  "severity": "Major",
+  "headline": "The seeded rewards were computed with ordinary rounding, but the knowledge base says rewards are always rounded down, so an agent that follows the KB finds nine extra one-point over-credits that the gold does not dispute.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Non-error transactions for user 755bcb4d5d are stored with round-half-up values, while the KB rule is floor. Under the documented rule, nine transactions are over-credited by exactly 1 point, and the gold disputes none of them.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "db.json txn_a8f1c2d3e402 Adobe $54.99 Business Silver (2x promo, 20%) = 1099.8 -> floor 1099, stored '1100 points'",
+        "db.json txn_b7e2d4c5f512 Nordstrom $187.50 Silver 1% = 187.5 -> floor 187, stored '188 points'",
+        "floor false positives (all stored = floor+1): a8f1c2d3e402, a8f1c2d3e404, a8f1c2d3e406, a8f1c2d3e409, a8f1c2d3e414, b7e2d4c5f503, b7e2d4c5f507, b7e2d4c5f509, b7e2d4c5f512",
+        "task_020 instructions: \"you like to keep track of every dollar\" ... \"help resolve any discrepancies\""
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "why_it_matters": "An agent that retrieves and applies the documented floor rule sees 13 discrepancies, not 4. If it treats over-credits as discrepancies to dispute, as tasks 018 and 022 reward, the user files nine extra disputes and the DB hash fails. The gold is reached only by an agent that never finds the rounding doc or that chooses to ignore 1-point over-credits.",
+      "suggested_fix": "Re-seed the nine non-error transactions with floor values (e.g. a8f1c2d3e402 -> '1099 points', b7e2d4c5f512 -> '187 points'), which keeps the gold unchanged and makes the KB rule produce exactly four disputes."
+    }
+  ],
+  "solution_check": "Business Silver: 10% Travel/Software (excluding Apple/Microsoft/Dell/Coursera etc.), else 1%; double-promo for 6 months from opening 02/13/2025 (window ends 08/13/2025). Silver: 4%/1%. Gross errors: a8f1c2d3e403 JetBlue (6300 vs 3150), b7e2d4c5f506 GitHub (1020 vs 2550), a8f1c2d3e410 Southwest 08/25 after promo (3800 vs 1520), a8f1c2d3e411 Zoom (1499.9 vs 600). These match gold[2..5]. Round-half-up gives exactly these four; the documented floor rule gives these four plus nine 1-point over-credits.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor because natural rounding reproduces the gold, but the KB explicitly prescribes floor rounding, which the seed contradicts. That raises the task to Major.",
+  "notes": "The same user, transactions, and gold dispute set appear in tasks 026 and 027. The prior review also missed that doc_..._(general)_007 exists. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

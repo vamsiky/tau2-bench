@@ -1,0 +1,32 @@
+{
+  "task_id": "task_077",
+  "severity": "Major",
+  "headline": "The lost-wallet flow is well documented and the new required reads are fair, but the gold insists on a PREMIUM card design when the customer says he doesn't want a 'fancy card design' and the knowledge base never says which free design to pick.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "order_debit_card_5739 stores card_design. For an Elite (Bluest) account, CLASSIC, PREMIUM and CUSTOM are all $0, and the customer's only guidance, given only if asked, is 'whatever the best option is that's free ... I don't want to pay extra for shipping or a fancy card design'. That reads as naturally toward CLASSIC (no fancy design) as toward PREMIUM, and an agent that never asks will most likely pick CLASSIC. The gold requires PREMIUM.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029: \"ELITE TIER: - CLASSIC design: design_fee $0 - PREMIUM design (metallic silver): design_fee $0 (complimentary) - CUSTOM design (uploaded image): design_fee $0 (complimentary)\"",
+        "user_scenario step 8: \"ONLY IF agent asks about shipping speed or card design options: 'I'd like whatever the best option is that's free with my account. I don't want to pay extra for shipping or a fancy card design.'\"",
+        "gold[22] (077_14) arguments: \"delivery_option\": \"RUSH\", \"card_design\": \"PREMIUM\", \"design_fee\": 0",
+        "tools.py order_debit_card_5739: card_record[\"card_design\"] = card_design (persisted in debit_cards and debit_card_orders)"
+      ],
+      "gold_action_refs": [22],
+      "why_it_matters": "An agent that orders a CLASSIC card, or one that doesn't ask and uses the default, writes different debit_cards and debit_card_orders records, so the DB hash fails even though every policy step was correct. The delivery_option (RUSH) is better supported because 'best free' shipping means the fastest, but an agent that doesn't ask may pick STANDARD, which also changes the order_id.",
+      "suggested_fix": "Have the customer state the design explicitly (e.g. 'the metallic premium design if it's free'), or make the step-8 lines unconditional so the agent always gets the preference."
+    }
+  ],
+  "solution_check": "I rebuilt the flow from the docs. Verify and log; read accounts (doc_009) and debit cards (doc_028) to get the IDs chk_lj82d4f1a9 / dbc_lj82d4f1a9_bluest and chk_538bfb9cba / dbc_538bfb9cba. Freeze both cards (doc_026, customer unsure). Find the Silver Rewards card with get_credit_card_accounts_by_user and order a replacement: reason lost, standard shipping, since mid-tier expedited costs $10 and the customer won't pay (doc_030, credit_card_replacements_001). Read transactions for both accounts to check for pending items (doc_025 requirement 4; all rows are 'posted'). Unfreeze, which close_debit_card_4721 requires because it only accepts ACTIVE or PENDING cards, then close both cards as lost. Order the Bluest (Elite) replacement at $0 fees and decline the Light Green (Entry) one because of the 48-hour wait (doc_029). Activate with 8292, since the closure reason 'lost' sets issue_reason='lost'. Recomputing gives card_id dbc_8eed7b16caeb, last4 7260 and CVV 741, which match the gold and the instructions. Everything matches the gold except the card-design choice.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean, possibly under its relaxed scorer. The v1.0.1 read additions (#402) are sound, but the PREMIUM card_design persisted by the gold is not uniquely derivable from the customer's words.",
+  "notes": "v1.0.1 diff check: added gold reads get_all_user_accounts_by_user_id_3847 (077_1a), get_debit_cards_by_account_id_7823 x2 (077_1c/1d), and get_credit_card_accounts_by_user, now a plain always-available tool (077_4b), replacing an invalid unlock/call of a non-discoverable tool. The bank-transaction reads (077_8/9) were already in the gold. A competent agent needs every one of these: the account and card IDs are only obtainable through the reads, the credit-card check is mandated by doc_030, and the pending-transaction check is mandated by doc_025. build._derive_read_log_allowlist puts these discoverable read names on the allowlist. generate_agent_discoverable_tool_id is keyed on tool name only and add_to_db refuses duplicates, so one call of each read is enough and extra calls or different arguments don't change the hash. unlock_discoverable_agent_tool writes nothing to the DB. The freeze/unfreeze dates persist but come from the fixed clock. The Bluest-is-Elite and Light-Green-is-Entry mapping comes from doc_005 (closure tiers), because doc_029 lists tiers without naming accounts; that inference is reasonable. The instructions say the customer is 22, but DOB 04/12/2002 makes him 23 on 11/14/2025 (cosmetic; still within Light Green's 13-24 range). Seed transactions dated after the 11/14 clock exist but are all 'posted' and do not affect this task."
+}

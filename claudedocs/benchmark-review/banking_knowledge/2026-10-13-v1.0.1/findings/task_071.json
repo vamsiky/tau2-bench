@@ -1,0 +1,50 @@
+{
+  "task_id": "task_071",
+  "severity": "Major",
+  "headline": "Both promotion-driven picks (Sky Blue checking, Gold Saver savings) are derivable, but the customer script never answers two things the documents tell the agent to ask: company age and whether to fund the new savings account now.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The gold account Sky Blue is a startup account, and its documents tell the agent to confirm the company is within 4 years of formation. The customer script (Yumi Tanaka / Aurora Design Co) never gives the company's formation date or age, so the outcome depends on whether the agent checks and on what the user simulator makes up.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"## Verify Eligibility - Confirm your company is within 4 years of formation.\"",
+        "doc_business_checking_accounts_sky_blue_008: \"Eligibility criteria tied to company age are evaluated when you open the account; the threshold is 4.\"",
+        "gold[4].arguments.arguments account_class = \"Sky Blue\"",
+        "user_scenario.instructions: no formation date or company age for the business"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "A diligent agent asks the customer's company age before opening a startup account. If the simulated customer improvises an age over 4 years or says they don't know, the agent correctly falls back to Lime Green (second in the active promotion) and fails the gold. The gold is reached reliably only by skipping a documented eligibility check.",
+      "suggested_fix": "Add the business's formation date (under 4 years) to the user instructions, or replace the account's startup eligibility rule with one the given facts settle."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The business-savings opening procedure requires the agent to ask whether to transfer the opening deposit from the business checking account now, and to call transfer_funds_between_bank_accounts_7291 if the customer says yes. The customer script never answers this question, and the gold contains no transfer.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004: \"5) Ask the customer if they would like you to transfer the opening deposit from their business checking account now. If yes, use transfer_funds_between_bank_accounts_7291 to transfer the required amount.\"",
+        "db.json accounts[biz_chk_yt71c9e4f2].current_holdings = \"12500.00\" (funds available)",
+        "Gold Saver docs give no opening-deposit amount (doc_business_savings_accounts_gold_saver_account_001..009)",
+        "gold actions: no transfer_funds_between_bank_accounts_7291 call"
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "The customer wants to 'start building reserves' and has $12,500 in Cobalt Blue. A user simulator asked the required question may well say yes, and a correct agent then performs a transfer that changes both balances and fails the hash.",
+      "suggested_fix": "Add a line to the customer script (e.g. 'I'll fund the savings account myself later'), or include the transfer in the gold with a documented amount."
+    }
+  ],
+  "solution_check": "Checking requirements (mobile deposit of at least $10k/day, $0 overdraft fee, minimum under $10k, APY of at least 1%): Sky Blue ($25k mobile, 1.25%), Lime Green ($15k, 1.5%, $5k minimum) and Hunter Green ($10k, 1.0%) qualify; Cobalt and Navy (0.5%) and True Blue/World Blue (OD fees) do not. Active promotion doc_013 -> Sky Blue. Savings requirements (same-day ACH, minimum under $50k, wire fee of $15 or less): Gold Saver (same-day yes, $15 wire, no documented minimum), Silver Plus Saver (yes, $15, $5k minimum) and Gold Plus Saver (yes, $10, $25k minimum) qualify; Bronze and Silver Saver (no same-day ACH), Emerald ($20 wire), Platinum Reserve ($100k) and Diamond Vault ($500k) do not. Active promotion doc_015 -> Gold Saver Account. Business-savings eligibility is met: Cobalt Blue opened 09/15/2025 (60 days), balance $12,500. This matches the gold, which replays cleanly in either open order.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The two unanswered questions the documents require the agent to ask are new findings.",
+  "notes": "'Gold Saver Account' matches doc_004's naming examples ('Bronze Saver Account, Silver Saver Account'). The promotion docs use 'Silver Plus Saver' without a suffix, but that product is not opened."
+}

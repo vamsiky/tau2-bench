@@ -1,0 +1,17 @@
+{
+  "task_id": "task_060",
+  "severity": "None",
+  "headline": "Clean: Silver Plus Account is the only savings product meeting all six needs, and the documented 14-day rule forces opening it before closing the Green Account.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Silver Plus is the only savings account with 12-15 free withdrawals (15), a minimum the customer can keep ($2,500), daily compounding, ATM rebates (25), a relationship bonus (0.025%) and savings-goal tracking (silver_plus_004). Silver allows 10 withdrawals and documents no goals feature, Gold needs $10,000, Green allows 8, and Bronze allows 6. The Blue checking is 10 days old (opened 11/04/2025), so per general_002 the savings must be opened while Green (opened 07/17/2025, 120 days) is still open. Green is past its 60-day early-closure window with $0.00, so close_bank_account_7392 succeeds with no fee. This matches the gold, and replay confirms that closing first makes the savings open fail.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated this clean; still clean.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). The verified scorer's closure_reason relaxation matters here: close_bank_account_7392 takes an optional free-text reason (default \"Customer requested closure\"). Replay with reason \"Simplifying accounts\" passes _verified_db_match but differs under the exact hash, so under upstream grading any custom reason would fail. general_005 lists \"Notice period: 3 days\" for MID-tier closures without saying what it means operationally. Its procedure goes straight from \"Determine the account tier and applicable fees/notice period\" to calling the tool, so closing today is the natural reading, but an agent that treats the notice period as a waiting period would not close. The v1.0.1 change to general_005 is cosmetic."
+}

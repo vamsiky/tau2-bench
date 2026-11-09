@@ -1,0 +1,19 @@
+{
+  "domain": "banking_knowledge",
+  "benchmark_version": "v1.0.1",
+  "benchmark_ref": "v1.0.1",
+  "run_date": "2026-10-13",
+  "reviewer": "claude-opus-5-5: 8 parallel reviewers + 4 independent verifiers + a targeted re-review (Claude Code subagents)",
+  "effort": "high (set explicitly on every agent)",
+  "scorer": "verified DB comparison, revised 2026-10-13 (prompts/scorers/verified.md, commit 4cb3191): gold's discoverable calls must be a subset of the agent's; an extra discoverable call is allowed only if every call to it was rejected for bad input; closure_reason ignored on bank accounts only; all other tables exact",
+  "prompts": [
+    "prompts/review.md",
+    "prompts/verification.md",
+    "prompts/calibration.md",
+    "prompts/scorers/verified.md",
+    "prompts/pinpoint.md",
+    "prompts/rereview.md"
+  ],
+  "notes": "Review of v1.0.1 under the revised verified scorer. Severities are the reviewers' verdicts as checked by four independent verifiers. A targeted re-review on 2026-10-14 (prompts/rereview.md, recorded in verification/v5.json) re-checked every flagged task's reasoning about the simulated customer's tool calls and behaviour; where it applies, its verdict is the latest. The report shows only the latest findings.",
+  "title": "Banking v1.0.1 Verified-Scorer Review"
+}

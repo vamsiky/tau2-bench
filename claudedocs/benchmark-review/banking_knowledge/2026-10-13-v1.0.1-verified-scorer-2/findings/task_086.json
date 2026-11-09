@@ -1,0 +1,71 @@
+{
+  "task_id": "task_086",
+  "severity": "Major",
+  "headline": "The large six-dispute scenario is mostly derivable, but liability amounts, the PIN status after a reported skimming, and the purchase type of the late fraud charge each have more than one defensible answer.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "Four non-fraud disputes noticed 11/07-11/09 and reported 11/14 (5 business days later) store liability 50. Counting from when the customer noticed, doc_031 gives the $500 tier.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability.\"",
+        "No statement dates exist in the DB or the documents; get_now() = 2025-11-14 (Friday)",
+        "gold[11] ATM discovery 11/07/2025, gold[12] discovery 11/09/2025, gold[14] discovery 11/09/2025, gold[16] discovery 11/08/2025 -> 5 business days each; all liability 50",
+        "gold[15] TechWorld liability 500 (late fraud)"
+      ],
+      "gold_action_refs": [
+        11,
+        12,
+        14,
+        16
+      ],
+      "why_it_matters": "An agent applying the discovery-based tier, or treating Reg E tiers as unauthorized-only (0 for errors), stores different values and fails debit_card_disputes.",
+      "suggested_fix": "State one deterministic rule in doc_031, for example: liability tier is counted from the discovery date to today in business days, applies to every dispute category, and is capped at the disputed amount. Then regenerate customer_max_liability_amount in every gold dispute."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "For TechWorld the customer says \"I think someone skimmed my card\", which fits pin_compromised 'yes_observed' (\"believes PIN was observed/skimmed\"). The gold stores 'unknown'. The gold also stores transaction_type 'pin_purchase', which the script never states.",
+      "evidence": [
+        "tool docstring pin_compromised: \"'yes_observed': Customer believes PIN was observed/skimmed ... 'unknown': Customer unsure\"",
+        "user_scenario: \"Still have card - I think someone skimmed my card at a gas station or something.\"",
+        "gold[15] pin_compromised 'unknown', transaction_type 'pin_purchase'",
+        "Replay: pin_compromised 'yes_observed' -> debit_card_disputes differs"
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "An agent that maps 'skimmed' to yes_observed, or records signature_purchase for an unspecified in-store charge, fails the exact comparison.",
+      "suggested_fix": "Script the PIN answer (\"I don't know if they got my PIN\") and the transaction type."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The script gives the TechWorld discovery date as \"today 01/12\" while today is 11/14/2025, and the ATM-deposit claim ($500 deposited, $300 credited against a DB credit of $400) is withdrawn only loosely. The gold stores discovery 11/14/2025 and disputed_amount 100.",
+      "evidence": [
+        "user_scenario: \"Just discovered today 01/12 during year-end reconciliation.\"",
+        "gold[15] discovery_date 11/14/2025",
+        "user_scenario: \"If your records show that, then I'll go with what you have.\"; btxn_0788d2513c8c amount 400.0; get_atm_deposit_images_8473 returns \"IMAGES NOT AVAILABLE\"",
+        "gold[16] disputed_amount 100.0"
+      ],
+      "gold_action_refs": [
+        15,
+        16
+      ],
+      "why_it_matters": "A careful agent resolves 'today' to 11/14 and confirms $500-$400=$100 with the customer, but a literal or differently confirmed value fails.",
+      "suggested_fix": "Fix the date typo and have the customer state the corrected deposit claim explicitly."
+    }
+  ],
+  "solution_check": "Reconstructed: GFF has room for two disputes (Entry max 2), so the third-party ATM $100 and SupplyPro go ahead and the crypto charge waits. Evergreen has one open dispute (Premium max 4), so three more are allowed: incorrect amount $200, TechWorld $625 late fraud with close_and_reissue, and the ATM deposit $100. Then close Evergreen as fraud_suspected and reorder EXPEDITED $0 PREMIUM $0, shipped to the restaurant address, as the best free options for Premium. All of this matches the gold apart from the flagged values.",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor (ATM-deposit amount guided by the script) is now one of several issues; the liability and PIN/transaction-type ambiguities raise the task to Major.",
+  "notes": "Provisional flags follow the category lists consistently here; the third-party ATM is eligible per doc_033 (\"Provisional credit is still required within 10 business days\"). Affidavit applies only above $200, so not triggered for the $100 third-party ATM dispute."
+}

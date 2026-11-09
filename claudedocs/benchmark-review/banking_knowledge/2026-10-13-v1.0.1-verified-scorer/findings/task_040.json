@@ -1,0 +1,65 @@
+{
+  "task_id": "task_040",
+  "severity": "Blocker",
+  "headline": "With one past dispute on file, the written rule makes all four fraud and duplicate disputes eligible for provisional credit, but the official answer grants it to only two, using a running count and a filing order the documents never state.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "Same criterion-4 ambiguity as task_039. Counted against pre-session history (1 prior dispute, dsp_ed3ab3dce038), all four reason-eligible disputes pass 'not more than 2'. The gold marks the 3rd and 4th filed (American Airlines $342.50 fraud, Best Buy $189.99 duplicate) ineligible, which holds only if in-session filings count and the user-prioritized Grainger/Uline disputes are filed first.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "initial_state transaction_disputes.dsp_ed3ab3dce038: submitted_at \"09/20/2025\", status \"APPROVED\" (only prior dispute for 01f21c9970)",
+        "gold[7..8] eligible=true (txn_25e23705f61f Grainger $523.45 dup, txn_fd4c3871654e Uline $412.34 fraud); gold[9..10] eligible=false (txn_a1b2c3d4e503 AA $342.50 fraud, txn_a1b2c3d4e510 Best Buy $189.99 dup, merchant contacted), all otherwise eligible (Gold/Business Gold premium max $10000, accounts opened 06/15/2024 and 09/01/2024)",
+        "task_040 description.notes cites \"provisional_credit_max_disputes_in_period = 3\"; this parameter appears in no document or tool code (only in task notes)",
+        "Replay: all four reason-eligible = true -> verified match False (transaction_disputes differs)"
+      ],
+      "gold_action_refs": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "An agent that reads criterion 4 as a history check sets eligible=true on all four and fails. The customer's 'prioritize Grainger/Uline if there's any limit' signals intent but does not establish that a limit applies, and it is only voiced if the agent raises provisional credit.",
+      "suggested_fix": "Define in doc_015 that in-session filings count toward the 12-month limit and how to order filings, or set gold[9] and gold[10] to eligible=true."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The seeded prior dispute (agent-visible via get_user_dispute_history_7291) has impossible dates: it was noticed and submitted before the purchase it disputes.",
+      "evidence": [
+        "initial_state dsp_ed3ab3dce038: purchase_date \"10/02/2025\", issue_noticed_date \"09/15/2025\", submitted_at \"09/20/2025\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "It does not change the count (1 dispute in the past 12 months under either date), but a careful agent may question the record.",
+      "suggested_fix": "Set issue_noticed_date/submitted_at after 10/02/2025 (e.g., 10/05 and 10/06/2025)."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The user script never states the resolution wanted per dispute; gold uses partial_refund $24.56 for PECO and full_refund for the rest.",
+      "evidence": [
+        "task_040 user_scenario: no 'resolution requested' line; PECO: \"They overcharged you by $24.56\"",
+        "gold[11]: \"partial_refund_amount\": 24.56"
+      ],
+      "gold_action_refs": [
+        11
+      ],
+      "why_it_matters": "The natural answers match the gold, but they are left to the simulator.",
+      "suggested_fix": "Script the resolution for each dispute."
+    }
+  ],
+  "solution_check": "All 8 transactions map to the gold ids. Card last-4 digits are 1652 (gold card) and 0581 (business gold) via two user tool calls. card_action is keep_active and issue noticed 11/14/2025 via get_current_time. Reason-based eligibility gives Grainger, Uline, AA, and Best Buy (Gold). Under the history reading (1 prior), all four are true, which mismatches gold[9..10]. The gold is reproduced only with the running count and Grainger/Uline filed first.",
+  "prior_status": "persists",
+  "prior_note": "Prior Blocker persists, with the same correction as task_039: the running-count reading is literal-text-supportable, so this is ambiguity plus an unstated ordering, not a rule with no textual basis. The fixture date inconsistency is new.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. get_user_dispute_history_7291 is a gold-required discoverable read (allowlisted; skipping it fails, replay confirmed). The user must call get_card_last_4_digits twice with different ids. Under the verified scorer any extra or mistaken user call adds a user_discoverable_tool_calls row and fails. The 'duplicate' charges (Grainger $523.45, Best Buy $189.99) each appear once in the transaction history."
+}

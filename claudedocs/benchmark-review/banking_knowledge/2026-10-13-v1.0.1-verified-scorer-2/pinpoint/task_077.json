@@ -1,0 +1,65 @@
+{
+  "task_id": "task_077",
+  "severity": "Minor",
+  "reason": "Gold step 22 orders RUSH/PREMIUM, which the customer reveals only if asked; an agent using doc _023's CLASSIC default with STANDARD shipping fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "RUSH/PREMIUM given only if asked; CLASSIC is default",
+      "kind": "ambiguous_choice",
+      "step": 22,
+      "gold": {
+        "call": "order_debit_card_5739",
+        "args": {
+          "account_id": "chk_lj82d4f1a9",
+          "user_id": "lj82d4f1a9",
+          "delivery_option": "RUSH",
+          "delivery_fee": 0,
+          "card_design": "PREMIUM",
+          "design_fee": 0,
+          "shipping_address": "1420 Lake Shore Drive, Chicago, IL 60610"
+        },
+        "output": "Debit Card Order Confirmed\nOrder ID: dcord_53e617fda768\n...\nDelivery Option: RUSH\nCard Design: PREMIUM\n...\nTotal Fees: $0 (No additional charges)"
+      },
+      "doc_faithful": {
+        "call": "order_debit_card_5739",
+        "args": {
+          "account_id": "chk_lj82d4f1a9",
+          "user_id": "lj82d4f1a9",
+          "delivery_option": "STANDARD",
+          "delivery_fee": 0,
+          "card_design": "CLASSIC",
+          "design_fee": 0,
+          "shipping_address": "1420 Lake Shore Drive, Chicago, IL 60610"
+        },
+        "output": "Debit Card Order Confirmed\nOrder ID: dcord_f70a304ee8c8\n...\nDelivery Option: STANDARD\nCard Design: CLASSIC\n...\nTotal Fees: $0 (No additional charges)",
+        "note": "Plausible misreading: agent skips doc _023's preference questions and takes the documented CLASSIC default with STANDARD shipping. An agent that asks will very likely reach RUSH/PREMIUM."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_023",
+          "quote": "CLASSIC: Standard Rho-Bank blue design (default, no fee)"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_023",
+          "quote": "5) Ask customer for preferred card design (CLASSIC, PREMIUM, or CUSTOM) and explain fees."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_029",
+          "quote": "Complimentary shipping on all replacements (delivery_fee: $0 for STANDARD, EXPEDITED, and RUSH)"
+        },
+        {
+          "source": "instructions",
+          "quote": "I'd like whatever the best option is that's free with my account."
+        }
+      ],
+      "conflict": "ELITE: all shipping and PREMIUM design are $0. Customer states \"best free\" only if asked. Gold step 22: RUSH/PREMIUM; doc _023 default CLASSIC (STANDARD shipping) fails.",
+      "scorer": {
+        "field": "debit_card_orders[dcord_53e617fda768]: MISSING row (RUSH/PREMIUM); debit_card_orders[dcord_f70a304ee8c8]: EXTRA row (STANDARD/CLASSIC); debit_cards[dbc_8eed7b16caeb].card_design: gold \"PREMIUM\" vs agent \"CLASSIC\"",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

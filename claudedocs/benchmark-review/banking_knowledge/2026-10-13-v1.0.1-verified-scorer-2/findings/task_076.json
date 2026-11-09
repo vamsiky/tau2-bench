@@ -1,0 +1,36 @@
+{
+  "task_id": "task_076",
+  "severity": "Major",
+  "headline": "Bluest has lower ATM fees than the gold's Purple Account under every reading of the fee docs; the gold excludes Bluest for its $75,000 opening deposit, but the script never says whether the customer can make it.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Among accounts with 2-day early direct deposit, Bluest costs 8 x $2.00 = $16 in ATM fees against Purple's 8 x $2.50 = $20 (or both $0 if out-of-network fees do not stack abroad or are rebated). The customer's only criterion is the lowest ATM fees, so Purple is chosen only by deciding she cannot fund Bluest's $75,000 opening deposit, which the script never addresses.",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_001: \"Early direct deposit | 2 day(s) before payday\"; \"Minimum opening deposit | $75,000\"",
+        "doc_checking_accounts_bluest_account_010: \"Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal\"; bluest_003: \"Foreign ATM withdrawal fee | $0.00\"",
+        "doc_checking_accounts_purple_account_012: \"$2.50 per cash withdrawal made at an out-of-network ATM\"",
+        "description.notes: \"BLUEST ACCOUNT: ... $16 TOTAL (but requires $50k-100k minimum deposit - NOT PRACTICAL)\"",
+        "user_scenario.instructions: no statement of available funds or deposit limits",
+        "open_bank_account_4821: no opening-deposit check"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that minimises ATM fees as asked recommends Bluest (the user script accepts any recommendation) and fails; an agent that asks about the $75,000 deposit gets an improvised answer.",
+      "suggested_fix": "Have the customer state a deposit budget well below $75,000 (e.g., \"I can only put about $5,000 in this account\"), or accept Bluest."
+    }
+  ],
+  "solution_check": "Early direct deposit of 2 days: Purple (2), Bluest (2), Evergreen (up to 2), Gold Years (62+, blocked); Green Fee-Free, Light Blue, Light Green are 0 days; Blue, Green, Dark Green are 1 day. ATM fees for 8 x $300 with stacking: Bluest $16, Purple $20, Evergreen 8 x ($2.50 + $6.00) = $68. Purple is the cheapest only after excluding Bluest on deposit size.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated the task clean; the Bluest comparison is a new finding.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Under the non-stacking or broad-rebate reading (see task_075), Purple and Bluest both cost $0 in bank fees, a tie with no documented tie-breaker. Author notes cite Bluest's minimum as \"$50k-100k\" and Dark Green's range as 17-28; docs say $75,000 opening / $112,500 balance and 17-26."
+}

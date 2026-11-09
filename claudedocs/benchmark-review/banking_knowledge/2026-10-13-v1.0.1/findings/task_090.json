@@ -1,0 +1,35 @@
+{
+  "task_id": "task_090",
+  "severity": "Minor",
+  "headline": "The fraud, PIN-reset and security-hold outcomes are all reachable from the protocol, but the customer never says which card design she wants and two designs are free for her tier.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The Evergreen replacement order persists card_design, but the customer only asks for 'the fastest option that's free'. For the Premium tier, the CLASSIC and PREMIUM designs both cost $0, so either one satisfies her request.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"CLASSIC design: design_fee $0\" / \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"PREMIUM TIER (Evergreen Account)\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\" and step 5 \"Ask customer for preferred card design\"",
+        "user instructions item 9: \"Give the fastest option that's free - just get me a new card with a new number as fast as possible.\"",
+        "gold[10].arguments: \"card_design\": \"CLASSIC\", \"delivery_option\": \"EXPEDITED\""
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "The agent has to ask about the design (doc_023 step 5), and the simulated customer has no scripted answer. An answer like 'whatever's free' makes PREMIUM a legitimate pick, and order_debit_card_5739 stores card_design on both the order and the new card, so a PREMIUM order fails the DB hash (replayed: hash differs).",
+      "suggested_fix": "Add 'classic design is fine' to instruction item 9, or state in doc_023/doc_029 that replacements default to CLASSIC unless the customer asks otherwise."
+    }
+  ],
+  "solution_check": "Evergreen: A1=2 (Newark NJ vs Boston MA), A3=+1, B1=3 (02:14-02:17), B3=2 (96s and 103s gaps), C1=2, C2=1, C3=2 (800 vs $80 avg ATM), C4=2 (1600 > 1000 limit) gives 15, or 14 if C4 is read as 1. That is VERY HIGH or CRITICAL, B1=3 also triggers single-flag escalation, and the customer says she was asleep, so the card cannot be unlocked. With no successful unauthorized withdrawals, Step 6 recommends closure plus replacement; Premium tier gives free EXPEDITED shipping, which matches the gold's fraud_suspected close and EXPEDITED order. Blue scores 9-12 before verification and 8-10 after she confirms Target Cambridge, so it can be unlocked. With 2 prior locks the agent MUST offer a PIN reset, which she accepts with 7294 (gold[14]). Green has pin_lock_reason=security_hold: the agent offers a transfer, she declines, and nothing is written. My reconstruction matched the gold except for the design question.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The design ambiguity is new in this review and comes from the Premium-tier fee table, which makes the PREMIUM design free.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot (evaluator_env.py exact agent+user DB hash after gold replay; build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool json.loads(parse_int=float) and logging only when the underlying tool mutates state or is allowlisted). Extra facts: the logged record is {tool_name, status} keyed by tool name only, so a gold-required read is satisfied by any call to that tool with any arguments; unlock_discoverable_agent_tool writes nothing to the DB; transfer_to_human_agents (GENERIC) writes nothing. No tool in the snapshot unlocks a PIN-locked card; only reset_debit_card_pin_6284 sets pin_locked=False (tools.py, inside reset_debit_card_pin_6284). That is harmless here because the protocol requires offering a reset for the Blue card anyway. Single-flag escalation (B1=3 on Evergreen) means 'escalate to supervisor review'. A transfer writes nothing to the DB, but if the agent transfers before handling the Blue card, the conversation can end early (soft ordering risk). The task notes give the Evergreen score as 14; my count is 14-15, and the outcome is the same either way. Replays: gold replays without errors. Dropping the repeat get_debit_cards and get_bank_account_transactions reads (gold[11], [12], [15]) leaves the hash unchanged. Passing excess_replacement_fee=0 explicitly leaves the hash unchanged."
+}

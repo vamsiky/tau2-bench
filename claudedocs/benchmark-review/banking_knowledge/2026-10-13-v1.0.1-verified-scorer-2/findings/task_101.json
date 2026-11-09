@@ -1,0 +1,35 @@
+{
+  "task_id": "task_101",
+  "severity": "Minor",
+  "headline": "The gold (Vikram to Purple, TechFlow to Sky Blue) follows the docs' 2-per-9-days referral limit, though the limit's wording mixes 'bonuses received' with 'referrals made'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The rolling-window rule is worded in terms of 'referral bonuses' received, which could be read as limiting payouts rather than new submissions. Read that way, all four referrals could be submitted now. The FAQ answers 'How many people can I refer at once?' with the 2-per-9-days cap and warns that extra referrals are auto-denied, which supports the gold's two submissions.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window.\" / \"If you attempt to receive more than 2 referrals in a single 9-day period, the third referral (and any subsequent referrals in that window) will be automatically denied.\"",
+        "doc_bank_accounts_bank_accounts_(general)_048: \"How many people can I refer at once? You can have multiple referrals in progress, but you can only receive a maximum of 2 referral bonuses in any rolling 9-day window. If you exceed this limit, additional referrals will be automatically denied\"",
+        "seed referrals: most recent COMPLETE 10/25/2025, none in the last 9 days",
+        "Replay: submitting all four (adding Green Fee-Free and Lime Green) changes referrals"
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "An agent that reads the cap as payout-only recommends all four referrals, and the customer submits them (script line 17), so the run fails. The FAQ's auto-denial warning makes that the weaker reading.",
+      "suggested_fix": "Say explicitly that at most 2 new referrals may be submitted per rolling 9-day window, counting referrals already received in that window."
+    }
+  ],
+  "solution_check": "Window: no referral or bonus in the last 9 days, so 2 slots. The customer asks for one personal and one business referral (line 13a). Personal: Vikram (71, $1,200) to Purple 45+35 = $80; Gold Years is capped 6/6, Blue 5/5, Dark Green is age-limited to 26 and needs $1,000, Bluest needs $2,000. That beats Maya to Green Fee-Free at $55. Business: TechFlow (2 years, $12k) to Sky Blue 150+250 = $400 (cap 8, 7 used); Ember (5 years) cannot use Sky Blue, and its best is Lime Green at $350. That gives Purple + Sky Blue, matching the gold, which replays cleanly.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this a Blocker on the view that the window caps only bonuses received. I find the FAQ ties the cap to how many people can be referred at once, so the gold reading is the natural one and the remaining defect is wording (Minor).",
+  "notes": "The author notes say Dark Green is '5/5', but dark_green_010 states 'Maximum per year: 6'. That does not matter, because Dark Green's age limit (26) and $1,000 deposit rule out both personal referrals. Purple's referrer tenure is 45 days, measured from 03/15/2022. The gold-required read get_referrals_by_user is non-discoverable and logs nothing."
+}

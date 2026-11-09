@@ -1,0 +1,50 @@
+{
+  "task_id": "task_092",
+  "severity": "Minor",
+  "reason": "Doc _041 says escalate to supervisor on any 3-point flag (Blue card hits two); an agent transferring then skips the Green, Evergreen writes and fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Supervisor-escalation rule has no tool and ends episode",
+      "kind": "instruction_conflict",
+      "step": 11,
+      "gold": {
+        "call": "get_debit_cards_by_account_id_7823",
+        "args": {
+          "account_id": "chk_rw42b8d3e1_green"
+        },
+        "output": "[\n  {\n ..."
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "reason": "fraud_or_security_concern",
+          "summary": "Supervisor review: Blue card flag A1 = 3 points (Tijuana MX)"
+        },
+        "output": "Transfer successful (reason: fraud_or_security_concern). A human agent will assist you shortly.",
+        "note": "Plausible misreading: agent escalates as soon as the Blue card is handled, so steps 11-20 never happen. Gold defers the only transfer to the end (step 20)."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_041",
+          "quote": "If ANY single flag equals 3 points, escalate to supervisor review regardless of total score."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_041",
+          "quote": "- Different country: 3 points (CRITICAL)"
+        },
+        {
+          "source": "instructions",
+          "quote": "If agent offers to transfer you to supervisor/security for this card:** \"Oh, okay. How long will that take? I have a lot of showings today.\""
+        }
+      ],
+      "conflict": "Blue card A1 (Tijuana MX) and B1 score 3 each; doc _041 requires supervisor review. No tool does that; gold never escalates for Blue and continues at step 11.",
+      "scorer": {
+        "field": "debit_cards[dbc_rw42b8d3e1_green].status: gold=\"CLOSED\" agent=\"ACTIVE\"; debit_cards[dbc_rw42b8d3e1_evergreen].pin_locked: gold=false agent=true; missing required discoverable call reset_debit_card_pin_6284",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

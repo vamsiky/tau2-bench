@@ -1,0 +1,17 @@
+{
+  "task_id": "task_052",
+  "severity": "None",
+  "headline": "Adversarial CLI request inside the 120-day entry-tier cooldown; the correct outcome is one documented denial; clean.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze is entry tier, and a 10% increase is $400 (within the 25% cap). Submit 400 first (logistics_007 Step 1). CLI history shows cli_5e4c1a83b0_bronze_001, approved 2025-09-15, which is 60 days before 11/14/2025 and inside the 120-day entry cooldown. Utilization is $1,500/$4,000 = 37.5%, payments are 6+ on time, and there are no disputes or replacements, so the unique reason is cooldown_period_active. None of the customer's tactics (60-day premium cooldown, 'Marcus' pre-approval, loyalty, downgrade reset, business treatment) is backed by any document. This matches the gold and the replay is clean.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior clean; still clean.",
+  "notes": "The task fails if the agent gives in, downgrades the card (logistics_008 is for annual-fee retention), or denies without submitting first, which logistics_007 forbids. The payment_history rows in initial_state use ISO dates (2025-03-15), while other tasks use MM/DD/YYYY; the tool sorts lexically within one format, so the result is unaffected."
+}

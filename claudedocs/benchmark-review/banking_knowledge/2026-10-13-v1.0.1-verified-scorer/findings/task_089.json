@@ -1,0 +1,17 @@
+{
+  "task_id": "task_089",
+  "severity": "None",
+  "headline": "ATM-limit task is clean: the only write, a temporary Green-card ATM limit of $900, follows from the documents and the transaction history.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Green card has no daily_atm_limit field, so the tool and doc green_account_(checking)_012 give $600; ATM withdrawals dated 11/14 total 100+80+60+60+50 = $350, leaving $250, and the customer needs $550, so the needed limit is 350+550 = $900, which is also the 150% cap (doc_040). Counting the 11/13 $100 withdrawal as within 24 hours would need $1,000, which exceeds the cap, so the agent still lands on $900. Blue has an \"OVERDRAFT FEE\" on 11/01/2025 (within 30 days), so it is ineligible; the teen Light Green card is policy-locked. Matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior review rated this clean and it still is.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. The tool itself does not check overdraft history, so an agent that skips doc_040 eligibility and raises the Blue limit writes a change and fails, which is correct grading. Sofia's account belongs to a different user_id; the gold reads her card and transactions, but those tool names are already logged by the father's reads, so the agent does not need to reach her account to match."
+}

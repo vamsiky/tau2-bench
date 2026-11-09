@@ -1,0 +1,17 @@
+{
+  "task_id": "task_058",
+  "severity": "None",
+  "headline": "The net-return math (interest minus card fees on $20,000) uniquely favors EcoCard plus Silver Account under the documented rates, so the task is clean.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "At $20,000 for one year: Silver tier 2 is 4.0%, plus EcoCard +2.2% (silver_account_006) = 6.2%, so $1,240 - $50 fee = $1,190 (+$5 with the 0.025% relationship bonus). Gold 5.5% + EcoCard 0.6% gives $1,170. Gold + Silver Rewards 0.2% gives $1,140. Silver Plus is at tier 2 (4.5%) at $20k, and + EcoCard 0.45% gives $990 - 50. Green 4.0% + EcoCard 0.5% gives $900 - 50. Gold Rewards needs Rho-Bank+ (the user has none). The Platinum promo window ended 2024-12-31, so the fee is $200. Diamond Elite costs $495. EcoCard + Silver Account is the unique maximum, matching gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior and current verdicts agree: clean.",
+  "notes": "Edge reading: Gold Plus (6.0%) + Bronze Rewards (+0.15%, $0 fee) gives $1,230 if the agent ignores Gold Plus's $25,000 minimum (gold_plus_001 'Maintain a balance of at least $25,000 to keep account benefits active'; gold_plus_005 '$15.00' monthly fee below it, i.e. $180/yr, net $1,050). The user defines net as interest minus card fees, but a competent advisor would not recommend an account whose minimum the customer cannot meet, so I do not count this as a defect. Gold has no get_all_user_accounts_by_user_id_3847 read, and an agent's eligibility read is not logged (not allowlisted; verified SAME). The scenario's verification block omits the phone number; the agent logs DB values, so it does not matter."
+}

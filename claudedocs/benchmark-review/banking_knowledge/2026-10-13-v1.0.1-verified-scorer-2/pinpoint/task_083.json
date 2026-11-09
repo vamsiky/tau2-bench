@@ -1,0 +1,148 @@
+{
+  "task_id": "task_083",
+  "severity": "Blocker",
+  "reason": "All four gold dispute calls (steps 6-9) omit the required customer_max_liability_amount and error; ACTION grading string-matches them, so no working call can match.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Gold dispute calls omit required liability argument",
+      "kind": "other",
+      "step": 6,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_36fd10197841",
+          "dispute_category": "atm_cash_discrepancy",
+          "disputed_amount": "150.00 (raw literal in the gold JSON string)",
+          "provisional_credit_eligible": true,
+          "card_action": "keep_active",
+          "...": "no customer_max_liability_amount"
+        },
+        "output": "Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_36fd10197841",
+          "customer_max_liability_amount": 50,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_c6862fde0964\nTransaction: btxn_36fd10197841\n...\nProvisional Credit: ISSUED - $150.00 credited within 10 business days per Regulation E.",
+        "note": "Any working call must add customer_max_liability_amount, so its arguments string can never equal the gold's; steps 7-9 are the same."
+      },
+      "refs": [
+        {
+          "source": "tool:file_debit_card_transaction_dispute_6281",
+          "quote": "customer_max_liability_amount: float,"
+        },
+        {
+          "source": "task:evaluation_criteria.reward_basis",
+          "quote": "[\"ACTION\"]; compare_args unset on gold steps 6-9"
+        },
+        {
+          "source": "tool:Action.compare_with_tool_call",
+          "quote": "return tool_args == action_args"
+        }
+      ],
+      "conflict": "Tool signature requires customer_max_liability_amount; gold steps 6-9 omit it (and spell 150.00). ACTION grading compares the whole arguments string, so the gold is both unexecutable and unmatchable.",
+      "scorer": {
+        "field": "missing gold actions #6-#9 call_discoverable_agent_tool(file_debit_card_transaction_dispute_6281, ...); alt (#6 fixed) still misses #6. DB: debit_card_disputes[dsp_c6862fde0964] EXTRA row (gold calls error, write nothing)",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "FAIL"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Same-date duplicates: 'first' vs earliest is ambiguous",
+      "kind": "ambiguous_choice",
+      "step": 8,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_d937eaa1d21d",
+          "dispute_category": "duplicate_charge",
+          "disputed_amount": 67.25,
+          "...": "other args as gold"
+        },
+        "output": "Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_ff7d3926dee0",
+          "customer_max_liability_amount": 50,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_8c424ddf4025\nTransaction: btxn_ff7d3926dee0\n...\nCategory: Duplicate Charge\nDisputed Amount: $67.25",
+        "note": "Picks the top-listed of two 11/11/2025 $67.25 AUSTIN COFFEE ROASTERS rows (row 2 btxn_ff7d3926dee0, row 3 btxn_d937eaa1d21d)."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_031",
+          "quote": "Dispute the earliest (first) transaction when multiple duplicates exist."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_018",
+          "quote": "Transactions are returned in reverse chronological order (most recent first)."
+        }
+      ],
+      "conflict": "Both duplicates dated 11/11/2025. Gold takes lower-listed btxn_d937eaa1d21d as 'earliest'; 'first' also reads as top-listed btxn_ff7d3926dee0.",
+      "scorer": {
+        "field": "missing gold actions #6-#9 call_discoverable_agent_tool(file_debit_card_transaction_dispute_6281, ...); #8 also differs in transaction_id btxn_ff7d3926dee0. DB: debit_card_disputes[dsp_8c424ddf4025] EXTRA row",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "FAIL"
+      }
+    },
+    {
+      "issue": 3,
+      "severity": "Major",
+      "title": "Duplicate charge eligible though merchant not contacted",
+      "kind": "ambiguous_choice",
+      "step": 8,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_d937eaa1d21d",
+          "dispute_category": "duplicate_charge",
+          "contacted_merchant": false,
+          "provisional_credit_eligible": true,
+          "...": "other args as gold"
+        },
+        "output": "Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_d937eaa1d21d",
+          "contacted_merchant": false,
+          "provisional_credit_eligible": false,
+          "customer_max_liability_amount": 50,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_d48db18d79a9\nTransaction: btxn_d937eaa1d21d\n...\nProvisional Credit: Not eligible - see Debit Card Provisional Credit Guidelines for details.",
+        "note": "Applies the 'not contacted merchant (non-fraud)' NOT REQUIRED condition, as gold step 9 applies 'yes_shared' to set false."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_032",
+          "quote": "2. Customer has not contacted merchant first (for non-fraud disputes)"
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_032",
+          "quote": "3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')"
+        }
+      ],
+      "conflict": "duplicate_charge is on the REQUIRED list but contacted_merchant=false hits NOT REQUIRED item 2. Gold step 8: true; gold step 9 resolves the same overlap to false.",
+      "scorer": {
+        "field": "missing gold actions #6-#9 call_discoverable_agent_tool(file_debit_card_transaction_dispute_6281, ...); #8 also differs in provisional_credit_eligible false. DB: debit_card_disputes[dsp_d48db18d79a9] EXTRA row",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "FAIL"
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "task_id": "task_029",
+  "severity": "Major",
+  "headline": "The test is whether the agent catches the customer lying that her disputes were approved, but the agent has no tool that shows dispute status, so passing depends on whether it refuses unverifiable requests by default.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The discriminating fact (disputes still SUBMITTED) exists only in the cash_back_disputes table and in user-side tool output, neither of which the agent can see. The agent receives the same Phase 2 claim as in task_028, where gold expects the updates.",
+      "evidence": [
+        "task_029 description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED\"",
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user's resolved disputes in the cash_back_disputes database\"",
+        "tools.py: no agent tool queries cash_back_disputes; submit_cash_back_dispute_0589 'Status: SUBMITTED' output is returned only to the user",
+        "Replay: gold + task_028's update calls -> verified match False (credit_card_transaction_history differs)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "An agent that refuses because it cannot do doc_004 step 1 passes, but the same agent fails task_028, and an agent that trusts the customer passes 028 and fails here. The task measures how much the agent trusts customers by default, not whether it verifies, because verification is impossible.",
+      "suggested_fix": "Same as task_028: expose dispute status through an agent-readable tool documented in doc_004 so the agent can actually verify the claim."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "Choosing the 6 disputes depends on the floor-rounding rule in doc_007, which is in the KB but missing from this task's required_documents (task_028 lists it).",
+      "evidence": [
+        "task_029 required_documents omits \"doc_credit_cards_credit_cards_(general)_007\"",
+        "doc_007: \"All credit card rewards points are rounded down to the nearest whole number.\"",
+        "Computation: floor -> 6 mismatches (= gold set); round-half-up -> 28 mismatches"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "why_it_matters": "With search-based retrieval the agent can still find doc_007 (and stored values on correct rows are visibly floored), so standard runs are unaffected. Under golden_retrieval / required-docs variants the rule is absent, and a round-half-up agent would dispute 22 extra transactions.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to task_029 required_documents."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Same cosmetic corruptions as task_028 (EcoCard rates written as dollar amounts, garbled arithmetic in the rounding example). The seed data resolves them.",
+      "evidence": [
+        "doc_credit_cards_ecocard_002: \"Earn $5.00 sustainability points per dollar\"",
+        "doc_007: \"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar, giving 126 points\""
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "why_it_matters": "Does not change the dispute set.",
+      "suggested_fix": "As in task_028."
+    }
+  ],
+  "solution_check": "Phase 1: recomputed rewards for all 47 transactions. With floor rounding, exactly the 6 gold transactions are wrong, so gold[0..7] is reproducible. Phase 2: the gold (no update calls) matches what an agent should do if it treats the claim as unverifiable, but nothing the agent can see shows the claim is false.",
+  "prior_status": "changed",
+  "prior_note": "Prior called this Major for an 'unwritten' round-down rule. The rule is written in doc_007, which was unchanged since v1.0.0 and is retrievable, so that issue is now only a Minor required_documents omission. The Major rating now comes from the unverifiable deception.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. Unlocking update_transaction_rewards_3847 without calling it does not change the DB (replay: verified match True)."
+}

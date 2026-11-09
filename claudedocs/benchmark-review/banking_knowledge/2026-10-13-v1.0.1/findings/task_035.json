@@ -1,0 +1,17 @@
+{
+  "task_id": "task_035",
+  "severity": "None",
+  "headline": "Clean: the 11/14 credit-bureau incident article clearly applies and names the emergency tool plus a transfer, which is exactly what the gold checks.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The customer reports a sudden 127-point drop and a Rho-Bank delinquency she didn't incur, on 11/14/2025, inside doc_012's 11/14-11/18 window. doc_012 says 'IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents' with no verification. Unlock + call 1114 + transfer matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; no change.",
+  "notes": "ACTION grading doesn't check the 'immediately / no verification / no troubleshooting' part of doc_012 (an agent that verifies first still passes), but the core decision, recognizing the incident and using the emergency tool, is graded. The user_tools list omits call_discoverable_user_tool, which is irrelevant since no user tool is needed."
+}

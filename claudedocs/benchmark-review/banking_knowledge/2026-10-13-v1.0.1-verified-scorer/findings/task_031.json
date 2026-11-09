@@ -1,0 +1,17 @@
+{
+  "task_id": "task_031",
+  "severity": "None",
+  "headline": "A clean single-dispute task: every value in the filed dispute comes from the customer, the transaction record, or the provisional-credit rules.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The only Marriott transaction for 890389b165 is txn_adea68821a1d ($167.34, 11/07/2025, Silver). Verification uses phone and email. Last 4 digits '5320' come from the user calling get_card_last_4_digits(cc_890389b165_silver), which replay confirms. issue_noticed_date '11/14/2025' comes from get_current_time. The reason is goods_services_not_as_described (a cheaper room than paid for), so doc_015 makes it ineligible for provisional credit (eligible=false), and contacted_merchant=true with full_refund. The gold matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated it clean; still clean.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. The user's \"about two weeks ago\" and \"around 160 dollars\" are loose (actual 11/07, $167.34) but there is only one Marriott charge. Under the verified scorer, a user call to get_card_last_4_digits with a different account id would add a user_discoverable_tool_calls row and fail; that is simulator behavior, not a task defect."
+}

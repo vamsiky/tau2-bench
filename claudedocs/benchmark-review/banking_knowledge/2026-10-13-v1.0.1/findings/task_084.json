@@ -1,0 +1,66 @@
+{
+  "task_id": "task_084",
+  "severity": "Blocker",
+  "headline": "The duplicate-charge pick is now resolvable, but the gold caps one dispute's maximum liability at the disputed amount and not another's, so no single consistent rule reproduces the official answer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "customer_max_liability_amount is internally inconsistent. The $47.50 duplicate gets 50 (not capped at the amount), while the $412.88 late-reported fraud gets 412.88 (capped at the amount). The tool says the value depends on the timing rules and the disputed amount.",
+      "evidence": [
+        "file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability.\"",
+        "gold[12].arguments: duplicate_charge \"disputed_amount\": 47.5, \"customer_max_liability_amount\": 50",
+        "gold[14].arguments: card_present_fraud \"disputed_amount\": 412.88, \"customer_max_liability_amount\": 412.88",
+        "Computation: rule min(tier, amount) -> duplicate 47.5 (gold 50); rule tier-only -> TechWorld 500 (gold 412.88)"
+      ],
+      "gold_action_refs": [
+        12,
+        14
+      ],
+      "why_it_matters": "The value is stored in debit_card_disputes. Any agent applying one rule to both disputes mismatches one of them, so correct reasoning cannot reach the gold hash.",
+      "suggested_fix": "Pick one rule (e.g. min(timing tier, disputed_amount)), state it in doc_..._031, and set gold[12] to 47.5 (or gold[14] to 500 under a tier-only rule)."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The duplicate charge is in doc_032's 'required' category list, but the customer has not contacted the merchant. Doc_032 also lists that, for non-fraud disputes, as a 'not required' condition. The gold sets eligible=true.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes)\"",
+        "gold[12].arguments: \"contacted_merchant\": false, \"provisional_credit_eligible\": true"
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "An agent that applies the not-required clause, as tasks 083-086 do for other discretionary cases, writes false and fails the hash.",
+      "suggested_fix": "State in doc_032 that duplicate_charge (like ATM errors) does not need merchant contact, or set gold[12] to false."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "The liability timing tier is anchored to an undisclosed statement date. The duplicate was noticed 11/10 and the incorrect amount 11/09, both reported 11/14, which is more than 2 business days, yet the gold uses the $50 tier for both.",
+      "evidence": [
+        "doc_..._031: \"Reported within 2 business days of statement: Maximum liability $50\"",
+        "user_scenario: duplicate \"I noticed it on November 10th\"; incorrect amount \"I noticed it November 9th\"",
+        "gold[12], gold[13]: \"customer_max_liability_amount\": 50"
+      ],
+      "gold_action_refs": [
+        12,
+        13
+      ],
+      "why_it_matters": "Counting business days from discovery gives the $500 tier, so the stored values become 47.5/100 under a cap or 500 without one, and the hash fails.",
+      "suggested_fix": "Define the anchor (discovery date vs. statement date) and whether non-fraud categories carry Reg E liability at all."
+    }
+  ],
+  "solution_check": "Reconstructed: the Evergreen (PREMIUM, max 4) duplicate and incorrect-amount disputes with keep_active. The Light Blue (ENTRY, max 2) account already has one OPEN dispute (dsp_5a5e134f5b86), so only one more is allowed. The customer picks TechWorld card_present_fraud (late, $500 tier), and the card is closed fraud_suspected with no reorder because of the ENTRY 48-hour wait. The gold matches these choices. The duplicate pick btxn_e8c3b09d2c45 is the later-listed of the two same-date rows in the v1.0.1 newest-first listing, i.e. the earliest. The liability and provisional values cannot be reproduced consistently.",
+  "prior_status": "changed",
+  "prior_note": "The prior Blocker's duplicate-tie half is resolved by #403 (the listing now puts d7f2a98c1b34 before e8c3b09d2c45, and the gold picks the later-listed one). The liability inconsistency remains, so the task is still a Blocker.",
+  "notes": "Replay confirms the listing order for chk_b8d92f4c17: f9d4c10e3d56 (11/08), d7f2a98c1b34 (11/06), e8c3b09d2c45 (11/06), a0e5d21f4e67 (11/01). The tie-break depends on the agent reading 'most recent first' as also ordering same-date rows. That is the documented contract in doc_..._018, so it is noted here, not filed as a defect. pin_compromised 'unknown' for TechWorld is reasonable given 'I have no idea how they could have gotten my info'. Gold-required reads (get_debit_dispute_status_7483 etc.) are needed to find the dispute limit."
+}

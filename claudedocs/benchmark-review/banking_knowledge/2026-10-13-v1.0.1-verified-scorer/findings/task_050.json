@@ -1,0 +1,33 @@
+{
+  "task_id": "task_050",
+  "severity": "Minor",
+  "headline": "Mostly clean: a straightforward credit-limit increase approval, though one step of the internal workflow document is blank.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The internal CLI workflow doc that 'MUST be followed in the exact order' has an empty Step 3 (payment history and amount check). The payment-history rule and the get_payment_history_6183 tool are only described in a separate doc.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_007: \"## Step 3: Verify Payment History and Requested Amount\\n\\n.\\n\\n## Step 4\"",
+        "doc_credit_cards_credit_card_account_logistics_007: \"These steps MUST be followed in the exact order listed.\"",
+        "doc_credit_cards_credit_card_account_logistics_006: \"Use the get_payment_history_6183 tool to verify the customer's payment history meets the requirement for their card tier.\" (the only doc naming the tool)"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "get_payment_history_6183 is a gold-required read, so its tool name must appear in agent_discoverable_tools. An agent that follows only the step-by-step workflow doc finds no instruction to call it. Doc 006 is in required_documents and says to call it, so a careful agent still reaches the gold.",
+      "suggested_fix": "Fill Step 3 of logistics_007 with the payment-history check (call get_payment_history_6183 with the tier's month count) and the per-tier maximum-increase check from logistics_006."
+    }
+  ],
+  "solution_check": "Gold Rewards is premium tier: 60-day minimum age, 90% utilization cap, 3 on-time months, 50% maximum increase. cc_584f9c5d00_gold opened 03/20/2023 with $0.00 of a $5000.00 limit, no CLI history, no disputes or replacement orders, and 6 ON_TIME payments. The $2,500 request equals the 50% maximum. Workflow: submit 2500, run the checks, approve new_credit_limit 7500. This matches the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review found it clean. The empty Step 3 in logistics_007 predates v1.0.1 and was not reported. The logistics_005 '$120' fix does not affect this premium-tier task.",
+  "notes": "Tool quirk, harmless here: approve_credit_limit_increase_5847 derives its record id from (account, user, new-old limit) and submit_credit_limit_increase_request_7392 from (account, user, requested amount). They collide (both seed '2500.00'), so the APPROVED record is never added and the gold's final table holds only the PENDING submit record. Since the doc requires submit-then-approve, the end state is still deterministic. get_payment_history_6183's months argument is not stored, so 3 versus 6 does not matter. The card-to-tier mapping comes from doc_credit_cards_credit_cards_(general)_015 or doc_credit_cards_credit_card_replacements_002, neither in required_documents but both in the KB."
+}

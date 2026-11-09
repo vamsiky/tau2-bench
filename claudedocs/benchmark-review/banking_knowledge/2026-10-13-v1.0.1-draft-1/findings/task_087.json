@@ -1,0 +1,36 @@
+{
+  "task_id": "task_087",
+  "severity": "Major",
+  "headline": "The three declined-card fixes can be worked out, but one document tells the agent to send a reported fraud to the security team, while the official answer has the agent file the dispute and replace the card itself.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "On the Evergreen card the customer disowns the $499.99 TechZone charge. Doc 039 says to escalate to the security team when a customer reports transactions they did not make. Gold instead files a debit dispute, closes the card and orders a replacement, following doc 031.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_039: \"Escalate to security team when: ... Customer reports transactions they did not make\"",
+        "doc_checking_accounts_checking_accounts_(general)_003 CODE 05 step 3: \"If they confirm all transactions are legitimate, clear the alert.\" (silent on the not-legitimate case)",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_present_fraud' → 'close_and_reissue'\"",
+        "gold[15] file_debit_card_transaction_dispute_6281 btxn_70fb52ef4e29; gold[17] close_debit_card_4721 fraud_suspected; gold[19] order_debit_card_5739"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "An agent that follows doc 039 transfers to a human before filing anything, which leaves no dispute, close or order in the DB, so it fails. Agents that do the work, with or without a later transfer (which is not graded), pass.",
+      "suggested_fix": "Add to doc 039 that customer-reported fraud on a customer-initiated alert should be handled with the debit dispute + close/reissue flow, and escalation is only for bank-initiated alerts or identity doubts."
+    }
+  ],
+  "solution_check": "Independently, following CODE 05 in order: Blue is FROZEN, so unfreeze it; it is then ACTIVE with velocity_blocked=true, and the customer explains the activity, so clear it with 'velocity_clear'. Green is FROZEN, so unfreeze it. Evergreen has a customer-initiated fraud alert, transaction review reveals the TechZone fraud, and the agent files card_present_fraud (PIN purchase per the text message, PIN not compromised, reported to the bank 11/06 so liability $50, provisional true). Then close the card as fraud_suspected and reorder PREMIUM-tier free options (EXPEDITED $0, PREMIUM design $0). This matches gold, and gold replays without errors.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The task file is unchanged; the doc 039 escalation conflict is newly reported.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Doc 039 says velocity blocks 'automatically expire after 30 minutes', yet the Blue card's block from 'yesterday' is still active. The DB flag decides, so this is cosmetic. 'Best option that is free' for PREMIUM tier resolves to EXPEDITED + PREMIUM design under doc 029, consistent with task_086."
+}

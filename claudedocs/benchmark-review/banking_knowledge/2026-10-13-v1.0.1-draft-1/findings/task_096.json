@@ -1,0 +1,17 @@
+{
+  "task_id": "task_096",
+  "severity": "None",
+  "headline": "Clean: both savings accounts have a unique correction ($17.50 Bronze, $15.00 Gold Plus) from documented boosts and card bonuses.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze: actual $63.75 x 12 / $30,000 = 2.55%. Expected = 2.0 (bronze_001) + 0.7 (Bluest -> Bronze, bluest_003; beats Green Fee-Free 0.4) + 0.55 (Platinum Rewards, bronze_006; beats Crypto 0.3, Gold Rewards 0.25, Diamond 0.15) = 3.25%; 30,000 x 0.70% / 12 = $17.50. Gold Plus: actual $327.50 x 12 / $60,000 = 6.55%. Expected = 6.0 (gold_plus_002) + 0.5 (Gold Years, gold_years_001; beats GFF 0.35) + 0.35 (Gold Rewards, gold_plus_009; beats Crypto 0.3) = 6.85%; 60,000 x 0.30% / 12 = $15.00. All four writes match.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "The Green Fee-Free boost values live in green_fee-free_account_005, which is not in required_documents but is retrievable; they are only needed to explain the actual APY, not to compute the gold. No relationship bonus is documented for Bronze or Gold Plus."
+}

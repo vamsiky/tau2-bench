@@ -1,0 +1,17 @@
+{
+  "task_id": "task_098",
+  "severity": "None",
+  "headline": "Clean: Blue Account is the unique best combined referral bonus ($65) for a $600 deposit, and the rolling window permits one more referral.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Referrer tenure: first checking 09/14/2025, 61 days. Programs a $600 deposit qualifies for (combined bonus): Blue $35+$30=$65 ($500, tenure 30, cap 5 with 0 used), Green Fee-Free $55 ($300), Green checking $50 ($500), Light Blue $50 ($500), Light Green $40 ($100, ages 13-24); Evergreen ($750), Gold Years/Dark Green/Purple ($1,000), and Bluest ($2,000) are out. Rolling window: the only COMPLETE bonus is 11/04 (10 days ago, outside the window) and the 11/10 referral is IN_PROGRESS, so a referral is allowed under either reading of doc_047. The user submits 'Blue Account', matching gold[2].",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "get_referrals_by_user is a base tool and is never DB-logged; gold reads are hash-neutral here. The 'roommate' address trap is resolved by the script (different address)."
+}

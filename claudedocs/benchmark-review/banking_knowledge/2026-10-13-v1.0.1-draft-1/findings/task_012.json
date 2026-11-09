@@ -1,0 +1,17 @@
+{
+  "task_id": "task_012",
+  "severity": "None",
+  "headline": "Clean: the knowledge base has no procedure for travel notifications, so an honest 'not found' followed by a transfer with 'kb_search_unsuccessful_customer_requests_transfer' is the documented path.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "A search of all 698 docs finds only passing mentions ('Enable travel notifications if your risk controls require it' in gold_rewards_card_004, 'Enable travel alerts' in diamond_elite_card_008, 'restrictions ... need to be lifted before traveling abroad' in credit_cards_(general)_023) and no procedure. The agent admits it has no process, the customer asks for a human, and doc 042 Tier 2 'kb_search_unsuccessful_customer_requests_transfer' applies; no Tier-1 code fits. That matches gold[0] (ACTION, compare_args=['reason']).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and no relevant data changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). Risk: credit_cards_(general)_023 lists '1-800-RHO-BANK, chat with us through the Rho-Bank mobile app'. If an agent relays those channels, the simulator rule 'mentions specific forms or phone numbers, DO NOT ask for a transfer' fires, no transfer happens, and the ACTION check fails. Referring the customer to the hotline the agent itself represents is a weak response, so I left this as a note rather than an issue."
+}

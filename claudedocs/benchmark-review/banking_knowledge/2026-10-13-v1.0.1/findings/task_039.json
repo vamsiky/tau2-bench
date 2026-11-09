@@ -1,0 +1,76 @@
+{
+  "task_id": "task_039",
+  "severity": "Major",
+  "headline": "The gold grants provisional credit to only 3 of 4 qualifying disputes because it counts disputes filed earlier in the same conversation toward the 'no more than 2 in 12 months' rule; that reading is defensible but not the only one, and it also depends on filing order.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Four disputes qualify by reason: Costco dup $312.87, Costco fraud $234.56, Amazon dup $215.67, Amazon fraud $129.45. The user has zero prior disputes. The gold marks the first three filed eligible and the Amazon fraud ineligible, which only works if criterion 4 counts disputes filed earlier in this session. Reading criterion 4 against the pre-existing history (0) makes all four eligible.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "db.json transaction_disputes: no rows for user 01f21c9970 (only dsp_7a3e91b4c2d8 for 6680a37184); get_user_dispute_history_7291 returns 'No transaction disputes found for this user.'",
+        "gold[9].arguments: txn_2f16599b9075 unauthorized_fraudulent_charge, eligible_for_provisional_credit false; gold[6..8] eligible true",
+        "Replay: setting gold[9] eligible=true changes the DB hash (verified)"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "An agent that checks history once and finds 0 prior disputes marks all four eligible and fails the exact-hash comparison. The gold's reading is supported by the literal text (when the 4th is filed, 3 disputes have been filed in the past 12 months), and get_user_dispute_history_7291 would show the in-session filings, but a reasonable agent can read 'previous' as pre-existing history.",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the same interaction count toward criterion 4, or make the history-only reading gold (all four eligible)."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Major",
+      "summary": "Under the gold's in-session reading, criterion 4 counts ALL disputes, including reason-ineligible ones. The final eligible set therefore depends on filing order. The gold only results if the three largest reason-eligible disputes are filed before any other dispute; filing in the customer's listing order (Costco fraud, Costco dup, Costco not-as-described, ...) leaves only two eligible.",
+      "evidence": [
+        "gold[6..8] files $312.87, $234.56, $215.67 first; gold[9..13] after",
+        "user_scenario step 8: \"If there's any limit on provisional credit, I want it applied to the biggest charges first... Do not mention this if the agent does NOT bring provisional credit up.\"",
+        "In user listing order the 5th filing (Amazon fraud) sees 4 prior and the 6th (Amazon dup $215.67) sees 5 prior, so both are ineligible: 2 eligible vs the gold's 3"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "why_it_matters": "Even an agent that adopts the gold's reading must plan to file the three largest eligible disputes first. The tie-break preference surfaces only if the agent raises provisional-credit limits with the customer.",
+      "suggested_fix": "Define the cap as 'at most N provisional credits per 12 months' and let the customer's priority choose which ones, independent of filing order."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Several stored values have no scripted customer answer: resolution_requested for each dispute (gold: partial_refund $50 for the incorrect-amount charge, full_refund otherwise), the replacement's shipping address (gold: registered home address), and expedited shipping (gold: true). The natural simulator answers match the gold (a $50 overcharge, free expedited on a Gold card recommended for fraud), but none is scripted.",
+      "evidence": [
+        "user_scenario has no resolution, shipping-address, or expedited step (steps 4 and 6 are missing)",
+        "gold[11]: \"resolution_requested\": \"partial_refund\", \"partial_refund_amount\": 50",
+        "gold[15]: \"shipping_address\": \"4532 Magnolia Lane, Philadelphia, PA 19103\", \"expedited_shipping\": true",
+        "doc_credit_cards_credit_card_replacements_002: Premium-tier (Gold Rewards Card) expedited $0.00"
+      ],
+      "gold_action_refs": [
+        11,
+        15
+      ],
+      "why_it_matters": "If the simulator improvises differently (e.g. 'full refund on everything'), the record differs. This is simulator variance rather than an agent error.",
+      "suggested_fix": "Script the resolution per transaction and the shipping preference in the user scenario."
+    }
+  ],
+  "solution_check": "Verification: 4 fields given. Transaction ids from the DB: Costco 10/09 txn_a450807f1148, 10/23 txn_f7ce44574766, 11/04 txn_39469d5db822, 11/11 txn_02bf2e9dcfa7; Amazon 10/11 txn_2f16599b9075, 10/26 txn_182e896e1c97, 11/06 txn_b94ce7d77e7f, 11/13 txn_d8e6e3386b89. Reasons, merchant contact, and last-4 (1652) follow from the script and the tools. Gold card opened 06/15/2024, premium limit $10,000. Criteria 1/3/5 make all four fraud/duplicate disputes eligible; the gold's ineligible 4th comes only from in-session counting of criterion 4, combined with largest-first filing. The required read get_user_dispute_history_7291 is in the gold, so it's allowlisted: skipping it changes the hash (verified). Reordering the replacement before the disputes, or writing 50.00 for 50, leaves the hash unchanged (verified).",
+  "prior_status": "persists",
+  "prior_note": "The prior review called this a Blocker with gold inconsistent. I confirm the same provisional-cap defect but rate it Major: the literal criterion-4 text supports the gold's in-session count, so the gold can be reached by a reasonable reading. I also add the filing-order dependence and the unscripted values.",
+  "notes": "The 'duplicate' Costco $312.87 and Amazon $215.67 charges appear only once each in the DB (no second matching charge); no doc requires verifying a duplicate exists, so this doesn't change the gold. The dispute records copy the registered address and phone from the DB. Verifiers may reasonably argue Blocker if they judge the history-only reading the dominant one."
+}

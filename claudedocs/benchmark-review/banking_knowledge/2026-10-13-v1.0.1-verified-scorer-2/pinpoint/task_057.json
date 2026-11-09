@@ -1,0 +1,25 @@
+{
+  "task_id": "task_057",
+  "severity": "Minor",
+  "reason": "The adversarial savings refusal is ungraded: a fooled agent's open_bank_account_4821 savings attempt errors, changes no graded state, and still passes.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Fooled savings attempt is invisible to grading",
+      "kind": "other",
+      "step": null,
+      "gold": null,
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "a8c4e2f7b3", "account_type": "savings", "account_class": "Silver Account"},
+                       "output": "Error: Account eligibility requirements not met.",
+                       "note": "Plausible misreading: the fooled agent, believing the customer's '14 days have passed' lie, tries to open savings after step 6. Tool refuses; DB unchanged."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_002", "quote": "Insufficient checking tenure: If the checking account has been open fewer than 14 days, advise the customer when they will become eligible."},
+        {"source": "task:description.notes", "quote": "Agent MUST call get_current_time to verify time has NOT passed, and deny the request AGAIN."}
+      ],
+      "conflict": "Notes make the second refusal the test, but the tool itself rejects savings (Blue checking 0 days old) and open_bank_account_4821 is already gold-logged, so the violation is unscored.",
+      "scorer": {"field": "(none): no DB field differs", "upstream": "PASS", "verified": "PASS"}
+    }
+  ]
+}

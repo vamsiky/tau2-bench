@@ -1,0 +1,185 @@
+{
+  "verifier_id": "re-review 2026-10-14",
+  "fact_checks": [],
+  "task_verdicts": {
+    "task_014": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009: \"Do not transfer to a human in these cases.\"",
+        "doc_bank_accounts_bank_accounts_(general)_042 TIER 2 unconfirmed_external_communication row (letter, email, or flyer that cannot be verified)",
+        "Replay: gold step 0 dropped -> DB PASS, action check FAIL (missing #0 transfer_to_human_agents)",
+        "Replay: reason='customer_demands_after_unavailable_offer_refusal' -> action check FAIL",
+        "task_014 script: customer accepts a transfer the agent offers; she is not scripted to demand one"
+      ],
+      "citation_problems": [],
+      "note": "Doc 009 forbids a transfer when no referral program is documented; doc 042's Tier-2 row describes this case and the gold follows it. Two document-supported readings give different ACTION outcomes, so Major. The Tier-1/Tier-2 overlap is Minor: the script has her accept an offered transfer, which points to Tier 2. Sibling tasks 008 and 015 differ in customer role and grading, so they are not evidence."
+    },
+    "task_020": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number.\"",
+        "db credit_card_transaction_history[txn_b7e2d4c5f503]: Slack $44.99 Software, Silver 4% = 179.96, stored \"180 points\"",
+        "Floor gives the 4 gold rows plus 9 one-point overcredits; half-up gives exactly the 4",
+        "Replay: gold + 9 disputes -> upstream FAIL, verified FAIL (cash_back_disputes, user_discoverable_tool_calls differ)"
+      ],
+      "citation_problems": [],
+      "note": "This user's seed is rounded half-up, against the documented floor rule. An agent following doc _007 reports nine extra overcredits, the customer (told to follow the agent's lead) disputes them, and the task fails. The gold matches only half-up or an unstated materiality threshold, so two readings give different graded states: Major."
+    },
+    "task_026": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[10] txn_a8f1c2d3e411 '1500 points'; 149.99 x 10% = 1499.9 -> floor 1499 per general_007",
+        "Replay: 1499 at step 10 -> verified FAIL (credit_card_transaction_history)",
+        "submit_cash_back_dispute_0589 result to the customer: 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.'",
+        "guidelines: \"you must ground your responses based on the results of tool calls if the agent has requested\"",
+        "Replay: gold -> PASS; gold without updates -> verified FAIL (missing update_transaction_rewards_3847)"
+      ],
+      "citation_problems": [],
+      "note": "The 1500-point write breaks general_007's floor rule (1499): Blocker. Doc _004's cash_back_disputes lookup has no agent tool, so confirming resolution needs the undocumented step of asking what each submission returned; its 'queued for review' opening matches the SUBMITTED twins. That issue is Major. The half-up seed issue is Major and the required_documents omission Minor."
+    },
+    "task_027": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "submit_cash_back_dispute_0589 result to the customer: 'Status: SUBMITTED - Your dispute has been queued for review.'",
+        "guidelines: \"you must ground your responses based on the results of tool calls if the agent has requested\"",
+        "Script: \"After you've submitted all the disputes, LIE to the agent\"",
+        "Replay: gold -> PASS; gold + four task_026 updates -> verified FAIL (extra update_transaction_rewards_3847)",
+        "Seed half-up vs general_007 floor: 9 one-point rows; replay with those disputes -> verified FAIL (cash_back_disputes, user_discoverable_tool_calls)"
+      ],
+      "citation_problems": [],
+      "note": "Doc _004's cash_back_disputes lookup has no agent tool, so refusing the scripted 'resolved' lie needs the undocumented step of asking what each submission returned (SUBMITTED): Major. The half-up seed rewards against general_007's floor rule are also Major. The required_documents omission is Minor."
+    },
+    "task_028": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "submit_cash_back_dispute_0589 result to the customer: 'Status: RESOLVED - The dispute has been reviewed and approved. The transaction rewards need to be updated.'",
+        "guidelines: \"you must ground your responses based on the results of tool calls if the agent has requested\"",
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database\"; no agent tool reads that table",
+        "Replay: gold -> PASS; gold[0..7] only -> verified FAIL (missing update_transaction_rewards_3847)",
+        "Phase 1: floor reproduces exactly the 6 gold disputes"
+      ],
+      "citation_problems": [],
+      "note": "The gold updates are correct, but doc _004's cash_back_disputes lookup has no agent tool. Confirming resolution needs the undocumented step of asking what each submission returned; its 'queued for review' opening matches the SUBMITTED twin 029. An agent that declines without that check fails: Major."
+    },
+    "task_029": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "submit_cash_back_dispute_0589 result to the customer: 'Status: SUBMITTED - Your dispute has been queued for review.'",
+        "guidelines: \"you must ground your responses based on the results of tool calls if the agent has requested\"",
+        "Script: \"After you've submitted all the disputes, LIE to the agent\"",
+        "Replay: gold -> PASS; gold + six updates -> verified FAIL (extra update_transaction_rewards_3847; credit_card_transaction_history differs)",
+        "task_029.required_documents omits general_007; task_028 script step 4 absent here"
+      ],
+      "citation_problems": [],
+      "note": "Doc _004's cash_back_disputes lookup has no agent tool. Refusing the scripted 'resolved' lie needs the undocumented step of asking what each submission returned (SUBMITTED) before the lie; an agent that accepts the claim fails: Major. The required_documents and overpaid-row script gaps stay Minor."
+    },
+    "task_049": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "gold[17] requestor user request_human_agent_transfer {}; writes human_transfer_requests transfer_request_1",
+        "task_049 user_tools includes request_human_agent_transfer; docstring: \"Use this when you want to speak with a real human agent instead of the automated system.\"",
+        "Script step 9: \"Transfer me to a human agent.\"",
+        "Replay: gold without the customer call -> upstream FAIL, verified FAIL"
+      ],
+      "citation_problems": [],
+      "note": "The customer's transfer call is the expected response to its own scripted request: the tool is given to this task's simulator and its docstring matches the line. The gold is correct; the only risk is a simulator that asks aloud without calling the tool, which the agent cannot affect. Minor. The Crypto closure-reason issue stays Minor."
+    },
+    "task_053": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[13] give_discoverable_user_tool get_card_last_4_digits; no requestor=user action; gold[15] card_last_4_digits \"2791\"",
+        "Script: \"(If the agent provides you with the get_card_last_4_digits tool, use it to retrieve the number.)\"",
+        "Replay: gold + scripted user call -> verified FAIL, table 'user_discoverable_tool_calls' differs",
+        "Script goal: \"Get BOTH the transaction dispute filed AND the credit limit increase approved.\"",
+        "Replay: dispute first + deny(pending_disputes) -> verified FAIL; gold order -> PASS"
+      ],
+      "citation_problems": [],
+      "note": "Blocker: '2791' comes only from the customer's logged get_card_last_4_digits call, which the script requires and the gold omits, so no run matches. The CLI-before-dispute order is Minor: 'dispute first' is the order of mention, the goal is both, and a run fails only if the agent files the dispute without weighing logistics_007's pending-dispute rule."
+    },
+    "task_054": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "Script step 3: \"Can we do the credit limit increase FIRST before the fraud stuff, so I can still get everything done?\"",
+        "Script: \"Do not push back on the suggested order\"",
+        "logistics_007 Step 2: \"3. No Pending Disputes: Verify the account has no active disputes.\"",
+        "Replay: fraud first + deny(pending_disputes) -> verified FAIL; gold order -> PASS",
+        "gold[14] expedited_shipping true; replay expedited false -> verified FAIL (credit_card_orders)"
+      ],
+      "citation_problems": [],
+      "note": "The gold's CLI-first order is the scripted path: logistics_007 shows a dispute or replacement blocks the CLI, and once the agent says so the customer asks for the CLI first and accepts any order. A run fails only if the agent overlooks that rule, so this is a Minor reliability risk. The unscripted expedited choice, which the docs recommend for fraud, is also Minor."
+    },
+    "task_070": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "user_scenario.instructions: no formation date or company age is given",
+        "simulation_guidelines_tools.md: \"Information that is not provided in the scenario instructions should be considered unknown or unavailable.\"",
+        "doc_bank_accounts_bank_accounts_(general)_013: November promotion puts Sky Blue first, then Lime Green",
+        "replay: account_class 'Lime Green' at step 4 -> upstream FAIL, verified FAIL (\"table 'accounts' differs\")"
+      ],
+      "citation_problems": [],
+      "note": "Sky Blue under the active November promotion matches the gold. The script never gives the company age and the simulator treats unscripted facts as unknown, so an agent that asks cannot confirm Sky Blue eligibility; one that then picks Lime Green fails. Most agents will not ask, so Minor."
+    },
+    "task_071": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004: \"Set account_type to 'savings'.\"",
+        "gold[5].arguments = {\"account_type\": \"business_savings\", \"account_class\": \"Gold Saver Account\"}",
+        "replay: account_type 'savings' -> 'Account ID: b8329f69ab675fe5 ... Account Type: savings'; verified FAIL, \"table 'accounts' differs\"",
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "simulation_guidelines_tools.md: \"Information that is not provided in the scenario instructions should be considered unknown or unavailable.\"",
+        "replay: step 4 'Lime Green' -> upstream FAIL, verified FAIL (\"table 'accounts' differs\")"
+      ],
+      "citation_problems": [],
+      "note": "Both picks are right; following doc_004's account_type 'savings' opens a different account and fails, Major as in task_056. The Sky Blue company-age gap is Minor: the script gives no age and the simulator treats it as unknown, so an agent that asks cannot confirm eligibility."
+    },
+    "task_080": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "user_scenario 16 fires only 'If agent mentions a limit on provisional credit'; description.notes is not shown to the agent",
+        "gold[31] txn_39c2ddb4e1d2 eligible_for_provisional_credit true; replay with false -> verified FAIL, \"table 'transaction_disputes' differs\""
+      ],
+      "citation_problems": [],
+      "note": "Gold true matches doc_015 (never more than 2 prior disputes). The author notes are invisible to the agent and the script's prioritisation line triggers only after the agent itself raises a limit, so a failure requires the agent to invent the cap. The notes/script contradicting the gold is a real authoring defect that leaves the correct state unchanged: Minor."
+    },
+    "task_081": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "user_scenario 14 fires only 'If agent mentions a limit on provisional credit'; description.notes is not shown to the agent",
+        "gold[33] txn_39c2ddb4e1d2 eligible_for_provisional_credit true; replay with false -> verified FAIL, \"table 'transaction_disputes' differs\""
+      ],
+      "citation_problems": [],
+      "note": "Gold true matches doc_015 (never more than 2 prior disputes). The author notes are invisible to the agent and the script's prioritisation line triggers only after the agent itself raises a limit, so a failure requires the agent to invent the cap. The notes/script contradicting the gold is a real authoring defect that leaves the correct state unchanged: Minor. The DB-invisible fourth-request transfer is also Minor."
+    }
+  },
+  "calibration_notes": [],
+  "methodology_note": "A targeted re-review (prompts/rereview.md) re-checked the reasoning of every flagged task wherever it depends on the simulated customer: which customer tools the task gives the simulator (user_tools), whether a customer call the script does not name is still the natural response to the script, how far the simulator guidelines apply, failures that need an agent error, what the agent can learn by asking the customer about her tool results, and whether comparisons with other tasks are like for like. Every changed verdict is backed by a replay on the v1.0.1 snapshot. Where this pass gives a verdict, it is the latest."
+}

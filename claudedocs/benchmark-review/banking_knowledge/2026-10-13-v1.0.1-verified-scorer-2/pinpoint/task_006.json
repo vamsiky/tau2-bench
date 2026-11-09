@@ -1,0 +1,55 @@
+{
+  "task_id": "task_006",
+  "severity": "Minor",
+  "reason": "Crypto-Cash Back's 660 credit-score minimum, the only fact excluding it for the 540-score customer, is printed as \"$660\" in doc _009.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Deciding credit-score minimum printed as dollars",
+      "kind": "other",
+      "step": 0,
+      "gold": {
+        "call": "apply_for_credit_card",
+        "args": {
+          "card_type": "EcoCard",
+          "customer_name": "Bob Nakamoto",
+          "annual_income": 95000,
+          "rho_bank_subscription": false
+        },
+        "output": "Credit card application submitted:\nYour application has been successfully submitted. You will receive a decision within 5-7 business days via email."
+      },
+      "doc_faithful": {
+        "call": "apply_for_credit_card",
+        "args": {
+          "card_type": "Crypto-Cash Back",
+          "customer_name": "Bob Nakamoto",
+          "annual_income": 95000,
+          "rho_bank_subscription": false
+        },
+        "output": "Credit card application submitted:\nYour application has been successfully submitted. You will receive a decision within 5-7 business days via email.",
+        "note": "Plausible misreading: gold (EcoCard) is correct; if '$660' is not read as a score floor, Crypto-Cash Back also passes the FTF/min-payment/virtual-card filters."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_crypto-cash_back_009",
+          "quote": "What is the minimum credit score to apply for the card to earn crypto rewards? $660."
+        },
+        {
+          "source": "doc_credit_cards_ecocard_001",
+          "quote": "Minimum credit score required to apply: 0 (0 indicates no credit score requirement)."
+        },
+        {
+          "source": "instructions",
+          "quote": "You have a credit score of 540."
+        }
+      ],
+      "conflict": "Only EcoCard and Crypto-Cash Back pass the filters; score 540 < 660 excludes Crypto-Cash Back, but doc _009 writes the threshold as \"$660\".",
+      "scorer": {
+        "field": "credit_card_applications: gold EcoCard row missing, extra Crypto-Cash Back row",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

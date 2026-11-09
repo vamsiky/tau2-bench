@@ -1,0 +1,36 @@
+{
+  "task_id": "task_024",
+  "severity": "Major",
+  "headline": "The gold assumes the Business Bronze card ($400 cash back + $500 promo) is the best card for a $40,000 truck, but the Silver Zoom card's triple-cash-back promo pays about $1,200; it wins unless the agent decides a landscaping company cannot get a card the KB describes as built for logistics businesses.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "With a claimable 3x promo (window through 2025-12-31), Silver Zoom earns 3 x 1.0% on non-category purchases: $40,000 x 3% = $1,200, minus the $74.50 fee = $1,125.50, versus $900 for Business Bronze. The only grounds for excluding it are that the KB frames the card as 'designed for' and 'built for' transportation and logistics operators; its stated eligibility criteria are credit scores only.",
+      "evidence": [
+        "doc_business_credit_cards_silver_zoom_card_012: \"You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31\" / \"All other eligible purchases earn 3 × 1.0% during the promo period\" / \"The triple cash back earning period lasts 9 months from account opening\"",
+        "doc_business_credit_cards_silver_zoom_card_001: \"Who this card is built for - Established transportation and logistics operators\" / \"Annual membership is $74.50\"",
+        "doc_business_credit_cards_silver_zoom_card_008: \"Personal credit is evaluated and must be at or above $680\" / \"must be at or above 57 on the PAYDEX scale for logistics business approval\"",
+        "doc_business_credit_cards_business_bronze_rewards_card_010: promo 2025-10-01 to 2026-03-31, \"$10,000 within the first 2 months\" -> \"$500 statement credit\"",
+        "task_024 instructions (hidden from agent): \"looking to expand your fleet\"",
+        "gold[0].arguments.card_type = 'Business Bronze Rewards Card'"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that surveys every business card to 'maximize the total money back', as the customer asks, will find Silver Zoom's promo and recommend it. The user then applies for 'Silver Zoom Card', which is in VALID_CREDIT_CARD_TYPES, and a replay confirms the agent and user hashes both differ from gold. The gold is reached only by reading 'designed for logistics' as a hard eligibility bar, which no document states.",
+      "suggested_fix": "State in doc_..._silver_zoom_card_008 that applicants must operate a transportation/logistics business, or end the triple-cash-back claim window before 2025-11-14, or add the Silver Zoom docs to required_documents and state the intended exclusion in the task notes."
+    }
+  ],
+  "solution_check": "Totals for a $40,000 non-category purchase on cards opened 11/14/2025: Business Bronze 1% = $400 + $500 promo = $900 (fee $0); Business Silver 1% x 2 (double promo ends 2025-11-14, the same day) = $800; Business Platinum 1.5% = $600; Business Gold 1% = $400 - $200 fee; Green Rewards 1% = $400 - $100 fee; Silver Zoom (promo claimed) 3% = $1,200 - $74.50. Excluding Silver Zoom, Bronze wins and matches gold[0]. Including it, Silver Zoom wins.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean (None); it did not weigh the Silver Zoom triple-cash-back promo.",
+  "notes": "Business Bronze's credit line is $10,000-$50,000 (doc_..._005), so a $40,000 purchase may not fit, though this is not decisive. Replay with annual_income 120000.0 matches gold. My confidence that a typical agent would recommend Silver Zoom is moderate: the logistics framing is strong, but the customer's 'fleet' wording, if it comes up, pushes the other way. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

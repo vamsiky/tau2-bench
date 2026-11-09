@@ -1,0 +1,34 @@
+{
+  "task_id": "task_035",
+  "severity": "Minor",
+  "headline": "The emergency credit-bureau transfer is clearly documented and the gold matches it; the only gap is that the grader cannot check that the agent skipped identity verification.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "The incident protocol forbids identity verification and requires immediate escalation, but presence-only ACTION grading ignores extra calls such as log_verification and does not check whether the emergency tool came before the transfer.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_012: \"Identity verification is NOT required for this incident protocol. IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents.\"",
+        "task_035 description.notes: \"requires IMMEDIATE transfer without identity verification or troubleshooting\""
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2
+      ],
+      "why_it_matters": "Agents that verify or troubleshoot first still score 1. Correct work is never failed.",
+      "suggested_fix": "Add an assertion that no verification/log_verification occurs, or check that the emergency tool precedes the transfer."
+    }
+  ],
+  "solution_check": "Symptoms (sudden ~127-point score drop, Rho-Bank-reported delinquency, account in good standing) match doc_012, whose window 11/14-11/18 includes now (11/14 03:40). Unlocking and calling emergency_credit_bureau_incident_transfer_1114, then transfer_to_human_agents, matches the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this task clean. The only new finding is Minor grading leniency.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. ACTION-only; verified scorer has no effect."
+}

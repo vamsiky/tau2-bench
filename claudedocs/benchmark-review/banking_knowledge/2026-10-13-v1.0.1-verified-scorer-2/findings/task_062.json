@@ -1,0 +1,17 @@
+{
+  "task_id": "task_062",
+  "severity": "None",
+  "headline": "Clean: Navy Blue and Silver Plus are the only fits, and the documented eligibility rules force the one workable order (open business checking, then savings, then close accounts).",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Business checking: Navy Blue is the only product with a $0 monthly fee and no minimum balance (navy_blue_001). Sky Blue charges $25 after its 6-month free period, which the customer rejects, and every other product has a fee. The promotion (general_013) applies only to accounts meeting all requirements. Savings: Silver Plus fits ($2,500 minimum, 15 withdrawals, daily, 0.025% relationship bonus, 25 ATM rebates). Ordering: general_003 forbids business checking if any account is CLOSED, and general_002 needs a checking of 14+ days, which only Evergreen (03/15/2025) is; Light Blue is 12 days old. So the agent opens both, transfers $150 from Bronze and closes it, then transfers $2,500 and $1,000 from Evergreen and closes it. No early-closure fees apply (Bronze opened 01/10/2024, Evergreen 244 days). This matches the gold, and replay shows other valid orderings reach the same state.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated this clean; still clean.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). Replay of a reordered sequence with a custom closure reason passes _verified_db_match but not the exact hash, so this task relies on the closure_reason relaxation if the agent passes a reason. general_005/006 list notice periods (Evergreen 7 days, Bronze 1 day) without saying whether they delay closure; the procedure proceeds directly to close_bank_account_7392 (same caveat as task_060). The customer gives the transfer split explicitly. The seed Bronze record uses class 'saving' (not 'savings'); no tool reads it in a way that matters. The v1.0.1 changes to general_005/006 and sky_blue_001 are cosmetic."
+}

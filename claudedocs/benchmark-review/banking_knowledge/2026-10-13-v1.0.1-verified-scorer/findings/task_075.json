@@ -1,0 +1,37 @@
+{
+  "task_id": "task_075",
+  "severity": "Blocker",
+  "headline": "Several checking accounts charge $0 for foreign ATM withdrawals, and Purple even refunds operator fees, but the answer key only accepts Green Fee-Free, based on a fee-stacking rule the documents never state.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "The customer's only criterion is the lowest ATM fees for 18 foreign withdrawals of $350. Green Fee-Free, Purple and Bluest all document a $0.00 foreign ATM fee. The gold breaks the tie with a rule from the notes, 'BOTH the out-of-network ATM fee AND the foreign ATM withdrawal fee apply', which no document states. The benchmark's own tasks 072 and 074 grade the opposite convention.",
+      "evidence": [
+        "doc_checking_accounts_green_fee-free_account_005: \"Foreign ATM withdrawals are also fee-free: $0.00 per withdrawal.\"",
+        "doc_checking_accounts_purple_account_001: \"No foreign ATM withdrawal fees: $0.00 per withdrawal (third-party ATM operator fees may still apply)\"",
+        "doc_checking_accounts_bluest_account_003: \"No foreign ATM withdrawal fees: $0.00\"",
+        "doc_checking_accounts_purple_account_004: \"You are eligible for refunds of ATM operator fees up to a monthly cap of $30.\"",
+        "doc_business_checking_accounts_hunter_green_009: \"If you see both a foreign ATM fee and a domestic out-of-network fee for the same international withdrawal, share the transaction details for review.\"",
+        "task_074 gold credits Purple the full $8.00 and $10.50 foreign fees and treats fee-free Purple foreign withdrawals (HK, Singapore, Frankfurt, Paris, Penang) as correct, i.e. Purple charges $0 on foreign withdrawals",
+        "gold[2] account_class = \"Green Fee-Free Account\"; Replay with 'Purple Account' -> ['table accounts differs']"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Purple has the same $0 bank fee and also rebates up to $30/month of ATM operator surcharges, so a competent agent can reasonably open Purple, the account most likely to minimize total ATM cost. That opens a different account and fails.",
+      "suggested_fix": "Either document fee stacking on Purple and Bluest and remove the contrary evidence in tasks 072/074 and hunter_green_009, or give Purple a non-zero foreign fee, or accept multiple accounts."
+    }
+  ],
+  "solution_check": "Per-withdrawal bank fee for a foreign $350 withdrawal under the documents: Green Fee-Free $0, Purple $0, Bluest $0 (but $75,000 to open), Light Blue $0 for 2/month then $4.00, Evergreen 2% = $7.00, Blue/Green 3% = $10.50. Gold Years (62+), Light Green (13-24) and Dark Green (17-26) are age-ineligible at 32. Green Fee-Free and Purple tie at $0, and Purple adds operator-fee rebates. The gold choice is not unique.",
+  "prior_status": "persists",
+  "prior_note": "Same Blocker as the prior review. The case is now stronger because task_074's v1.0.1 gold treats Purple foreign withdrawals as fee-free.",
+  "notes": "The notes' Bluest '$50k-100k minimum deposit' should be $75,000 (bluest_account_002), and Dark Green's age range is 17-26, not 17-28. Customer DOB 08/22/1993 gives age 32, not 31. Nothing in the task depends on the verified scorer's relaxations. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

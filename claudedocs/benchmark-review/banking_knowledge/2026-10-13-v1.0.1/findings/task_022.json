@@ -1,0 +1,30 @@
+{
+  "task_id": "task_022",
+  "severity": "Minor",
+  "headline": "Across 77 transactions on four cards, the KB's documented round-down rule plus the card exclusions yields exactly the ten gold disputes; the rounding document is just missing from the required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rewards rounding rule that fixes the dispute set lives in doc_credit_cards_credit_cards_(general)_007, which is retrievable from the KB but is not listed in required_documents.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "Under round-half-up, 26 correctly credited transactions become +1 false positives (e.g. Diamond $487.50 x 5% = 2437.5 -> 2438 vs stored 2437)."
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under the default retrieval configs the agent can find the floor rule, so the gold is reachable. Under configs that inline only required_documents (golden_retrieval / required_docs prompts) the rule is absent, the natural round-half-up convention flags many correctly credited transactions, and the extra disputes change the DB hash.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "User f9bf8de0be: Diamond Elite 5%; Business Platinum 4% Travel/Software/Media else 1.5%; Business Silver 10% Travel/Software minus the doc_..._005 exclusions else 1% (opened 06/10/2024, before the double-promo window); EcoCard 5/$ Green minus the doc_..._ecocard_004 exclusions else 1/$; floor rounding. Exactly ten mismatches: 8a8873 Patagonia (937 vs 562), 4d2b79 Southwest (4127 vs 1651), 508e27 Google Ads (5000 vs 1875), 30cb41 Marriott Bonvoy (5342 vs 10684), f84fa2 REI (1172 vs 234), 1a4918 Facebook Ads (3501 vs 8753), ffeede Dell excluded (1849 vs 18499), 097c07 Datadog (3870 vs 387), 4f5e24 ThredUp excluded (78 vs 391), ba8b47 'Target - Eco Collection' excluded (145 vs 728). This matches gold[2..11].",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round down') does not hold because doc_..._(general)_007 states the floor rule; only the Minor required_documents omission remains.",
+  "notes": "The task notes say 75 transactions; the DB has 77 for this user. The user persona asks for errors in both directions, so over-credits belong in the dispute set, consistent with the gold. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

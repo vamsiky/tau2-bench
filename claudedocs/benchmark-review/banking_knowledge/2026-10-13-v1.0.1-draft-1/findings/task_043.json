@@ -1,0 +1,17 @@
+{
+  "task_id": "task_043",
+  "severity": "None",
+  "headline": "Clean: the customer pays a $75 balance from checking, then accepts a one-year annual-fee waiver offered because she has been a customer for 3 years.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Following logistics_003 Step 1 (dispute history via general_016, pending replacements via replacements_005, age, balance) finds a $75.00 balance on cc_224959b99e_plat. Account '05' (checking, $2,850) pays it via logistics_009. Step 2 history is empty, Step 3 logs annual_fee, and Step 4 tenure (opened 11/10/2022, 3 years) gives annual_fee_waived until 11/14/2026 with reason loyalty_benefit. This matches gold exactly, and the gold replay runs without errors.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found it clean; the task and docs are unchanged and it is still clean.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. The customer also mentions 'simplifying my finances', but says 'It's really just the annual fee', so annual_fee is the clear closure reason. platinum_rewards_card_001 still shows a corrupted value, \"Minimum credit score required: $750.\", which is not load-bearing here."
+}

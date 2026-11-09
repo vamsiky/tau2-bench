@@ -1,0 +1,68 @@
+{
+  "task_id": "task_090",
+  "severity": "Minor",
+  "headline": "The three-card PIN-lock case reaches the gold outcome, but a few protocol rules are fuzzy and the replacement card design is never stated by the customer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_041 says any single 3-point flag forces supervisor escalation regardless of total score, but no supervisor-review tool exists and the gold resolves those cards in-chat with no escalation; the only escalation path (transfer_to_human_agents) ends the conversation.",
+      "why_it_matters": "An agent that honours the single-flag rule by transferring before the remaining cards are handled never makes the later gold writes and fails the DB hash; an agent that escalates only after all writes (or not at all) passes. The escalation itself leaves no DB trace.",
+      "suggested_fix": "Either drop the single-flag escalation clause from doc_041 or state that 'supervisor review' is a note with no tool action and does not block the Step 6 options.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\"",
+        "Evergreen B1: declines at 11/14/2025 02:14:22-02:17:41 -> \"2 AM - 6 AM: 3 points (HIGH RISK)\"",
+        "gold has no transfer_to_human_agents action; gold[8] close and gold[10] order are done in-chat",
+        "tools.py transfer_to_human_agents only returns a string (no DB write)"
+      ],
+      "gold_action_refs": [
+        8,
+        10,
+        14
+      ]
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Card design is persisted in the debit_card_orders record, but the customer never states a design; at the Evergreen (PREMIUM) tier both CLASSIC and PREMIUM designs are $0, and the customer only says she wants \"the fastest option that's free\".",
+      "evidence": [
+        "gold[10].arguments.card_design = \"CLASSIC\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\"",
+        "instructions step 9: \"Give the fastest option that's free\""
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "If the agent asks for a design preference (doc_023 step 5 tells it to) the simulated user may pick the free PREMIUM design, producing a different order record and DB hash. The documented default (CLASSIC) makes the gold the most likely outcome.",
+      "suggested_fix": "Add a line to the user script such as \"Design doesn't matter, just the standard one.\""
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The Blue-card fraud score lands anywhere from about 8 to 13 depending on boundary readings (2-minute gap, 91-day account age, vacuous A3, POS amount against ATM average), straddling the HIGH/VERY HIGH line; both paths still lead to the customer accepting a PIN reset to 7294.",
+      "evidence": [
+        "dbc_er38a7c9d2_blue declines 14:30, 14:32, 14:35 -> B3 \"2-5 minutes apart: 1 point\" vs \"1-2 minutes apart: 2 points\"",
+        "chk_er38a7c9d2_blue.date_opened = 08/15/2025 (91 days) -> E1 \"3-6 months: 1\" vs \"Less than 3 months: 2\"",
+        "pin_locks_last_90_days = 2 -> Step 5: \"MUST ask ... reset your PIN\"",
+        "gold[14] reset_debit_card_pin_6284 new_pin \"7294\""
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "Under VERY HIGH the agent offers the Step 6 options; the user script accepts closure (step 20) as well as reset (step 17), so an agent that leads with closure diverges. Most paths still reach the reset.",
+      "suggested_fix": "Move the Blue-card attempt timestamps off the band boundaries (for example 4 minutes apart) so the score is unambiguously in the HIGH band."
+    }
+  ],
+  "solution_check": "Evergreen scores about 15 by my count (A1 2, A3 1, B1 3, B3 2, C1 2, C2 1, C3 2, C4 2; notes say 14). Either way it cannot be unlocked, the customer was asleep, and no successful unauthorized transactions exist, so the result is close (fraud_suspected) plus a PREMIUM-tier replacement (EXPEDITED, $0 per doc_029/doc_005). Blue lands in HIGH after location confirmation, and with 2 prior locks the PIN reset to 7294 follows. Green has a security_hold, so the transfer is offered, declined, and nothing is written. This matches the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean; this review adds three Minor issues (single-flag escalation conflict, unstated card design, fuzzy Blue-card score) that the prior did not report. The required doc_005 change in v1.0.1 ('$180 days' -> '180 days') is cosmetic.",
+  "notes": "PIN unlock is only possible via reset_debit_card_pin_6284 (the only code path that sets pin_locked=False, tools.py ~L3861); no doc names it as the unlock tool, but doc_041 Step 6 lists PIN reset as an option. Debit-card tier mapping exists only in doc_005 (the closure doc), which is a required doc here. The read-log allowlist covers get_all_user_accounts_by_user_id_3847, get_debit_cards_by_account_id_7823, and get_bank_account_transactions_9173; records are keyed by tool name only, so repeat calls are harmless."
+}

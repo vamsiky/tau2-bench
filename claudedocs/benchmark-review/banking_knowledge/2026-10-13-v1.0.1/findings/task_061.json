@@ -1,0 +1,34 @@
+{
+  "task_id": "task_061",
+  "severity": "Major",
+  "headline": "The ordering and the $25 early-closure fee are documented and scripted, but the gold closure leaves the free-text closure reason at a hidden default, so an agent that records a reason fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 stores its optional free-text 'reason' argument in accounts[...].closure_reason. Gold omits it, so the record gets the hidden default 'Customer requested closure'. No document says which reason to pass or to leave it out, so an agent that records a sensible reason produces a different DB state.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\"; body: account[\"closure_reason\"] = reason",
+        "unlock output: \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason value anywhere in the KB)",
+        "gold[8].arguments.arguments: {\"account_id\": \"61d4e5f6a7b8c901\"} (no reason)"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "Passing a reason (e.g. 'Customer wants to consolidate checking accounts') is a reasonable, even diligent, use of an offered parameter, but it fails DB grading. Only omitting the argument, or guessing the exact default string, matches gold.",
+      "suggested_fix": "Exclude closure_reason from the hashed state, or have the closure doc state the exact reason string and put it in the gold call."
+    }
+  ],
+  "solution_check": "Green checking 61d4e5f6a7b8c901 opened 10/01/2025, so it is 44 days old, inside the mid-tier 60-day window, and owes a $25 fee with a $0.00 balance. doc_(general)_005: 'the account balance must be at least the fee amount... there is no alternative payment method'. The 'Silver Account' checking (11/04/2025) is 10 days old, so savings must be opened before Green is closed. Savings selection matches task_060 (Silver Plus unique). The user offers the $25 check, so the agent gives deposit_check_3847, and the user deposits into 61d4e5f6a7b8c901. The gold replays cleanly: the close succeeds with balance 25 and fee 25.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean under a scorer that ignored closure_reason. Under upstream exact-hash grading, the free-text reason is compared.",
+  "notes": "No KB document authorizes waiving the early-closure fee, so waive_early_closure_fee=true is not a defensible alternative (it would change the hash: verified). An agent could propose a $25 transfer from the Silver checking (doc_(general)_010 allows transfers 'prior to closing'), but the user script offers the check proactively, which fixes the path. close_bank_account_7392 does not deduct the fee from current_holdings (it stays $25.00); this is deterministic on both sides."
+}

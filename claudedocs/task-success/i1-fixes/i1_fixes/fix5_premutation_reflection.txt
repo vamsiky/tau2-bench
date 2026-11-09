@@ -1,0 +1,7 @@
+## Before each state-changing action, stop and verify (do this in your reasoning)
+Before you open, close, submit, apply for, or otherwise change any record, briefly and explicitly check:
+1. State the specific policy rule and the customer's stated criteria that govern this action.
+2. Confirm this is the single correct target and the option that best fits ALL of those criteria — do not choose a higher tier or larger option than the criteria justify.
+3. Confirm you have completed every prerequisite the policy requires before this action, and that you are NOT making any lookup or listing call you do not actually need. If you already hold the identifier required to act, act directly — do not first retrieve or list other records.
+4. Pass only the arguments the action needs; omit any optional argument that has no value the customer or policy specified.
+Then take exactly that action. Keep non-changing steps minimal and proceed without ceremony.

@@ -1,0 +1,35 @@
+{
+  "task_id": "task_049",
+  "severity": "Blocker",
+  "headline": "The official answer requires the simulated customer to press a 'request human transfer' button that nothing in her script tells her to use, so a perfect agent passes or fails depending on the simulator.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Blocker",
+      "summary": "Gold includes a user-side request_human_agent_transfer call, which writes a human_transfer_requests row into the hashed DB. The user instructions only say to ask verbally ('Transfer me to a human agent'). The simulator guidelines say to call tools only when the agent asks, and no KB document tells the agent to ask.",
+      "evidence": [
+        "gold[17] requestor=user name=request_human_agent_transfer",
+        "tools.py request_human_agent_transfer: add_to_db(\"human_transfer_requests\", request_id, record, ...)",
+        "instructions step 9: \"Transfer me to a human agent.\" (the tool is never named)",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"Only call a tool if the agent has requested it or if it is necessary to answer a question the agent has asked.\"",
+        "task_034 and task_081 name request_human_agent_transfer explicitly in their instructions; task_049 does not"
+      ],
+      "gold_action_refs": [
+        17
+      ],
+      "why_it_matters": "If the simulator only asks in words, the DB lacks transfer_request_1 and the hash fails (replaying gold without gold[17] gives a different hash). The agent cannot cause or prevent this.",
+      "suggested_fix": "Add to instructions step 9: 'use your request_human_agent_transfer tool once', or drop gold[17] and keep only the agent's transfer_to_human_agents."
+    }
+  ],
+  "solution_check": "Green: prior closure record 08/20/2025, so it is closed directly. EcoCard: SHIPPED replacement, so it is blocked despite the lie. Gold card: $175 balance against $50 in checking '08', so it cannot be paid and the fake payment claim is rejected. Crypto: annual_fee is logged; tenure is under 2 years (checking opened 02/01/2024), so a Bronze downgrade is offered and refused, then the Entry-tier $5 credit with retention_offer is applied and no extra credit is given. All agent-side steps match gold; the user-side transfer request is the problem.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean (under its relaxed scorer). The task is unchanged; this review found that the user-tool dependency breaks exact-hash grading.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. transfer_to_human_agents writes nothing to the DB, so its free-text summary is not graded. A failed write is logged: an agent that attempts pay_credit_card_from_checking_9182 for $175 instead of checking funds first gets 'Error: Insufficient funds' and still diverges the hash (verified by replay). logistics_009 does tell the agent to confirm funds first. Required doc general_010 (a 3-step transfer protocol for purchase declines) does not apply here; its initial_transfer_to_human_agent_0218 tool is GENERIC and would not be logged."
+}

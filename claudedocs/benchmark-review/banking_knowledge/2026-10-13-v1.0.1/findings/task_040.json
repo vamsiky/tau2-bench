@@ -1,0 +1,65 @@
+{
+  "task_id": "task_040",
+  "severity": "Major",
+  "headline": "Same provisional-credit cap problem as task_039 (one earlier dispute plus in-session counting leaves only two eligible), and the gold asks for a full refund on a Comcast charge where the customer was promised only a partial one.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "There is one pre-existing dispute in the past 12 months (dsp_ed3ab3dce038, submitted 09/20/2025). Read against history alone (1, not more than 2), criterion 4 makes all four fraud/duplicate disputes eligible. The gold marks only Grainger and Uline eligible and American Airlines and Best Buy ineligible, which requires counting in-session filings (1 to 2 to 3) and filing Grainger and Uline before every other dispute.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "initial_state.agent_data.transaction_disputes.dsp_ed3ab3dce038.submitted_at = '09/20/2025'",
+        "gold[9] txn_a1b2c3d4e503 (AA fraud $342.50) eligible false; gold[10] txn_a1b2c3d4e510 (Best Buy dup $189.99) eligible false; gold[7],[8] Grainger/Uline eligible true",
+        "description.notes cites 'provisional_credit_max_disputes_in_period = 3', a rule that appears in no KB document",
+        "user_scenario step 6: \"Please prioritize those if there's any limit.\" (only if the agent raises provisional credit)"
+      ],
+      "gold_action_refs": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "A history-only reading (all four eligible) fails the hash. With in-session counting, filing in the customer's listing order (AA first, Best Buy second) makes AA and Best Buy eligible instead, which also fails.",
+      "suggested_fix": "State in doc_015 that in-session disputes count and that the customer's priority decides which ones receive credit, or make all four eligible in the gold."
+    },
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Major",
+      "summary": "For the Comcast $189.99 charge the customer 'was promised a partial refund' after downgrading, but the gold files resolution_requested=full_refund. The customer isn't scripted with a resolution preference or a partial amount, so 'partial refund' (amount unknown) and 'full refund' are both plausible, and the scenario text leans partial.",
+      "evidence": [
+        "user_scenario: \"Comcast $189.99 on 10/30/2025 - REFUND NOT PROCESSED. You downgraded your business internet plan and were promised a partial refund weeks ago.\"",
+        "gold[14].arguments: \"dispute_reason\": \"refund_never_processed\", \"resolution_requested\": \"full_refund\"",
+        "doc_credit_cards_credit_cards_(general)_014: \"13. resolution_requested (string) - Ask user what resolution they want.\""
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "An agent that records the customer's 'partial refund' answer, with whatever amount it can get, stores a different resolution_requested and partial_refund_amount and fails the DB hash.",
+      "suggested_fix": "Script the resolution for each of the 8 disputes (and the Comcast partial amount if partial is intended), or change the scenario text to a full-refund story."
+    },
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "The injected prior dispute is internally inconsistent: it was submitted (09/20/2025) and noticed (09/15/2025) before the purchase it disputes (10/02/2025). Both dates are within 12 months, so the criterion-4 count is unaffected.",
+      "evidence": [
+        "initial_state dsp_ed3ab3dce038: purchase_date '10/02/2025', issue_noticed_date '09/15/2025', submitted_at '09/20/2025'",
+        "db.json credit_card_transaction_history[txn_8d1aa1219382].transaction_date = '10/02/2025'"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Cosmetic. An agent reading the history may question whether the record is valid, but it still counts as one dispute in the past 12 months either way.",
+      "suggested_fix": "Set the prior dispute's purchase date before its notice and submission dates (e.g. a September transaction)."
+    }
+  ],
+  "solution_check": "Transaction ids, reasons, merchant contact, keep_active, last-4 (gold 1652, business gold 0581 via the user tool, both verified), and issue date 11/14/2025 all follow from the script and DB. PECO incorrect amount becomes partial_refund $24.56, a natural reading. Spotify $10.99 is ineligible by reason and amount. Both cards are older than 60 days and premium tier ($10,000 limit). The provisional flags reproduce the gold only under in-session counting with Grainger and Uline filed first. The required get_user_dispute_history_7291 read is in the gold (allowlisted). The gold replays cleanly.",
+  "prior_status": "persists",
+  "prior_note": "The prior review called the cap a Blocker; I confirm the defect but rate it Major (the literal criterion-4 text supports in-session counting). I add the Comcast resolution mismatch (Major) and the inconsistent fixture dates (Minor).",
+  "notes": "The 'duplicate' Grainger $523.45 and Best Buy (Gold) $189.99 charges each appear only once in the DB. A same-amount Comcast $189.99 charge exists on the business card, which a careful agent shouldn't confuse with it. The user's 'noticed today' line tells the simulator to forget the date, so the agent must use get_current_time (11/14/2025)."
+}

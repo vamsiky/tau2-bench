@@ -1,0 +1,17 @@
+{
+  "task_id": "task_007",
+  "severity": "None",
+  "headline": "Clean: on the fixed date, the only active points or cash sign-up bonus on a personal card open to this customer is the EcoCard's.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Personal-card promos on 2025-11-14: EcoCard bonus points window 2025-08-01 to 2025-12-15 (active; $2,000 points for $5,000 in month 1); Silver $500 statement credit window 2025-01-01 to 2025-06-30 (expired); Bronze and Silver promos are 0% APR, not points or cash; Platinum's first-year fee waiver ended 2024-12-31; Diamond Elite's $5,000-credit promo is invitation-only. With business cards excluded, EcoCard is the only option, so the fee tie-break is not needed. Replay of EcoCard/Jordan Mitchell/62000/false matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean and still holds.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. Diamond Elite's invitation promo (diamond_elite_card_009, window 2025-11-01 to 2026-01-31) is active, but the card is \"by invitation only\"; the scenario never mentions an invitation, so a user model asked about one should say it has none. The EcoCard bonus is $2,000 points at $0.01/point (ecocard_005), which is $20 in value; odd, but it does not change uniqueness."
+}

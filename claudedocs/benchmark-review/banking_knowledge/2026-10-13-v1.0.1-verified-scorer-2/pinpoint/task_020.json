@@ -1,0 +1,31 @@
+{
+  "task_id": "task_020",
+  "severity": "Major",
+  "reason": "Amara's seed rewards are rounded half-up against doc _007's floor rule, so a rule-following agent finds nine extra 1-point overcredits gold never disputes.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Seed rounds half-up; doc says always floor",
+      "kind": "gold_call_missing",
+      "step": 5,
+      "gold": null,
+      "doc_faithful": {"call": "call_discoverable_user_tool",
+                       "args": {"discoverable_tool_name": "submit_cash_back_dispute_0589",
+                                "arguments": {"user_id": "755bcb4d5d", "transaction_id": "txn_b7e2d4c5f503"}},
+                       "output": "Cash back dispute submitted successfully. Your case has been queued for review.\n...\nDispute ID: dsp_c0600d38edab",
+                       "note": "One of nine extra disputes after step 5 (e402, e404, e406, e409, e414, f503, f507, f509, f512), each stored 1 point above floor; all nine replayed together."},
+      "refs": [
+        {"source": "doc_credit_cards_credit_cards_(general)_007",
+         "quote": "All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer."},
+        {"source": "doc_credit_cards_silver_rewards_card_002",
+         "quote": "Pay with your card for eligible travel and software transactions to earn 4.0% back"},
+        {"source": "db:credit_card_transaction_history[txn_b7e2d4c5f503]",
+         "quote": "\"merchant_name\": \"Slack Technologies\", \"transaction_amount\": \"$44.99\", \"category\": \"Software\", \"rewards_earned\": \"180 points\""}
+      ],
+      "conflict": "Slack $44.99 × 4% = 179.96; doc _007 floor → 179, stored 180 (same for 8 more rows). Gold steps 2-5 dispute only the 4 gross errors.",
+      "scorer": {"field": "cash_back_disputes: 9 EXTRA rows (e.g. dsp_c0600d38edab for txn_b7e2d4c5f503); user_discoverable_tool_calls: 9 EXTRA rows",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

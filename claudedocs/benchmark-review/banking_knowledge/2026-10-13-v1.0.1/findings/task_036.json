@@ -1,0 +1,17 @@
+{
+  "task_id": "task_036",
+  "severity": "None",
+  "headline": "Clean: verify, show the transactions, then order an expedited fraud replacement to the customer's work address. Every argument comes from the customer or the database.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Verification: phone + email. The Silver card (cc_890389b165_silver) shows Electronics Express Miami $487.99 (09/04/2025) and GamerZone LA $299.95 (09/06/2025). Per doc_credit_cards_credit_card_replacements_001: confirm the address (the customer gives the work address verbatim), reason fraud_suspected, and expedited (strongly recommended for fraud; the customer is scripted to accept). order_replacement_credit_card_7291 with these args matches the gold. Replay succeeds (order ccord_6ed1a491c036), and adding an eligibility check via get_pending_replacement_orders_5765 leaves the DB hash unchanged because the read is not allowlisted.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; under v1.0.1 the extra eligibility read is confirmed harmless.",
+  "notes": "The reason enum has no definitions. The customer says 'someone stole my card information', and an agent could pick 'stolen', which changes the order_id and record. 'fraud_suspected' is the more natural mapping, since the card itself wasn't stolen. shipping_address is stored verbatim, so an agent that abbreviates 'Avenue' would fail. The author notes give 2024 dates while the DB has 09/2025; the notes aren't agent-visible."
+}

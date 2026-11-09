@@ -1,0 +1,49 @@
+{
+  "task_id": "task_014",
+  "severity": "Major",
+  "reason": "Gold step 0 transfers to a human, but doc _009 says a referral request for a card without a documented program must not be transferred.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Gold transfers where referral doc forbids transfer",
+      "kind": "gold_call_extra",
+      "step": 0,
+      "gold": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "reason": "unconfirmed_external_communication",
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: unconfirmed_external_communication). A human agent will assist you shortly."
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {},
+        "output": "",
+        "note": "Skipped: agent explains no Crypto-Cash Back referral program is documented and declines, without transferring (doc _009)."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_009",
+          "quote": "If no referral program is documented for the requested card, or if the user’s claimed terms are incorrect, or if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool. Do not transfer to a human in these cases."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_042",
+          "quote": "| unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching |"
+        },
+        {
+          "source": "instructions",
+          "quote": "How can I get a referral link for this offer so that I can share it with friends?"
+        }
+      ],
+      "conflict": "No Crypto-Cash Back referral program in KB. Doc _009: \"Do not transfer to a human\". Gold step 0 transfers (doc _042 Tier-2 code); no-transfer fails ACTION grading.",
+      "scorer": {
+        "field": "missing gold action #0 transfer_to_human_agents(reason=unconfirmed_external_communication); no DB field differs",
+        "upstream": "PASS",
+        "verified": "PASS",
+        "action": "FAIL"
+      }
+    }
+  ]
+}

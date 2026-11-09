@@ -1,0 +1,17 @@
+{
+  "task_id": "task_096",
+  "severity": "None",
+  "headline": "Both savings corrections ($17.50 Bronze, $15.00 Gold Plus) follow directly from the documented rates and the highest-only stacking rules.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Bronze: base 2.0%; checking pairings Bluest+Bronze +0.7% (bluest_003) vs Green Fee-Free+Bronze +0.4% (green_fee-free_005); card bonuses Platinum +0.55%, Diamond +0.15% (bronze_006), Gold +0.25%, Crypto +0.3% (bronze_007). That gives 3.25%; actual 63.75 x 12 / 30000 = 2.55%; credit $17.50. Gold Plus: base 6.0% (gold_plus_002); Gold Years +0.5% vs GFF +0.35%; card bonus Gold Rewards +0.35% (gold_plus_009). That gives 6.85%; actual 327.5 x 12 / 60000 = 6.55%; credit $15.00. Both match gold[7]/[8].",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior review rated this clean; still clean.",
+  "notes": "submit_interest_discrepancy_report_7294 calls add_to_db(\"interest_discrepancy_reports\", ...), but TransactionalDB has no such table, so add_to_db returns False and the tool still prints success. The report persists nothing; only its tool name in agent_discoverable_tools (a write, always logged) is graded. Its expected_apy, actual_apy, and amount_difference arguments therefore never affect the DB result; only the apply_savings_account_credit_6831 amount does (it changes accounts.current_holdings and a transaction_id hashed from the amount). The savings docs say interest is \"compounded daily\" from a daily periodic rate, but every posted credit equals balance x APY / 12 exactly. Gold uses that monthly convention, and an agent that back-solves actual_apy from the posted credit adopts it naturally. A literal daily-compounding computation would give a slightly different credit. doc_checking_accounts_green_fee-free_account_005 (the GFF boost values) is not in required_documents but can be retrieved from the KB, and the agent only needs to know it is lower than Bluest/Gold Years."
+}

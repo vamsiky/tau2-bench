@@ -1,0 +1,30 @@
+{
+  "task_id": "task_018",
+  "severity": "Minor",
+  "headline": "Applying the KB's documented round-down rule gives exactly the six gold disputes; the only flaw is that the rounding document is missing from the task's required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rewards rounding rule that fixes the dispute set lives in doc_credit_cards_credit_cards_(general)_007, which is retrievable from the KB but is not listed in required_documents.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "Under round-half-up instead of floor, 22 correctly credited transactions become +1 'discrepancies' (e.g. txn_e45e7acb56a0 Amazon $89.99: 90 vs stored 89), for 28 disputes instead of 6."
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under the default retrieval configs the agent can find the floor rule, so the gold is reachable. Under configs that inline only required_documents (golden_retrieval / required_docs prompts) the rule is absent, the natural round-half-up convention flags many correctly credited transactions, and the extra disputes change the DB hash.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "I recomputed all 47 transactions for user 890389b165. Rates: Silver 4% Travel/Software else 1%; Crypto-Cash Back 2%; Business Platinum 4% Travel/Software/Media else 1.5%; EcoCard 5/$ Green (excluding Target/Walmart/Amazon/ThredUp) else 1/$; floor rounding. Exactly six transactions mismatch, with no false positives or negatives: 57ecc6 (95 vs 47), d80aef (1390 vs 521), 896ac6 (642 vs 128), adea68 (669 vs 167), 0be1cc (2049 vs 768), and e647e2 (750 vs 1875, overpaid; the user script tells the user to insist on disputing it). This matches gold[2..7].",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round down') does not hold: doc_..._(general)_007 has stated the floor rule since v1.0.0. What remains is the Minor omission of that doc from required_documents.",
+  "notes": "The user persona says they are 'bad with technology' and want the agent to manage everything, while the gold has the user call the dispute tool. Rule 3 ('use it as directed') resolves this. No promos apply: all four accounts were opened in 2024 and the EcoCard promo is a spend bonus, not a rate. Grading-model facts checked against the snapshot (tag v1.0.1, commit fc0055d): EnvironmentEvaluator replays gold on a fresh env and compares agent and user DB hashes exactly; _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions and is passed whenever domain == banking_knowledge; call_discoverable_agent_tool and call_discoverable_user_tool parse with json.loads(parse_int=float); agent and user toolkits share one TransactionalDB; get_now() = 2025-11-14 03:40:00. All matched the prompt. Additional fact: user-tool outputs are returned only to the user simulator (Orchestrator.step routes ENV->USER), so the agent never sees dispute-tool status text. Replays were run with PYTHONPATH=snapshot/src via the repo venv (confirmed tau2.__file__ and DATA_DIR resolve to the snapshot)."
+}

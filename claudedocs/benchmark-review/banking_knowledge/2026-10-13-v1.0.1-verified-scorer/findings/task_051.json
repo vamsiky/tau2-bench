@@ -1,0 +1,50 @@
+{
+  "task_id": "task_051",
+  "severity": "Minor",
+  "headline": "Mostly clean deny-pay-resubmit-approve flow. The resubmission returns a misleading 'similar request may already exist' error that the agent must work past, and the workflow doc's Step 3 is blank.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "Gold action 17 (resubmitting the $1,000 CLI after the denial) collides with the first submission's deterministic id and returns an error. The original PENDING record is never updated by the denial. No doc covers this, so the agent has to decide on its own to keep going and approve.",
+      "evidence": [
+        "Gold replay output for gold[17]: \"Error: A similar request may already exist.\"",
+        "utils.generate_credit_limit_increase_request_id seed = f\"cli_request:{credit_card_account_id}:{user_id}:{requested_increase_amount:.2f}\"",
+        "Gold final credit_limit_increase_requests: cli_e33db0778663 status PENDING (first submit) and cli_ce18a03fbbe2 status DENIED; no APPROVED record",
+        "Replay: gold without gold[17] -> verified match True (resubmission is a no-op); gold without approval gold[18-19] -> False"
+      ],
+      "gold_action_refs": [
+        17,
+        19
+      ],
+      "why_it_matters": "An agent that reads the resubmission error as blocking and does not approve leaves credit_limit at $4,000.00 and fails. An agent that continues to approve_credit_limit_increase_5847 matches the gold. The correct final state is reachable and unaffected by the error.",
+      "suggested_fix": "Have deny_credit_limit_increase_5848 and approve_credit_limit_increase_5847 update the existing request record instead of creating colliding ids, or include a request sequence in the id seed."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The internal CLI workflow doc that 'MUST be followed in the exact order' has an empty Step 3 (payment history and amount check). The payment-history rule and the get_payment_history_6183 tool are only described in a separate doc.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_007: \"## Step 3: Verify Payment History and Requested Amount\\n\\n.\\n\\n## Step 4\"",
+        "doc_credit_cards_credit_card_account_logistics_007: \"These steps MUST be followed in the exact order listed.\"",
+        "doc_credit_cards_credit_card_account_logistics_006: \"Use the get_payment_history_6183 tool to verify the customer's payment history meets the requirement for their card tier.\" (the only doc naming the tool)"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "get_payment_history_6183 is a gold-required read, so its tool name must appear in agent_discoverable_tools. An agent that follows only the step-by-step workflow doc finds no instruction to call it. Doc 006 is in required_documents and says to call it, so a careful agent still reaches the gold.",
+      "suggested_fix": "Fill Step 3 of logistics_007 with the payment-history check (call get_payment_history_6183 with the tier's month count) and the per-tier maximum-increase check from logistics_006."
+    }
+  ],
+  "solution_check": "Bronze is entry tier: 25% maximum increase, 70% utilization cap, 6 on-time months. The 30% request ($1,200) is adjusted to $1,000 before submitting. Utilization is 3000/4000 = 75%, so the request is denied with high_utilization (other criteria pass: opened 05/10/2023, no CLI history, 6 ON_TIME payments, no disputes or replacements). The agent pays $3,000 from chk_5e4c1a83b0 ($5000.00), resubmits (denials trigger no cooldown), and approves new_credit_limit 5000. This matches the gold's final state.",
+  "prior_status": "new",
+  "prior_note": "The prior review found it clean. The resubmission collision and the empty workflow Step 3 were not reported.",
+  "notes": "Doc order (submit first, then checks) is clear in logistics_007, so the DENIED record is derivable. The payment amount 3000 is parsed as float through call_discoverable_agent_tool, so spelling does not matter."
+}

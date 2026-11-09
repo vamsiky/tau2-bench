@@ -1,0 +1,36 @@
+{
+  "task_id": "task_056",
+  "severity": "Major",
+  "headline": "The product choices (Cobalt Blue checking, Silver Plus Saver savings) are unique, but the bank's own procedure tells the agent to open business savings with account_type 'savings', while the gold uses 'business_savings', which produces a different account.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_(general)_004, the business-savings opening procedure, tells the agent to call open_bank_account_4821 with account_type 'savings'. The tool schema labels 'savings' as personal savings and offers 'business_savings', which is what gold uses. account_type is part of the deterministic account ID and is stored on the record.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004 (Agent Tool Instructions, open_bank_account_4821, How to call): \"Set account_type to 'savings'.\"",
+        "open_bank_account_4821 docstring: \"Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "gold[5].arguments.arguments: \"account_type\": \"business_savings\", \"account_class\": \"Silver Plus Saver Account\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"; with 'savings' the personal-savings eligibility check passes (Green checking open since 09/10/2023), so the call succeeds with a different id",
+        "replay: account_type='savings' plus the transfer to the resulting id gives a different DB hash than gold"
+      ],
+      "gold_action_refs": [
+        5,
+        7
+      ],
+      "why_it_matters": "An agent that follows the internal procedure literally opens a 'savings' account with a different id and funds it. The call succeeds, so nothing signals a problem, but DB grading fails on correct, document-following work.",
+      "suggested_fix": "Change doc_(general)_004 to 'Set account_type to 'business_savings'.' (or have the tool reject account_class names containing 'Saver' under 'savings')."
+    }
+  ],
+  "solution_check": "Business checking: zero overdraft fees rules out True Blue ($25) and World Blue ($30). A fee under $50 rules out Beige ($200). An ATM rebate of at least $15 rules out Navy Blue ($10). A waiver at or under $5k rules out Lime Green ($15,000). General debit cashback rules out Hunter Green (2% only at eco vendors) and Sky Blue (none documented). That leaves Cobalt Blue ($20 fee waived at $2,500, $15 ATM rebate, 1.0% debit cashback, $0 overdraft fee). Business savings: same-day ACH rules out Bronze Saver, Silver Saver and Emerald. A minimum under $25k rules out Gold Plus Saver, Platinum Reserve and Diamond Vault. That leaves Silver Plus Saver (20 free withdrawals, product-based 0.025% relationship bonus). The gold replay transfers $3,200 from biz_chk_b5e8f2a1c9 to c1b48f17bb35e876 as expected.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The account_type contradiction in doc_(general)_004 was not reported, though it would have failed under either scorer because account_type feeds the account id.",
+  "notes": "Gold Saver Account (business) also has same-day ACH and no documented minimum balance, but documents no monthly withdrawal limit and offers only card-based APY bonuses. Silver Plus Saver documents 20 free withdrawals and a multi-product relationship bonus, so a careful agent prefers it; this is a minor documentation gap, not a tie. account_class 'Cobalt Blue' is derivable from doc_(general)_003 ('Business checking account_class options include Navy Blue, Cobalt Blue, True Blue'). 'Cobalt Blue Account' would change the hash (verified), but the explicit list makes the gold spelling the natural one. The Navy Blue source for the transfer is user-named and matches doc_(general)_004's 'qualifying OPEN business checking' rule (opened 08/01/2025, $3,200)."
+}

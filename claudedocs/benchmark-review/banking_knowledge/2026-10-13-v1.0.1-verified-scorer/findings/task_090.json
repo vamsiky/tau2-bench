@@ -1,0 +1,36 @@
+{
+  "task_id": "task_090",
+  "severity": "Minor",
+  "headline": "The three-card PIN-lock case is solvable as written; the only soft spot is that the Evergreen replacement card has two equally free designs and the customer never picks one.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Evergreen is Premium tier, where both CLASSIC and PREMIUM card designs cost $0. The customer only asks for \"the fastest option that's free\", so the gold's CLASSIC design is the documented default but not the only free choice.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_005: \"PREMIUM TIER (Evergreen Account)\"",
+        "doc_bank_accounts_bank_accounts_(general)_029 PREMIUM TIER: \"PREMIUM design (metallic silver): design_fee $0 (complimentary)\"",
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\" and step 5 \"Ask customer for preferred card design (CLASSIC, PREMIUM, or CUSTOM) and explain fees.\"",
+        "user instruction 9: \"Give the fastest option that's free - just get me a new card with a new number as fast as possible.\"",
+        "gold[10].arguments: delivery_option \"EXPEDITED\", card_design \"CLASSIC\", design_fee 0",
+        "replay: gold with card_design PREMIUM -> verified match False (debit_card_orders, debit_cards differ)"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "Doc 023 tells the agent to ask about design and explain fees. If the agent says Classic and Premium are both free, the simulator has no scripted design preference and may pick Premium. That stores card_design PREMIUM and fails the DB check.",
+      "suggested_fix": "Add a design preference to the customer script (for example \"the standard design is fine\")."
+    }
+  ],
+  "solution_check": "Reconstructed with doc_041. Evergreen scores 15 (A1 2, A3 1, B1 3, B3 2 from 96s/103s gaps, C1 2, C2 1, C3 2, C4 2), so it cannot be unlocked. The customer was \"asleep in Boston\", which means fraud, so the card is closed and a replacement ordered. Premium tier has free EXPEDITED shipping, which matches gold[8]/gold[10]. Blue scores 8-11 before location removal and 8-10 after, depending on readings (B3 at exactly 2 minutes, E1 at 91 days, C3 for a POS decline), and the D1=2 step then requires offering a PIN reset. A Step-6 \"offer options\" path also reaches the same reset_debit_card_pin_6284(7294) as gold[14]. Green has a security_hold, so the agent offers a transfer, the customer declines, and nothing is written. This matches the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean. The design tie is a newly reported Minor point; the main card outcomes still check out under v1.0.1 data.",
+  "notes": "The author note says Evergreen scores 14 points; my count is 15. Both mean no unlock, and with \"asleep\" both lead to closure, so the outcome is the same. B1=3 also triggers doc_041 \"Single Flag Escalation\" to supervisor; transfer_to_human_agents writes nothing to the DB, but an agent that transfers before handling Blue/Green ends the call early. The KB never says that a PIN reset unlocks the card (see task_091/092 for the gap); here it is harmless because the Blue card's D1=2 rule forces the reset offer anyway. reset_debit_card_pin_6284 does not store new_pin, so the PIN value never affects the DB. Under the verified scorer, closure_reason on the closed card is stripped, but order_debit_card_5739 copies it into the new card's issue_reason (\"fraud_suspected\" -> \"fraud\"). Closing with \"stolen\" therefore still fails (replayed: debit_cards differs). The gold replays cleanly against the v1.0.1 snapshot."
+}

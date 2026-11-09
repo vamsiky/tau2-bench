@@ -1,0 +1,17 @@
+{
+  "task_id": "task_003",
+  "severity": "None",
+  "headline": "Clean: Silver and Gold are the only $0-fee cards that meet all three hard requirements, and for a mostly-travel spender Silver's 4% travel rate beats Gold's flat 2.5%.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I filtered personal cards on 0% FTF, purchase protection, and a possible $100k limit. Silver passes on all three with Rho-Bank+ ('Foreign transaction fee with a premium subscription: 0%', 90-day purchase protection, '$10,000 to $100,000'). So do Gold (0% FTF, 105-day protection, $17.5k-$112.5k, $0 fee), Platinum ($200 fee) and Diamond Elite ($495, invitation-only; she says she got no bank communications). Bronze (2.75% FTF), EcoCard (1.0% FTF) and Crypto-Cash Back ('purchase protection on this card is No') fail. The fee tie between Silver and Gold at $0 goes to the higher cash back: with travel as the main spend, Silver earns 4%T + 1%O and Gold earns 2.5%(T+O), so Silver is higher whenever T > O. That matches gold[0] (Silver Rewards Card, Catherine Wells, 180000, true).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and re-derivation agrees.",
+  "notes": "Two places where agents slip, neither a defect. (1) Silver's ceiling is exactly $100,000, which meets 'at least a 100,000 dollar credit limit'. Opus trial 0 wrongly excluded Silver because the limit 'doesn't exceed' $100k. (2) Platinum's first-year fee waiver (platinum_009) expired on 2024-12-31, before the fixed clock (2025-11-14 via get_current_time), so Platinum's fee is $200 and it does not tie at $0. Silver's 0% FTF depends on the premium subscription, which the customer states upfront. In the earlier Opus runs 1 of 4 passed (3 applied for Gold)."
+}

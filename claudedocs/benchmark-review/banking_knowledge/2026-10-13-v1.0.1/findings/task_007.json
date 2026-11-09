@@ -1,0 +1,17 @@
+{
+  "task_id": "task_007",
+  "severity": "None",
+  "headline": "Clean: on the fixed date only EcoCard has an active points or cash sign-up bonus that a non-invited personal applicant can get, so the gold EcoCard application is right.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Personal-card promos on 2025-11-14: EcoCard bonus points promo '2025-08-01 through 2025-12-15' (active, $50 fee); Silver '$500 Statement Credit Signup Bonus' window '2025-01-01 to 2025-06-30' (expired); Bronze and Silver 0% APR promos (no points or cash); Platinum first-year fee waiver (2024, expired, not a bonus); Diamond Elite invitation promo (requires an invitation, and its $495 fee loses the lowest-fee tie-break to EcoCard's $50 anyway). Business promos are excluded by the customer. EcoCard is the result, matching the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None; nothing relevant changed in v1.0.1.",
+  "notes": "The task depends on the agent comparing promo windows to get_current_time; an agent that ignores dates would recommend Silver's expired $500 credit and fail, which is correct grading. EcoCard's bonus is written as '$2,000 sustainability points', another cosmetic unit corruption that does not affect the choice. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

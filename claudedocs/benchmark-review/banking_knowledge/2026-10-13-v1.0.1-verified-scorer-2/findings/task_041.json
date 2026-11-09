@@ -1,0 +1,65 @@
+{
+  "task_id": "task_041",
+  "severity": "Major",
+  "headline": "Sixteen-dispute task: the official answer grants provisional credit to only two disputes, which follows one reasonable reading of the 'no more than 2 disputes in 12 months' rule but not another, and several refund choices (including an exact $69.99 partial refund) are never stated by the customer.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Criterion 4 of the provisional-credit guideline supports two graded outcomes. Counting only disputes on file before the session (1 prior dispute) makes all 10 reason-eligible disputes eligible. Counting each new filing as it is made caps new credits at 2 (or at 1 if the dispute being filed is itself counted). The gold uses the cap of 2 and resolves which two through the customer's 'prioritize Staples and Coinbase' line.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "initial_state transaction_disputes.dsp_dfab0685d198.submitted_at = \"09/20/2025\" (one prior dispute, within 12 months)",
+        "gold[9] txn_645286a3dd13 (Staples) and gold[10] txn_1b4cc30a928e (Coinbase): eligible_for_provisional_credit = true; gold[11] txn_107c4fa829bd (Delta fraud, $487.50, account open 03/15/2024) and gold[12..18] (all other reason-eligible disputes): false",
+        "Reason-eligible set under criteria 1,2,3,5 (fraud, duplicate, GNR purchased >30 days before 11/14/2025): Delta, Apple, Amazon (10/05), Coinbase, Best Buy, Patagonia, REI, Whole Foods (10/02), Staples, Office Depot = 10 disputes",
+        "user_scenario step 6: \"The Staples and Coinbase charges are the biggest ones ... Please prioritize those if there's any limit.\" (fires only if the agent mentions provisional credit)",
+        "Replay: marking all 10 reason-eligible disputes true -> verified=False, table 'transaction_disputes' differs; marking Delta+Apple (script order) true -> verified=False"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "why_it_matters": "An agent that reads criterion 4 as a gate on dispute history before the session marks 10 disputes eligible. An agent that applies the cap in filing order without asking the customer credits whichever two it files first (Delta and Apple in the script's order). Both runs follow the documents and both fail on transaction_disputes.",
+      "suggested_fix": "State in doc_015 that disputes filed earlier in the same interaction count toward the 12-month limit, and that the customer chooses which disputes receive credit when the limit binds. Alternatively, change the gold to mark all 10 reason-eligible disputes true."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The customer script never says which resolution to request. The gold records 'partial_refund' with partial_refund_amount 69.99 for XFINITY, derived from a usual bill of 'around $120'. It records 'full_refund' for AT&T even though the customer was 'promised a partial refund', and for Tesla, described as an overcharge.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_014: \"13. resolution_requested (string) - Ask user what resolution they want.\"",
+        "user_scenario: \"XFINITY $189.99 on 10/28/2025 - INCORRECT AMOUNT. Your usual bill is around $120.\"",
+        "gold[19].arguments: resolution_requested = \"partial_refund\", partial_refund_amount = 69.99 (189.99 - 120.00)",
+        "user_scenario: \"AT&T Business $312.50 ... were promised a partial refund weeks ago\" vs gold[24] resolution_requested = \"full_refund\"",
+        "user_scenario: \"Tesla Supercharger $67.45 ... You were overcharged at a Supercharger\" vs gold[22] resolution_requested = \"full_refund\"",
+        "Replay: XFINITY partial_refund_amount 70 -> verified=False; XFINITY full_refund -> verified=False"
+      ],
+      "gold_action_refs": [
+        19,
+        22,
+        24
+      ],
+      "why_it_matters": "The simulated customer has to improvise these answers. 'About $70' produces 70.0 rather than 69.99, and an answer of 'the partial refund I was promised' for AT&T, which comes with no amount, leads away from full_refund. Every such divergence changes a transaction_disputes row.",
+      "suggested_fix": "Add the resolution and any partial amount for each dispute to the script, for example 'XFINITY: partial refund of exactly $69.99' and 'AT&T: full refund'."
+    }
+  ],
+  "solution_check": "I rebuilt the 16 filings from the transaction list (four cards, all opened in 2024), the per-dispute merchant-contact answers, and noticed-date 11/14/2025 from get_current_time. Card last-4 digits came from the four user get_card_last_4_digits calls, which match gold[4..7] (0573/3081/3604/0652). Reasons, card_action and contacted_merchant match the gold. Provisional credit matches only under the in-session sequential reading of criterion 4 combined with the customer's Staples/Coinbase priority. Resolution fields match only if the simulated customer happens to give the gold's choices.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this a Blocker on the grounds that the 2-credit cap 'matches no documented rule'. Applied filing by filing, criterion 4 does produce a 2-credit cap, so the cap is a supported reading and the issue drops to Major. The unscripted resolution fields are a second Major issue the prior review did not report.",
+  "notes": "Author notes cite an undocumented parameter 'provisional_credit_max_disputes_in_period = 3' and say the two highest-value eligible disputes get credit. The gold's pick (Staples $623.45, Coinbase $512.34) is also the two highest-value reason-eligible disputes, so a value-ordering agent lands on the same pair. The four user get_card_last_4_digits calls are logged per argument set in user_discoverable_tool_calls, so a mistyped or extra account ID from the simulated customer would also change the hash. No finding depends on the verified scorer's relaxations; upstream exact-hash grading gives the same verdict."
+}

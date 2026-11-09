@@ -1,0 +1,36 @@
+{
+  "task_id": "task_101",
+  "severity": "Major",
+  "headline": "Whether the customer may submit all four referrals or only two depends on how the agent reads an ambiguous rolling-window rule; the gold assumes only two.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_047/048 state the rolling cap in terms of referral bonuses received ('at most 2 referral bonuses in any rolling 9-day window'), and the FAQ answers 'How many people can I refer at once?' with 'You can have multiple referrals in progress'. The gold instead treats the cap as a limit on referrals submitted today.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window. If you attempt to receive more than 2 referrals in a single 9-day period, the third referral ... will be automatically denied.\"",
+        "doc_bank_accounts_bank_accounts_(general)_048: \"How many people can I refer at once? You can have multiple referrals in progress, but you can only receive a maximum of 2 referral bonuses in any rolling 9-day window.\"",
+        "referrals: most recent COMPLETE bonuses 10/25/2025 and 10/10/2025 (20 and 35 days before 11/14) -> none in window",
+        "gold submits only 2: gold[2] Purple Account, gold[3] Sky Blue Account",
+        "instructions 13a (2 if window mentioned) vs 17 (all 4 if not)"
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "An agent reading the cap as applying to bonuses received (the FAQ's 'multiple referrals in progress') recommends all four (Maya -> Green Fee-Free, Vikram -> Purple, Ember -> Lime Green, TechFlow -> Sky Blue); the user submits them and two extra referral records break the hash. Reading the cap as a submission limit gives the gold. Both readings are defensible.",
+      "suggested_fix": "State explicitly in doc_047 whether submitting more than 2 referrals within 9 days is itself auto-denied, or seed two COMPLETE bonuses inside the window so the cap binds under either reading."
+    }
+  ],
+  "solution_check": "Under the gold's submission-cap reading the customer asks for one personal and one business referral. Personal: Gold Years is maxed (6/6), Blue (5/5), Light Green (3/3); Purple $45+$35=$80 for Vikram ($1,200 >= $1,000) beats Evergreen $60, Dark Green $70 (age 17-26, not Vikram), and GFF $55. Business: Sky Blue $150+$250=$400 for TechFlow (2 yrs, $12k; 7/8 used) beats Lime Green $350 (Ember) and Hunter Green $300. That matches gold[2] and gold[3]. Under the bonus-received reading, all four are submitted and the gold fails.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Blocker, saying the 2-cap had no documentary basis; doc_047's 'third referral ... will be automatically denied' supports the gold's reading, so I rate it a Major two-reading ambiguity rather than a wrong gold.",
+  "notes": "Notes claim 'Dark Green (5/5)', but dark_green_010 says 'Maximum per year: 6'. This is irrelevant because Dark Green needs $1,000 and ages 17-26. task_098's notes count an IN_PROGRESS referral toward the window, consistent with the submission reading used here. The sky_blue_001/002 v1.0.1 edits ('6' -> '6 months') are cosmetic."
+}

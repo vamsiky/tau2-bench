@@ -1,0 +1,17 @@
+{
+  "task_id": "task_010",
+  "severity": "None",
+  "headline": "Clean: the referral data show the Platinum referral was auto-denied by the 2-per-7-days cap three weeks ago, so verifying the user and having him resubmit it is uniquely correct.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The user gives email and phone (2 of 4), which match users[76ad9cc60e]. log_verification is filled from the DB record with time '2025-11-14 03:40:00 EST' (gold[0]). get_referrals_by_user (an always-available read) shows Bronze COMPLETE 10/20, Gold COMPLETE 10/22, Platinum REJECTED 10/25, Silver IN_PROGRESS 11/05. doc (general)_001 says 'REJECTED — the user has too many referral processes going on', and (general)_002 says 'at most 2 referral bonuses in any rolling 7-day window' and 'wait until enough time has passed to drop under the cap before attempting another'. On 11/14 the window has passed, so the user resubmits a Platinum referral (gold[1] submit_referral(76ad9cc60e, 'Platinum Rewards Card')).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and no relevant data changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). The gold verification record logs all four fields from the DB, though the user supplied only two. This is the domain-wide convention (log_verification requires every field) and the values are uniquely derivable from get_user_information_by_*. The Silver IN_PROGRESS referral needs no action. The referral ID is deterministic (generate_referral_id(user_id, account_type), no date), and the record date comes from the fixed clock."
+}

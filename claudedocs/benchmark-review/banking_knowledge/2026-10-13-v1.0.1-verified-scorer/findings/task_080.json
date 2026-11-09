@@ -1,0 +1,57 @@
+{
+  "task_id": "task_080",
+  "severity": "Major",
+  "headline": "The gold gives provisional credit on all three credit-card fraud disputes, while the task's own notes and customer script are built around a two-dispute limit that withholds it from the $149.95 charge.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Major",
+      "summary": "Criterion 4 counts disputes already filed (\"has not filed more than 2\"). Read literally, the third dispute is still eligible because only two were filed before it, and the gold sets true. The task notes say the third must be false, and the customer script has a branch for prioritizing the two largest charges, so the authors read the rule as \"at most two eligible\".",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "get_user_dispute_history_7291 (gold) returns \"No transaction disputes found for this user.\"",
+        "task notes: \"Rule is \u22642 disputes eligible for provisional credit... txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit (eligible_for_provisional_credit: false)\"",
+        "user instructions: \"If agent mentions a limit on provisional credit: 'If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first'\"",
+        "gold dispute for txn_39c2ddb4e1d2: \"eligible_for_provisional_credit\": true (stored as eligible_for_provisional_credit and provisional_credit_given)"
+      ],
+      "gold_action_refs": [
+        31
+      ],
+      "why_it_matters": "The stored eligibility flag decides the transaction_disputes row. An agent that reads the rule the way the task authors did (counting the dispute being filed, or capping eligible disputes at two) sets false on txn_39c2ddb4e1d2 and fails; replaying that change confirms the mismatch. The task also does not test the prioritization it was designed for.",
+      "suggested_fix": "Decide the rule and make the notes, customer script and gold agree: either keep true and remove the limit narrative, or reword criterion 4 to \"fewer than 3 disputes including this one\" and set the third to false."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "As in task_078, the closed Blue and Green Fee-Free cards carry frozen_date/unfrozen_date from the requested freeze, so the graded table records the path rather than only the outcome.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "doc_bank_accounts_bank_accounts_(general)_026: \"CLOSE: Permanent deactivation - cannot be reversed. Use when card is confirmed lost/stolen\"",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\" (a FROZEN card must be unfrozen first)",
+        "freeze_debit_card_3892 writes card[\"frozen_date\"]; unfreeze_debit_card_3893 writes card[\"unfrozen_date\"]; both fields stay on the closed card in the gold DB",
+        "gold: freeze blue/gff/green, unfreeze green (customer found it), unfreeze blue/gff, close blue/gff reason \"stolen\""
+      ],
+      "gold_action_refs": [
+        8,
+        9,
+        16,
+        17,
+        19,
+        20
+      ],
+      "why_it_matters": "Low risk here because the customer later asks to unfreeze the Green card, which presupposes freezing all three, but a direct close of the stolen cards would still fail.",
+      "suggested_fix": "Do not persist freeze/unfreeze timestamps on cards that end CLOSED, or exclude them from the comparison."
+    }
+  ],
+  "solution_check": "Reconstructed: freeze three debit cards, unfreeze Green (found), close Blue (MID, order EXPEDITED $15 CLASSIC) and Green Fee-Free (ENTRY, 48-hour wait so no order today) as stolen; order both credit-card replacements expedited with reason stolen; file three fraud disputes with card_action cancel_and_reissue; activate the new Blue card with 8292 (issue_reason stolen; last 4 7648 matches the generated card). Under the literal criterion 4 all three disputes are eligible, which matches the gold; under the authors' stated rule the third differs. Gold replays without errors.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the eligibility flag on the third dispute was the same in v1.0.0, and v1.0.1 only added reads.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. Credit-card replacement writes no fee; expedited_shipping is a boolean, so the EcoCard $15 fee has no DB effect. The activation PIN is validated but not stored."
+}

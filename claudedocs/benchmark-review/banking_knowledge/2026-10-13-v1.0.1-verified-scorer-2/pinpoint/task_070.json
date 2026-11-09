@@ -1,0 +1,30 @@
+{
+  "task_id": "task_070",
+  "severity": "Minor",
+  "reason": "Gold step 4 opens Sky Blue, a startup account for companies within 4 years of formation, but the script never states the business's age.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Sky Blue age limit; company age never given",
+      "kind": "info_unavailable",
+      "step": 4,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "224959b99e", "account_type": "business_checking", "account_class": "Sky Blue"},
+               "output": "Bank account opened successfully!\n  - Account ID: 3befd297b57bc9c1\n  ...\n  - Account Class: Sky Blue"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "224959b99e", "account_type": "business_checking", "account_class": "Lime Green"},
+                       "output": "Bank account opened successfully!\n  - Account ID: 598255c47ac66e19\n  ...\n  - Account Class: Lime Green",
+                       "note": "Agent asks the company age; the script gives none, so the customer cannot confirm. An agent that will not open Sky Blue unconfirmed picks Lime Green, next in the promotion."},
+      "refs": [
+        {"source": "doc_business_checking_accounts_sky_blue_001",
+         "quote": "Confirm your company is within 4 years of formation."},
+        {"source": "instructions",
+         "quote": "You've had a personal Green Account with Rho-Bank for about 3 years and have roughly $2,850 in it. Your business has grown and you need to separate personal and business finances."}
+      ],
+      "conflict": "Doc sky_blue_001 requires company age within 4 years; instructions give no formation date. Gold step 4 assumes eligibility the customer cannot confirm; a cautious agent picks Lime Green.",
+      "scorer": {"field": "accounts[3befd297b57bc9c1]: MISSING row (Sky Blue); accounts[598255c47ac66e19]: EXTRA row (Lime Green)",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

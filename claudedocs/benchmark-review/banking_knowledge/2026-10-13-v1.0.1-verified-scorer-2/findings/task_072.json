@@ -1,0 +1,36 @@
+{
+  "task_id": "task_072",
+  "severity": "Major",
+  "headline": "Both gold refund amounts include fee errors dated after the benchmark's fixed \"today\" (11/14/2025), so an agent that only reviews fees posted so far credits $13.50 and $3.00 instead of $14.00 and $3.50.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Major",
+      "summary": "The clock is 2025-11-14 03:40 EST, but the seeded November history runs to 11/20, and the gold credits include a Bluest error dated 11/20 ($2.50 fee vs $2.00) and a Light Green error dated 11/15 ($4.00 vs $3.50 tier-2 foreign fee).",
+      "evidence": [
+        "tools.py get_current_time: \"The current time is 2025-11-14 03:40:00 EST.\"",
+        "db.json bank_account_transaction_history btxn_fcd7ef3a24ed: date 11/20/2025, atm_fee -2.5 (US BANK #7890, rebate +2.0)",
+        "db.json btxn_49c0c0b3b8c1: date 11/15/2025, atm_fee -4.0 on a $200 SANTANDER MADRID withdrawal",
+        "doc_checking_accounts_light_green_account_013: \"More than $100 and up to and including $300 | $3.50\"",
+        "gold[7].amount = 14.00; gold[8].amount = 3.50"
+      ],
+      "gold_action_refs": [
+        7,
+        8
+      ],
+      "why_it_matters": "Bluest through 11/14: $8.00 (London foreign) + $3.50 (Tokyo foreign) + $2.00 (missing 11/14 rebate) = $13.50; Light Green through 11/14: $1.50 + $3.00 - $1.50 = $3.00. Gold needs the 11/20 (+$0.50) and 11/15 (+$0.50) items. Either reading is defensible, and the credit amounts differ, so the transaction id and balance differ.",
+      "suggested_fix": "Move all seeded November transactions to on or before 11/14/2025, or advance the clock past 11/20/2025."
+    }
+  ],
+  "solution_check": "Recomputed from docs and the seeded history. Bluest: out-of-network $2.00 (bluest_010), foreign $0.00 (bluest_003), rebates up to $50/month; errors London $8.00, Tokyo $3.50, 11/14 Citibank fee not rebated $2.00, 11/20 fee $2.50 vs $2.00 = $14.00. Light Green (4 free domestic out-of-network/month, then $1.50; foreign tiers $2/$3.50/$5): 11/05 3rd withdrawal charged $1.50 (+1.50), 11/09 5th withdrawal not charged (-1.50), 11/13 $80 charged tier 3 $5 vs $2 (+3.00), 11/15 $200 charged $4 vs $3.50 (+0.50) = $3.50 net per doc_017's \"net correction\". Matches gold only when post-clock rows are included.",
+  "prior_status": "changed",
+  "prior_note": "Prior rated it Minor as fiddly but solvable; the netting is documented, but the gold's dependence on rows dated after the fixed clock raises it to Major.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. doc_017 requires one combined credit per account with the majority credit_type; fee_refund is the majority for both accounts. The tool keys the credit transaction id on amount and credit_type (replay: 14 and 14.00 match). The $2.00 missing-rebate item assumes Bluest rebates Rho-Bank's own out-of-network fee; bluest_003 says \"third-party ATM fees\" but bluest_007 says \"aggregate ATM fees\" and every other seeded Bluest fee carries a matching rebate, so the broad reading is well supported. Fee-stacking: the seeded foreign withdrawals carry only the foreign fee, which the gold treats as correct; tasks 075/076 assume the out-of-network fee also applies abroad (see those findings). Light Green withdrawals of $200/$350 on 11/15 and 11/17 exceed the documented $150 daily ATM limit (post-clock, cosmetic)."
+}

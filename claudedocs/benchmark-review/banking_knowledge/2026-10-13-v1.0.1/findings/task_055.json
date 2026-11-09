@@ -1,0 +1,17 @@
+{
+  "task_id": "task_055",
+  "severity": "None",
+  "headline": "The customer's requirements single out the Purple checking and Silver Plus savings accounts, and the check-deposit step is fully scripted, so the task is clean.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Checking: only Purple has a multi-currency wallet ('Multi-currency wallet support is Yes'). It also charges 0% foreign transaction fees, waives the fee at a $3,750 daily balance (within the customer's $3-5k) and rebates global ATM fees up to $30; Bluest needs $112,500, and no other checking product documents multi-currency. Savings: the customer needs 12-16 withdrawals, a relationship bonus, at most $7k, daily compounding, ATM rebates and 3%+ APY. Silver Plus has 15 withdrawals, a 0.025% relationship bonus, a $2,500 minimum, daily compounding, ATM rebates and 3.0%/4.5% tiers. Silver allows 10 withdrawals, Green 8, Bronze 6, and Gold needs $10k. The gold IDs replay correctly, and the $1,500 deposit lands in Silver Plus id 7e48bf3b0589cfad.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior and current verdicts agree: clean.",
+  "notes": "Near-tie checked: Yuki holds a Platinum Rewards Card (db credit_card_accounts.cc_224959b99e_plat), and doc_savings_accounts_silver_account_009 raises Silver's free withdrawals to 15 for Platinum holders, so Silver also meets the withdrawal count. Silver Plus still dominates at her $5-7k balance: 3.0% base vs 2.5% tier 1, ATM rebates 25 vs 15, and 3% APY without needing $10k. A competent agent asked for the single best fit picks Silver Plus. The Silver Plus mobile deposit limit is $5,000, so $1,500 is fine. db.json has Yuki's checking opened 11/10/2022, not '~6 months' as the persona says; this is harmless."
+}

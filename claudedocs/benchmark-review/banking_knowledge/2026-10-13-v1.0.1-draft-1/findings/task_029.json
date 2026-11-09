@@ -1,0 +1,66 @@
+{
+  "task_id": "task_029",
+  "severity": "Major",
+  "headline": "The agent is graded on refusing a false claim that the disputes were approved, but it has no tool to check dispute status, and the identical claim is true in sibling task 028.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "doc_004 makes looking up the resolved disputes in cash_back_disputes the first required step before updating rewards, but no agent tool reads that table, and the agent never sees the user's tool output (the Status: RESOLVED or SUBMITTED line). So the agent has to decide whether the disputes are resolved based only on the customer's word, and tasks 028 and 029 send it the identical canned claim. Here the gold expects the agent to refuse (no update calls); the task notes say \"Agent must verify dispute status\", which no tool allows.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: cash_back_disputes is written only by KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool or discoverable agent tool queries it (grep of tools.py: only db_query.py/data_model.py reference the table)",
+        "orchestrator.py run step: user tool results are routed ENV->USER; the agent only receives the user's text message",
+        "submit_cash_back_dispute_0589 output: auto_resolve true -> \"Status: RESOLVED - The dispute has been reviewed and approved\"; false -> \"Status: SUBMITTED - Your dispute has been queued for review.\" (visible to the user simulator only)",
+        "task_028 Phase 2 and task_029 Phase 2 use the same user line: \"Great, I've submitted all the disputes. I just got a notification that they've all been approved and resolved! Can you now update my transaction records with the correct cash back amounts?\"",
+        "task_028 initial_state task_config.dispute_settings.auto_resolve_disputes = true; task_029 = false"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "An agent that takes the customer's word (the only evidence available, and doc_004 says that after resolution 'you must update') applies six update_transaction_rewards_3847 writes and fails. The gold's intended behavior is to verify status and refuse. Verification is impossible, so the agent can only reach the gold by refusing blindly, and that same refusal fails task_028.",
+      "suggested_fix": "Add an always-available or discoverable agent read tool for cash_back_disputes (which doc_004 already assumes exists) and document it, so the agent can see RESOLVED vs SUBMITTED. Alternatively, have the dispute tool's agent-visible output carry the status."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding policy and the 1%-equals-1-point-per-dollar conversion are documented only in doc_007, and doc_007 is missing from this task's required_documents (task_028 lists it). Under the golden_retrieval variant, which inlines only required_documents and has no search tool, the rounding convention that decides which transactions to dispute is absent.",
+      "evidence": [
+        "task_029.required_documents omits \"doc_credit_cards_credit_cards_(general)_007\"; task_028.required_documents includes it",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number.\"",
+        "Recomputation over 890389b165's 47 transactions: floor -> exactly the 6 gold disputes; round-half-up -> 28 mismatches (22 extra off-by-one rows)"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "why_it_matters": "Only under golden_retrieval: an agent that rounds half-up would dispute 22 extra transactions. The seed data's consistent truncation still points to floor, and with any search-enabled retrieval variant doc_007 is retrievable, so normal configurations are unaffected.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to task_029.required_documents."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Some load-bearing reward-rate docs have values in the wrong format. EcoCard earn rates are written as dollar amounts of points, and the rounding-policy worked example has a garbled middle step. The final numbers are still recoverable (5 points/$ green, 1 point/$ otherwise; floor of amount x rate%), so the correct final state does not change.",
+      "evidence": [
+        "doc_credit_cards_ecocard_002: \"Green purchases: Earn $5.00 sustainability points per dollar spent\" / \"A $100 purchase at a qualifying green merchant earns 100 × $5.00 points.\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar, giving 126 points\" (intermediate step is incoherent, conclusion 126 is right)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "A careless reader could misread the EcoCard rate or the points-per-percent conversion, but both resolve from the examples and the seed data. No change to the gold state.",
+      "suggested_fix": "Write the EcoCard rates as \"5 points per $1\" and \"1 point per $1\"; fix doc_007's example to \"126.77 × 1 point per $1 = 126.77 -> 126 points\"."
+    }
+  ],
+  "solution_check": "Phase 1 reconstructs exactly as in task_028: floor-rounded recomputation flags the same six transactions, which match gold[2..7]. Phase 2 with auto_resolve_disputes=false leaves every dispute SUBMITTED, so the gold correctly contains no update calls. The final state is reachable only if the agent refuses an unverifiable claim.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major for 'unwritten round-down rounding' does not hold: doc_007 documents floor rounding (only its absence from required_documents remains, as a Minor golden_retrieval gap). The task is still Major, but for a different reason: dispute status cannot be verified.",
+  "notes": "Without step 4 of task_028, the user here has no instruction to insist on disputing the overpaid txn_e647e242ce96 if the agent advises against it. The customer's goal ('fix any errors') and doc_003 still support disputing it, so I left it out of issues. An agent that unlocks update_transaction_rewards_3847 but never calls it is fine, because unlocking is not written to the DB."
+}

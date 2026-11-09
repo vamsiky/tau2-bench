@@ -1,0 +1,37 @@
+{
+  "task_id": "task_080",
+  "severity": "Major",
+  "headline": "The provisional-credit rule for the third credit-card fraud dispute is ambiguous, and the gold contradicts the task author's own stated intent, so whether a careful agent passes depends on how it counts disputes.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The credit-card provisional-credit rule 'has not filed more than 2 disputes in the past 12 months' can be read two ways for the third dispute filed in the same call. The gold marks all three disputes eligible. The task's own author notes say the third ($149.95) must be ineligible, and the user script is built around that limit.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "description.notes: \"Rule is \\u22642 disputes eligible for provisional credit... txn_39c2ddb4e1d2 ($149.95) does NOT get provisional credit (eligible_for_provisional_credit: false)\"",
+        "gold[31].arguments: txn_39c2ddb4e1d2 ... \"eligible_for_provisional_credit\": true",
+        "user_scenario: \"If there's any limit on how many disputes can get provisional credit, I'd like it applied to the biggest charges first\"",
+        "get_user_dispute_history_7291(tm92c4d7e8) returns no prior disputes; transaction_disputes.provisional_credit_given mirrors eligible_for_provisional_credit, so the flag is hashed"
+      ],
+      "gold_action_refs": [
+        29,
+        30,
+        31
+      ],
+      "why_it_matters": "An agent that counts the two disputes it has just filed, as the author did, writes eligible=false on the $149.95 EcoCard dispute and fails the DB hash. An agent that counts only disputes filed before this call passes. Both readings fit the rule text, and the scenario steers toward the first.",
+      "suggested_fix": "Make criterion 4 explicit, e.g. 'count only disputes filed before today's call' (keeps the gold), or change gold txn_39c2ddb4e1d2 to false and reword the rule as 'at most 2 disputes per 12 months may receive provisional credit, including disputes filed today'. Then align description.notes with whichever is chosen."
+    }
+  ],
+  "solution_check": "Reconstructed the debit side: freeze all three cards (the customer is unsure, 'I think my wallet was just stolen', so freezing fits doc_..._026), unfreeze the Green card the customer finds, check transactions (none pending), unfreeze then close Blue and GFF as 'stolen'. Order Blue (MID) EXPEDITED 15 / CLASSIC 0; GFF is ENTRY with a 48-hour wait, so no order. Replace both credit cards as 'stolen' with expedited_shipping=true. File three unauthorized_fraudulent_charge disputes with card_action cancel_and_reissue (doc_..._014), then activate the new Blue card with activate_debit_card_8292 (issue_reason 'stolen'; generated card dbc_afdc39c0e904 has last4 7648, which matches the script). Everything matches the gold except the eligibility flag on the third dispute, which depends on the reading above.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The contradiction between the gold and description.notes on provisional credit was not reported.",
+  "notes": "The gold has always had eligible=true on all three disputes (git history of the task file); only the notes say otherwise. Doc_015's other criteria pass for all three: accounts are older than 60 days, the reason is fraud, and the amounts are between $25 and the tier caps. The v1.0.1 reads added (get_all_user_accounts_by_user_id_3847 and get_debit_cards_by_account_id_7823 on three accounts) are reads any agent must make. get_user_dispute_history_7291 is gold-required and supported by doc_015 criterion 4. The freeze, unfreeze and close sequence is enforced by close_debit_card_4721, which rejects FROZEN cards."
+}

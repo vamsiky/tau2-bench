@@ -1,0 +1,17 @@
+{
+  "task_id": "task_004",
+  "severity": "None",
+  "headline": "Clean: the caller matches only one of four identity fields, so he cannot be verified, and the transfer-code table names identity-verification failures under account_ownership_dispute.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "db.json users[6680a37184]: email \"kenji.tanaka@outlook.com\", phone \"206-555-0293\". The caller gives the gmail address (mismatch) and the phone (match) and withholds DOB and address, so 1 of 4 fields match; the policy needs 2, so the email change cannot proceed. When he demands a human, doc_bank_accounts_bank_accounts_(general)_042 Tier 1 lists account_ownership_dispute for \"Ownership disputes, joint account issues, or identity verification failures requiring specialist\", which outranks Tier 3 customer_frustrated_demands_human. Matches gold (ACTION, compare_args=[reason]).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean and still holds.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. Another Tier 1 code, fraud_or_security_concern (\"security concerns requiring specialist handling\"), could tempt an agent that reads the case as attempted account takeover, but only account_ownership_dispute names verification failure literally. ACTION grading ignores extra calls, so a stray earlier transfer with another reason does not hurt as long as one call uses account_ownership_dispute."
+}

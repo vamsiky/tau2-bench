@@ -1,0 +1,35 @@
+{
+  "task_id": "task_056",
+  "severity": "Major",
+  "headline": "The business-savings procedure tells the agent to open the account with account_type 'savings', but the gold uses 'business_savings'; following the document creates a differently keyed personal savings account and fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_(general)_004, the internal procedure for opening business savings, says to call open_bank_account_4821 with account_type 'savings'. The tool's own description reserves 'savings' for personal savings and lists 'business_savings'. The gold follows the tool description.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004 (Tool: open_bank_account_4821 > How to call): \"Set account_type to 'savings'.\"",
+        "tools.py open_bank_account_4821 docstring (shown on unlock): \"Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "gold[5].arguments: {\"account_type\": \"business_savings\", \"account_class\": \"Silver Plus Saver Account\"}",
+        "Replay with account_type 'savings': tool returns \"Bank account opened successfully! Account ID: 3e54498f671ab53f ... Account Type: savings\" (personal-savings eligibility passes via Green checking chk_b5e8f2a1c9, opened 09/10/2023); after transferring $3,200 to it, _verified_db_match False, \"table 'accounts' differs\""
+      ],
+      "gold_action_refs": [
+        5,
+        7
+      ],
+      "why_it_matters": "The account_id is derived from user_id:account_type:account_class. An agent that follows the internal procedure verbatim opens a personal-type account with a different ID and funds that account, and the agent gets no error to correct from, so a careful document-following agent fails.",
+      "suggested_fix": "Change doc_(general)_004 to \"Set account_type to 'business_savings'\" (it also says \"Returns a new savings account record\")."
+    }
+  ],
+  "solution_check": "Business checking: tabulated all eight products. $0 overdraft fee rules out True Blue ($25) and World Blue ($30). A fee under $50 rules out Beige ($200). ATM rebates of at least $15 rule out Navy Blue ($10). A waiver at $3-5k rules out Lime Green ($15,000) and Sky Blue (no balance waiver; $25 after 6 months). General debit cashback rules out Hunter Green (2% only at certified eco vendors, $5,000 waiver). That leaves Cobalt Blue ($0 overdraft, $20 fee waived at $2,500, $15 rebates, 1.0% debit cashback). Business savings: same-day ACH rules out Bronze Saver and Silver Saver (\"No\"), a minimum under $25k rules out Gold Plus Saver ($25,000), Platinum Reserve ($100,000) and Diamond Vault ($500,000), and Gold Saver lists no withdrawal allowance and no multi-product relationship bonus. Silver Plus Saver ($5,000 minimum, 20 free withdrawals, same-day ACH, 0.025% multi-product bonus) fits. Funding 3200 from Navy Blue biz_chk_b5e8f2a1c9 (opened 08/01/2025, $3,200) matches the gold apart from the account_type conflict above.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this clean; the account_type contradiction in the business-savings procedure was not reported.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). The November 2025 promotions (general_013 for checking: Sky Blue then Lime Green; general_015 for savings: Gold Saver then Silver Plus Saver) apply only when several accounts meet all requirements and do not change the answers above. Class strings: general_003 lists business checking classes without a suffix (\"Navy Blue, Cobalt Blue, True Blue\"), matching gold 'Cobalt Blue' and the seed DB; general_004 asks for business savings names \"ending with 'Account'\", matching 'Silver Plus Saver Account'. Gold Saver could be read as lacking a stated withdrawal cap rather than having none, but it also has no multi-product bonus, so it still fails the customer's criterion 4. The customer says \"Move it all over\" ($3,200), so the transfer amount is stated. The notes' criterion list omits Gold Plus Saver, which its $25,000 minimum excludes anyway."
+}

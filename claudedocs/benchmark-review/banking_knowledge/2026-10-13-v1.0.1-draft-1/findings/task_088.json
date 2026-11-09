@@ -1,0 +1,50 @@
+{
+  "task_id": "task_088",
+  "severity": "Major",
+  "headline": "The decline diagnosis can be worked out, but the chip-error procedure says to freeze the compromised card while the official answer closes it, and one recorded dispute detail is never given by the customer.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The CODE 82 procedure ends with 'Recommend freezing the card until a replacement arrives'. Gold closes the Evergreen card (fraud_suspected) and orders a replacement, following doc 031's card_present_fraud → close_and_reissue mapping.",
+      "evidence": [
+        "doc_checking_accounts_purple_account_007 CODE 82: \"If suspicious transactions found: Follow stolen card protocol to assist the customer. - Recommend freezing the card until a replacement arrives.\"",
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_present_fraud' → 'close_and_reissue'\"",
+        "gold[12] close_debit_card_4721 dbc_c8feebe975cf fraud_suspected; gold[14] order_debit_card_5739 chk_cec8333d41_evergreen",
+        "instructions step 21: \"If agent says they'll freeze the card: 'Okay, if that's what needs to happen.'\""
+      ],
+      "gold_action_refs": [
+        12,
+        14
+      ],
+      "why_it_matters": "An agent that follows the scenario-specific CODE 82 text (freeze, then order) leaves the old card FROZEN rather than CLOSED. Because no closed card exists, the new card's issue_reason becomes 'first_card' instead of 'fraud'. The DB differs from gold.",
+      "suggested_fix": "Change the CODE 82 text to 'close the card and order a replacement' to match doc 031, or accept either path by not grading the old card's terminal status."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The disputed ELECTRO MART MIAMI charge's transaction_type (gold 'signature_purchase') and pin_compromised (gold 'no') are never covered by the customer script, and the description does not show them. Signature can be inferred (cloned card plus uncompromised PIN), but only if the agent first gets 'no' for the PIN, which the simulator may not say.",
+      "evidence": [
+        "initial_state btxn_28eee7145c29 description \"ELECTRO MART MIAMI FL\", type \"debit_card_purchase\"",
+        "gold[10] \"transaction_type\": \"signature_purchase\", \"pin_compromised\": \"no\"",
+        "doc_..._031: \"9. transaction_type (string) - Determine from user circumstances.\" (the script has no line on how the Miami charge was made or on the PIN)"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "pin_purchase or 'unknown' are equally plausible, and either changes the stored dispute.",
+      "suggested_fix": "Add customer lines such as 'I've never shared my PIN' and 'the alert said it was a signed purchase'."
+    }
+  ],
+  "solution_check": "Independently: Green card is ACTIVE; the $3,000 mobile deposit has a $2,800 hold, so available funds are short (CODE 51), which is informational only. Evergreen card is ACTIVE with chip_verification_failures=3 and undamaged, so per CODE 82 review transactions: the Miami charge is disowned, so file card_present_fraud (provisional true, liability $50, discovered today), close the card and reorder STANDARD/CLASSIC per the customer. Blue card is CANCELLED, reported stolen by 'unknown_caller', and the customer denies reporting it, so per CODE 43 transfer to security (not DB-graded). This matches gold apart from the freeze-vs-close conflict and the unscripted transaction details.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor (guidelines doc not listed; soft liability). The guidelines point is not a defect, since the doc is retrievable. The CODE 82 freeze/close conflict and the unscripted transaction type are newly reported and raise the task to Major.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Gold replays without errors. transfer_to_human_agents (gold[16]) is not DB-graded. An agent that instead orders a Blue replacement is caught by the DB."
+}

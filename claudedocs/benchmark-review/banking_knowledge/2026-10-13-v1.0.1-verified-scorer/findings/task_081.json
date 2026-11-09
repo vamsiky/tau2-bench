@@ -1,0 +1,74 @@
+{
+  "task_id": "task_081",
+  "severity": "Major",
+  "headline": "Same scenario and same provisional-credit mismatch as task_080, and the \"transfer only on the fourth request\" behavior the task is built to test is not graded.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Major",
+      "summary": "Identical to task_080: gold sets eligible_for_provisional_credit true on the third dispute (txn_39c2ddb4e1d2), while the task notes inherited from 080 and the customer script assume a two-dispute limit.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "get_user_dispute_history_7291 (gold) returns \"No transaction disputes found for this user.\"",
+        "task notes: \"This is the exact same scenario as instance 080 (mega lost wallet with 3 debit cards, 2 credit cards, 3 fraud disputes)\"",
+        "user instructions step 14: \"If agent mentions a limit on provisional credit: ... I'd like it applied to the biggest charges first\"",
+        "gold[33] txn_39c2ddb4e1d2 \"eligible_for_provisional_credit\": true"
+      ],
+      "gold_action_refs": [
+        33
+      ],
+      "why_it_matters": "An agent that applies a two-dispute cap stores false on the third dispute and fails.",
+      "suggested_fix": "Same as task_080: align notes, script and gold on one reading of criterion 4."
+    },
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "transfer_to_human_agents writes nothing to the DB, so the gold's final transfer is not graded. An agent that refuses the fourth request scores the same as one that transfers. Early transfers are caught only indirectly, because the conversation ends before the customer's later request_human_agent_transfer rows are written.",
+      "evidence": [
+        "tools.py transfer_to_human_agents returns a string and performs no DB write",
+        "Replay: gold minus gold[36] transfer_to_human_agents -> VERIFIED MATCH True, EXACT HASH MATCH True",
+        "Replay: gold minus the fourth user request -> human_transfer_requests differs (transfer_request_4 missing)",
+        "policy_header.md rule 6: \"If the user asks for a human agent 4 times, then you may invoke the transfer_to_human_agents tool.\""
+      ],
+      "gold_action_refs": [
+        34,
+        35,
+        36
+      ],
+      "why_it_matters": "The behavior named in the task notes (\"agent should ... only transfer on the 4th request\") is half-tested: transferring too early fails, refusing on the fourth does not.",
+      "suggested_fix": "Add an ACTION or communicate check for transfer_to_human_agents, or log transfers to the DB."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "As in task_080, the closed Blue and Green Fee-Free cards carry frozen_date/unfrozen_date from the freeze.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "doc_bank_accounts_bank_accounts_(general)_026: \"CLOSE: Permanent deactivation - cannot be reversed. Use when card is confirmed lost/stolen\"",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\" (a FROZEN card must be unfrozen first)",
+        "freeze_debit_card_3892 writes card[\"frozen_date\"]; unfreeze_debit_card_3893 writes card[\"unfrozen_date\"]; both fields stay on the closed card in the gold DB"
+      ],
+      "gold_action_refs": [
+        10,
+        11,
+        18,
+        19,
+        21,
+        22
+      ],
+      "why_it_matters": "Low risk because the flow requires freezing all three, but a direct close would still fail.",
+      "suggested_fix": "Do not persist freeze/unfreeze timestamps on cards that end CLOSED."
+    }
+  ],
+  "solution_check": "Reconstructed as task_080 minus the activation step, plus four user-side request_human_agent_transfer rows (written by the simulated customer) and a transfer after the fourth request. Matches the gold apart from the eligibility reading discussed in issue 1; gold replays without errors.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the eligibility flag was unchanged in v1.0.1 and the transfer grading gap was not reported.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. The human_transfer_requests rows depend on the user simulator calling its tool exactly four times; a simulator that skips or repeats a call changes the table regardless of the agent (user-sim noise, not counted as a task defect)."
+}

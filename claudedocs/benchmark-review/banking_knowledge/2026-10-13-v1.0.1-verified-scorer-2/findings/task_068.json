@@ -1,0 +1,34 @@
+{
+  "task_id": "task_068",
+  "severity": "Major",
+  "headline": "The gold opens the Green checking account as \"Green Account\", but the checking-opening procedure gives \"Green Account (checking)\" as the example class name, so an agent following the procedure literally fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The internal procedure for opening personal checking accounts explicitly lists 'Green Account (checking)' as a valid account_class; the gold uses \"Green Account\". The class string is hashed into the account id, so the two readings produce different accounts records.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"MID TIER (Blue Account, Green Account (checking))\"",
+        "gold[3].arguments = {\"account_type\": \"checking\", \"account_class\": \"Green Account\"}",
+        "replay: \"Green Account (checking)\" -> verified match False, \"table 'accounts' differs\""
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "The procedure doc the agent must follow to open a checking account gives the parenthesised form as the example; an agent that copies it creates account id hash of \"account:rp65a7b3c4:checking:Green Account (checking)\" and fails.",
+      "suggested_fix": "Change the example in doc_001 to a name without a qualifier (or state that the qualifier is dropped), or accept both spellings in the tool."
+    }
+  ],
+  "solution_check": "With Rho-Bank+ = No, travel insurance documented only for Silver Rewards (doc_credit_cards_silver_rewards_card_005), early direct deposit excluding Green Fee-Free (0 days), and age 34 excluding Gold Years (62+): Gold (5.5%) + Green checking (+0.75%) + Silver Rewards (+0.2%) = 6.45%. Alternatives: Gold Plus 6.0% + Silver Rewards 0.1% with no eligible pairing = 6.1%; Silver tier 2 4.0%+0.1%+0.025% = 4.125%; Green savings 5.0%; Platinum needs $50k. Combination matches the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated the task clean; the combination still checks out, the new finding is the account_class contradiction.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Gold does not call get_all_user_accounts_by_user_id_3847, so the agent's eligibility read is not logged (replay confirms extra reads match). closure_reason relaxation applies if the agent passes a reason. Sibling task_066 has the same naming risk for \"Green Account\" savings (rated Minor there because doc_002, the savings procedure, gives no contradicting example)."
+}

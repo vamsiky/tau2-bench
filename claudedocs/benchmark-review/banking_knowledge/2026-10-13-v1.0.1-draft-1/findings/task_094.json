@@ -1,0 +1,36 @@
+{
+  "task_id": "task_094",
+  "severity": "Minor",
+  "headline": "The interest correction ($140, 6.85% expected APY) is reachable, but one document mislabels a small card bonus and contains a wrong example total.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Gold Rewards Card's +0.025% is described both as a credit-card APY bonus (doc_014, doc_045) and as a separate 'relationship bonus APY on top of the base rate' (doc_013); doc_045 also says card bonuses stack with relationship bonuses. doc_013's own example total is corrupted (5.5% + 0.025% shown as 6.0%).",
+      "why_it_matters": "An agent that treats the 0.025% as a separate relationship bonus adds it on top. doc_045's worked example uses exactly this customer's card set (Gold Rewards, Platinum, EcoCard) and grants only EcoCard's +0.6%, which resolves it toward the gold, so a careful agent reaches the gold.",
+      "suggested_fix": "Rename doc_013's 0.025% as the Gold Rewards Card credit-card bonus (subject to the highest-only rule) and fix the example total to 5.525%.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"you receive a 0.025% relationship bonus APY on top of the base 5.5% rate\" and \"Total APY with the bonus: 6.0%\"",
+        "doc_savings_accounts_gold_account_014: \"| Gold Rewards Card | +0.025% |\"",
+        "doc_bank_accounts_bank_accounts_(general)_045: \"If a customer holds: Gold Rewards Card: +0.025% ... Platinum Rewards Card: +0.15% ... EcoCard: +0.6% ... The customer receives only the EcoCard bonus of +0.6%\"",
+        "doc_045: \"credit card APY bonuses DO stack with ... Relationship bonuses for holding multiple Rho-Bank products\"",
+        "gold[8].arguments.expected_apy = 6.85"
+      ],
+      "gold_action_refs": [
+        6,
+        8
+      ]
+    }
+  ],
+  "solution_check": "Actual APY = $408 x 12 / $96,000 = 5.10%. Expected = 5.5 base (gold_001/002) + 0.75 Green checking boost (green_account_(checking)_001) + 0.6 EcoCard (highest card bonus per doc_014/doc_045) = 6.85%. 96,000 x 6.85% / 12 = $548, minus $408 = $140.00. Matches gold[6] and gold[8].",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Minor for the same doubly described +0.025% bonus; it persists unchanged and this review adds the corrupted '6.0%' example total.",
+  "notes": "If the 0.025% were stacked separately the result would be 6.875% and a $142.00 credit. The customer's mistaken beliefs (5.0% base, 1.0% boost) are corrected by docs."
+}

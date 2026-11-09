@@ -1,0 +1,50 @@
+{
+  "task_id": "task_068",
+  "severity": "Blocker",
+  "headline": "The right products are derivable, but the knowledge base's own example spells the checking account's name differently from the gold, and the grade checks that name exactly.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Blocker",
+      "summary": "The procedure for opening personal checking accounts gives 'Green Account (checking)' as its example account_class, which is the exact product this task opens. The gold persists 'Green Account'. The open tool hashes and stores account_class verbatim, so following the document's example produces a different account record.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "gold[3].arguments.arguments account_class = \"Green Account\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"; no validation of account_class",
+        "Replay: account_class \"Green Account (checking)\" -> account_id 662d6d08711816cc (gold's differs) -> DB hash mismatch"
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "One sentence states both a rule ('ending with Account') and an example that breaks it for this very product. A careful agent that copies the documented example opens the right account and fails the task; whether it passes comes down to which half of that sentence it follows.",
+      "suggested_fix": "Change doc_001's example to 'Green Account', or validate and canonicalize account_class inside open_bank_account_4821."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 writes its free-text `reason` argument into the account record as `closure_reason`, and the gold closes the account without passing a reason, so only the tool default \"Customer requested closure\" matches. No document says what reason to record, or to leave it out.",
+      "evidence": [
+        "tools.py close_bank_account_7392: signature `reason: str = \"Customer requested closure\"`; on success `account[\"closure_reason\"] = reason`",
+        "gold[6].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"## Closure Procedure 1. Verify pre-closure requirements are met. 2. Determine the account tier and applicable fees/notice period. 3. Use close_bank_account_7392 to close the account.\" (no reason guidance)",
+        "Replay in snapshot: gold with the close call given reason \"Customer upgrading to a new checking account\" -> agent DB hash != gold DB hash"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "The customer gives an explicit reason (swapping the basic Light Blue for a better account), and the unlocked tool schema shows an optional `reason` parameter. An agent that records that reason closes the right account with the right fee handling but fails the exact DB-hash match.",
+      "suggested_fix": "Exclude `closure_reason` from the hashed state, or make the KB prescribe a fixed reason string (or remove the parameter) so the persisted value is derivable."
+    }
+  ],
+  "solution_check": "At $25,000 with three constraints (travel insurance on the card, early direct deposit, age 34): Silver Rewards is the only personal card that documents travel insurance (doc_credit_cards_silver_rewards_card_005), so EcoCard (+0.6% on Gold) is out. Gold Plus 6.0% can be boosted only by Gold Years (age 62+) or Green Fee-Free (+0.35%, but 0 days early deposit). Gold Plus + Green Fee-Free + Silver Rewards would also reach 6.45%, but the early-deposit requirement rules it out. Gold 5.5% + Green checking (+0.75%, up to 1 day early) + Silver Rewards (+0.2%) = 6.45%, unique among combinations that satisfy every constraint. This matches the gold products. Gold replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. It did not flag the account_class conflict with doc_001's example or the free-text closure_reason, which upstream exact-hash grading compares.",
+  "notes": "This gold omits get_all_user_accounts_by_user_id_3847, so that read is not allowlisted and an agent calling it does not affect the hash. The same doc_001 example issue affects any task that opens a 'Green Account' checking account; task_055 is outside this batch."
+}

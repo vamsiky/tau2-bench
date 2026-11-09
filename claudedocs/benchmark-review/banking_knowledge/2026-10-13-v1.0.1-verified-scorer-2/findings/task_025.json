@@ -1,0 +1,36 @@
+{
+  "task_id": "task_025",
+  "severity": "Major",
+  "headline": "Which card pays most on a $100,000 Apple Music purchase depends on whether Apple Music is an excluded 'Apple' merchant on one card and qualifying 'software/media' spend on another. Neither point is spelled out, and different readings pick different winners.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Gold = Business Platinum at 4% ($4,000). That requires two judgments at once: Apple Music is caught by Business Silver's 'Apple' exclusion (otherwise Silver pays 10% = $10,000, or $20,000 with its 2x promo), and Apple Music counts as software or media on Platinum (otherwise Platinum pays 1.5% = $1,500). In the second case Silver Zoom's triple promo (3% = $3,000) or Business Gold's operations rate (2.5% = $2,500) would beat Platinum.",
+      "evidence": [
+        "doc_business_credit_cards_business_silver_rewards_card_005: \"Hardware/Electronics Merchants (Software Exclusion): - Apple - Microsoft - Dell\"",
+        "doc_business_credit_cards_business_platinum_rewards_card_002: \"Travel, software, and media advertising purchases earn 4.0%\"; _003 lists only advertising/media-placement purchases",
+        "doc_credit_cards_credit_cards_(general)_005: \"Media (advertising spend, streaming services)\" vs doc_credit_cards_credit_cards_(general)_019: \"Entertainment: Movies, concerts, sporting events, and streaming services\"",
+        "doc_business_credit_cards_silver_zoom_card_012: \"You must claim the promotion within the window starting 2024-01-01 and ending 2025-12-31\" / \"The triple cash back earning period lasts 9 months from account opening once properly claimed\" / \"All other eligible purchases earn 3 × 1.0% during the promo period\"",
+        "doc_business_credit_cards_business_gold_rewards_card_003: \"Cloud services and software subscriptions used for day-to-day operations\" earn 2.5%",
+        "gold[0] apply_for_credit_card card_type = \"Business Platinum Rewards Card\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "The customer applies for the single card the agent recommends, so the credit_card_applications row records the agent's reading. One reasonable reading gives Business Silver ($10,000+), another gives Silver Zoom or Business Gold, and only the specific pair of readings the gold assumes gives Business Platinum.",
+      "suggested_fix": "Name 'Apple Music' (or 'all Apple services') in the Business Silver exclusion list, and state in the Business Platinum docs that enterprise streaming/media subscriptions earn 4%. Alternatively, use a purchase that clearly falls in Platinum's software category."
+    }
+  ],
+  "solution_check": "Reproduced the gold path: Silver's Apple exclusion gives 1% ($1,000, or $2,000 with the 2x promo), and Platinum media/software gives 4% ($4,000), which beats Bronze ($1,000 + $500), Silver Zoom ($3,000), and Gold ($2,500). Under the alternative readings, Silver ($10,000) or Silver Zoom ($3,000) wins instead. The gold replay matches itself.",
+  "prior_status": "persists",
+  "prior_note": "Same Major as the prior review (Apple Music categorization flips the winner), extended with the Silver Zoom triple promo and the Business Gold operations rate as further winners when Platinum's 4% does not apply.",
+  "notes": "Elsewhere the benchmark seeds 'Microsoft 365' on Business Silver as excluded under 'Microsoft' (task_020 txn_a8f1c2d3e404), which supports the gold's exclusion mapping by analogy, but the agent cannot know that convention from the documents. No relaxed comparison in the verified scorer applies."
+}

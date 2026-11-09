@@ -1,0 +1,35 @@
+{
+  "task_id": "task_014",
+  "severity": "Blocker",
+  "headline": "The gold requires a transfer to a human, but the knowledge base's own referral-link procedure says that when a card has no documented referral program the agent should explain and 'Do not transfer to a human'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Blocker",
+      "summary": "The referral-link procedure doc forbids transferring when a card has no documented referral program, which is exactly the Crypto-Cash Back situation here. The transfer-code table and the gold both treat transfer as the required action.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_009: \"If no referral program is documented for the requested card, or if the user’s claimed terms are incorrect, or if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool. Do not transfer to a human in these cases.\"",
+        "No Crypto-Cash Back referral document exists: grep -il referral over doc_credit_cards_crypto* returns nothing (crypto docs 001-009 cover rewards, wallets, conversion, tax, FAQ)",
+        "doc_bank_accounts_bank_accounts_(general)_042 (Tier 2): \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
+        "policy_header.md guideline 5: \"Do not transfer without asking the user first. This guidance may be overridden by specific scenario-based transfer guidance in the knowledge base.\"",
+        "gold[0] = transfer_to_human_agents(reason 'unconfirmed_external_communication'), compare_args ['reason'], reward_basis ['ACTION']; required_documents omits general_009"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "The customer is asking how to get a referral link, so general_009 ('Generating a Credit Card Referral Link (Internal)') is the procedure a competent agent will retrieve, and it explicitly forbids the transfer. The policy says scenario-specific KB transfer guidance overrides the general transfer rules. An agent that follows it explains and does not transfer, and the customer never demands one (she only accepts one if offered), so the only gold action is never made and the ACTION reward is 0. Passing depends on the agent missing or overriding general_009.",
+      "suggested_fix": "Either change general_009 to carve out claims backed by an official communication (e.g. 'If the customer cites an official Rho-Bank letter/email for a program you cannot find, offer a transfer with reason unconfirmed_external_communication'), or change the task's gold to the no-transfer outcome and grade it on communicated information."
+    }
+  ],
+  "solution_check": "Reconstruction: verification is unnecessary because no account data is needed. Searching shows no Crypto-Cash Back referral program (documented referral programs exist for Platinum, Silver, EcoCard and several business cards), so per general_009 the agent explains the program is not documented, does not provide get_referral_link, and does not transfer. The gold instead transfers with unconfirmed_external_communication, which follows 042 alone. The materials point to opposite actions, and the most specific instruction contradicts the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior verdict was None. The general_009 'Do not transfer' rule is not in the task's required_documents, which may be why it was missed; the conflict does not depend on the scorer.",
+  "notes": "The same Crypto-Cash Back letter claim opens task_015, where 009's no-transfer handling is what lets the customer move on to the Platinum card. An agent cannot satisfy both tasks with one consistent policy. Tier-1 'customer_demands_after_unavailable_offer_refusal' does not apply because the customer never demands a human. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

@@ -1,0 +1,51 @@
+{
+  "task_id": "task_072",
+  "severity": "Minor",
+  "headline": "Both refund amounts can be rebuilt exactly from the documents, but they rely on fee rows dated after 'today' and on assuming the bank's own ATM fee gets rebated.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The seeded transaction history includes 'posted' ATM fees dated after the fixed clock (2025-11-14 03:40), and the gold credit includes discrepancies on those future-dated rows. Including them, as the gold does, is the natural reading of 'review my November fees', but an agent that excludes transactions dated after today gets a different amount.",
+      "evidence": [
+        "utils.py get_now() = datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"2025-11-14 03:40:00 EST\"",
+        "db.json btxn_fcd7ef3a24ed (chk_lj82d4f1a9) date 11/20/2025 amount -2.5 \"NON-RHO ATM FEE\" status posted (gold counts $0.50 overcharge)",
+        "db.json btxn_49c0c0b3b8c1 (chk_538bfb9cba) date 11/15/2025 amount -4.0 \"FOREIGN ATM FEE - 2% OF WITHDRAWAL (MIN $3.00)\" on a $200 withdrawal (gold counts $0.50 overcharge vs $3.50 tier 2)",
+        "Excluding post-clock rows: Bluest $13.50 and Light Green $3.00 instead of gold $14.00 / $3.50"
+      ],
+      "gold_action_refs": [
+        7,
+        8
+      ],
+      "why_it_matters": "Most agents take posted rows at face value and match the gold. A careful agent that notices the dates are in the future, or scopes the review to 'through today', credits a different amount and fails the exact-hash match.",
+      "suggested_fix": "Re-date the post-clock rows to on or before 11/14/2025, or move the fixed clock past the last seeded transaction."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Bluest $14.00 includes a $2.00 'missing rebate' for the bank's own out-of-network fee on 11/14. One Bluest doc limits rebates to third-party ATM fees, another describes rebates of 'ATM fees' generally, and the seeded data rebates the bank's own $2.00 fee on every other withdrawal.",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_003: \"When you incur third-party ATM fees, you are rebated up to $50 per monthly statement cycle.\"",
+        "doc_checking_accounts_bluest_account_007: \"You are eligible for ATM fee rebates up to $50 per month... If your aggregate ATM fees exceed $50\"",
+        "db.json chk_lj82d4f1a9: 11/02, 11/05, 11/10, 11/18 each have NON-RHO ATM FEE -2.00 followed by ATM FEE REBATE +2.00; 11/14 btxn_63306834d5ba -2.00 has no rebate",
+        "gold[7] amount 14.00 = 8.00 + 3.50 + 2.00 + 0.50"
+      ],
+      "gold_action_refs": [
+        7
+      ],
+      "why_it_matters": "The data pattern and doc_007's general wording support crediting the $2.00, so most agents will match the gold. An agent reading doc_003 literally (the bank's fee is not a third-party fee) would credit $12.00.",
+      "suggested_fix": "State in the Bluest docs that the rebate covers Rho-Bank's own out-of-network fee."
+    }
+  ],
+  "solution_check": "Bluest (OON $2.00, rebated; foreign $0.00): 11/08 London $8.00 and 11/12 Tokyo $3.50 should be $0 (+11.50); 11/14 missing $2.00 rebate (+2.00); 11/20 fee charged $2.50 instead of $2.00 (+0.50). Total $14.00. Light Green (4 free domestic OON then $1.50; foreign flat tiers $2.00/$3.50/$5.00 at <=100/<=300/>300): 3rd domestic (11/05) charged $1.50 (+1.50); 5th domestic (11/09) not charged (-1.50); 11/13 $80 charged $5.00 vs $2.00 (+3.00); 11/15 $200 charged $4.00 vs $3.50 (+0.50). Net $3.50 under doc_017's mandated 'net correction'. Both amounts match the gold, and fee_refund is the majority type per doc_017's single-credit rule. Using rebate_credit for Bluest breaks the hash (verified by replay).",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor ('fiddly netting') is not a defect, because doc_017 explicitly requires netting. The remaining Minor issues are different: post-clock rows and the scope of the rebate.",
+  "notes": "v1.0.1 scrubbed the 'AFTER FREE ALLOWANCE' annotation on btxn_ecb58d7474a2 (description only, no grading impact). Light Green's documented $150 daily ATM limit conflicts with the seeded $200/$350 withdrawals (cosmetic, does not affect fees)."
+}

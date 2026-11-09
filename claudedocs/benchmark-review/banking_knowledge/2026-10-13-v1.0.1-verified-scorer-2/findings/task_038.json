@@ -1,0 +1,33 @@
+{
+  "task_id": "task_038",
+  "severity": "Minor",
+  "headline": "The three Amazon disputes and the card replacement are determined, but the script never says whether the customer wants paid expedited shipping, which the gold records as yes.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The gold replacement order has expedited_shipping true, but the script has no expedited-shipping step: numbering skips from 6 to 8, and tasks 036/037 say 'If offered expedited shipping, accept it'. The Silver card's expedited fee is $10.",
+      "evidence": [
+        "gold[4] order_replacement_credit_card_7291 arguments: \"expedited_shipping\": true",
+        "doc_credit_cards_credit_card_replacements_001: \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\" and \"Mid-tier (Silver Rewards, ...): $10.00\"",
+        "Replay with expedited_shipping false -> verified match False: table 'credit_card_orders' differs"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "If the simulated customer turns down the $10 fee, the agent's correct order differs from the gold. The docs' strong recommendation for fraud matches the gold, so most runs land there.",
+      "suggested_fix": "Add the 036/037 line 'If offered expedited shipping, accept it' to this script."
+    }
+  ],
+  "solution_check": "Of the five Silver Amazon charges, the customer identifies three: $89.99 on 10/05 (fraud; contacted false; eligible true), $124.50 on 10/08 (not as described; contacted true; ineligible by reason), and $89.99 on 10/10 (duplicate; contacted false; ineligible under doc_015 criterion 5, which requires merchant contact for non-fraud disputes). Doc_015's 'not filed more than 2' cap is never reached, even counting in-session filings, because the third filing has only 2 prior. The replacement goes to the work address with fraud_suspected, and card_action is cancel_and_reissue. This matches the gold, which replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The unstated expedited choice is Minor under the calibration rule for unscripted customer choices whose doc default matches the gold.",
+  "notes": "Author notes call the duplicate charge 'eligible', but the gold correctly sets it false because contacted_merchant is false (doc_015: 'For non-fraud disputes: customer did not contact merchant first'). The agent never sees the notes. The customer calls the 10/10 charge a 'DUPLICATE charge' but also 'clearly their system error or fraud'. Doc_014 says to have the customer choose the reason, and the script's label supports duplicate_charge. An agent that files it as unauthorized_fraudulent_charge (eligible true) would fail. card_last_4_digits as an integer is stored as 5320.0 and fails, so it must be passed as a string per doc_014."
+}

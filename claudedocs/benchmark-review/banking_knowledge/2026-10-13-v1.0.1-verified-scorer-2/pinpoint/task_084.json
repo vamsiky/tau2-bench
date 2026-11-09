@@ -1,0 +1,143 @@
+{
+  "task_id": "task_084",
+  "severity": "Blocker",
+  "reason": "Gold caps liability at the disputed amount for TechWorld (412.88, step 14) but not the $47.50 duplicate (50, step 12); no rule gives both.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Liability capped at disputed amount only sometimes",
+      "kind": "gold_value_wrong",
+      "step": 14,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_c2g7f43h6g89",
+          "dispute_category": "card_present_fraud",
+          "transaction_date": "10/05/2025",
+          "discovery_date": "11/14/2025",
+          "disputed_amount": 412.88,
+          "customer_max_liability_amount": 412.88,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_fbc04e705365\nTransaction: btxn_c2g7f43h6g89\n...\nDisputed Amount: $412.88\nCard Action: Close And Reissue"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_c2g7f43h6g89",
+          "customer_max_liability_amount": 500,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_fbc04e705365\nTransaction: btxn_c2g7f43h6g89\n...\nDisputed Amount: $412.88\nCard Action: Close And Reissue",
+        "note": "Uses the doc's $500 tier uncapped, as gold step 12 does (50 on a $47.50 charge) and as description.notes says. Capping everywhere instead (step 12 → 47.5) also fails: debit_card_disputes[dsp_f0b84f2935a6].customer_max_liability_amount gold 50.0 vs 47.5."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_031",
+          "quote": "- Reported within 2 business days of statement: Maximum liability $50\n- Reported within 60 days of statement: Maximum liability $500"
+        },
+        {
+          "source": "task:description.notes",
+          "quote": "(4) Late reporting with Tier 2 $500 liability"
+        },
+        {
+          "source": "tool:file_debit_card_transaction_dispute_6281",
+          "quote": "customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability."
+        }
+      ],
+      "conflict": "Gold step 14: min(500, 412.88) = 412.88; gold step 12: 50 on $47.50 (uncapped). Doc _031 tier gives 500; notes say 500.",
+      "scorer": {
+        "field": "debit_card_disputes[dsp_fbc04e705365].customer_max_liability_amount: gold 412.88 vs agent 500.0",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "n/a"
+      }
+    },
+    {
+      "issue": 2,
+      "severity": "Major",
+      "title": "Same-date duplicates: 'first' vs earliest is ambiguous",
+      "kind": "ambiguous_choice",
+      "step": 12,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_e8c3b09d2c45",
+          "dispute_category": "duplicate_charge",
+          "transaction_date": "11/06/2025",
+          "disputed_amount": 47.5,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_f0b84f2935a6\nTransaction: btxn_e8c3b09d2c45\n...\nCategory: Duplicate Charge\nDisputed Amount: $47.50"
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_d7f2a98c1b34",
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_1520c35c05b8\nTransaction: btxn_d7f2a98c1b34\n...\nCategory: Duplicate Charge\nDisputed Amount: $47.50",
+        "note": "Picks the top-listed of the two 11/06/2025 -47.5 rows in gold step 7 output (btxn_d7f2a98c1b34 listed before btxn_e8c3b09d2c45)."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_031",
+          "quote": "Dispute the earliest (first) transaction when multiple duplicates exist."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_018",
+          "quote": "Transactions are returned in reverse chronological order (most recent first)."
+        }
+      ],
+      "conflict": "Both rows dated 11/06/2025. Gold takes lower-listed btxn_e8c3b09d2c45 as 'earliest'; 'first' also reads as top-listed btxn_d7f2a98c1b34.",
+      "scorer": {
+        "field": "debit_card_disputes[dsp_f0b84f2935a6]: MISSING row (gold has); debit_card_disputes[dsp_1520c35c05b8]: EXTRA row in agent DB",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "n/a"
+      }
+    },
+    {
+      "issue": 3,
+      "severity": "Major",
+      "title": "Duplicate charge eligible though merchant not contacted",
+      "kind": "ambiguous_choice",
+      "step": 12,
+      "gold": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_e8c3b09d2c45",
+          "dispute_category": "duplicate_charge",
+          "contacted_merchant": false,
+          "provisional_credit_eligible": true,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_f0b84f2935a6\n...\nProvisional Credit: ISSUED - $47.50 credited within 10 business days per Regulation E."
+      },
+      "doc_faithful": {
+        "call": "file_debit_card_transaction_dispute_6281",
+        "args": {
+          "transaction_id": "btxn_e8c3b09d2c45",
+          "provisional_credit_eligible": false,
+          "...": "other args as gold"
+        },
+        "output": "Dispute ID: dsp_f0b84f2935a6\n...\nProvisional Credit: Not eligible - see Debit Card Provisional Credit Guidelines for details.",
+        "note": "Applies doc _032's 'not contacted merchant (non-fraud)' NOT REQUIRED condition."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_032",
+          "quote": "2. Customer has not contacted merchant first (for non-fraud disputes)"
+        }
+      ],
+      "conflict": "duplicate_charge is on doc _032's REQUIRED list, but contacted_merchant=false hits NOT REQUIRED item 2. Gold step 12: true.",
+      "scorer": {
+        "field": "debit_card_disputes[dsp_f0b84f2935a6].provisional_credit_eligible: gold true vs agent false; .provisional_credit_issued: gold true vs agent false; .provisional_credit_amount: gold 47.5 vs agent null",
+        "upstream": "FAIL",
+        "verified": "FAIL",
+        "action": "n/a"
+      }
+    }
+  ]
+}

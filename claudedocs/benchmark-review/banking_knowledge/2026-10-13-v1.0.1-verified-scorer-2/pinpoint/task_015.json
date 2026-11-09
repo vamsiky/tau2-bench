@@ -1,0 +1,32 @@
+{
+  "task_id": "task_015",
+  "severity": "Major",
+  "reason": "Gold step 0 gives get_referral_link to a customer with only one identity field; no doc says verification is unnecessary, so cautious agents withhold it.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "No doc says referral tool skips verification",
+      "kind": "info_unavailable",
+      "step": 0,
+      "gold": {"call": "give_discoverable_user_tool",
+               "args": {"discoverable_tool_name": "get_referral_link"},
+               "output": "Tool given to user: get_referral_link\n..."},
+      "doc_faithful": {"call": "give_discoverable_user_tool",
+                       "args": {},
+                       "output": "",
+                       "note": "Skipped (with user step 1): agent cannot verify the customer (only user ID + phone known) to run doc _009's auto-rejection/weekly-cap pre-check, so it withholds the tool."},
+      "refs": [
+        {"source": "doc_credit_cards_credit_cards_(general)_009",
+         "quote": "if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool."},
+        {"source": "doc_credit_cards_credit_cards_(general)_009",
+         "quote": "Weekly limit: Customers can receive at most 2 referral bonuses in any rolling 7-day window; the third and subsequent referrals in that window are automatically denied."},
+        {"source": "instructions",
+         "quote": "Your user ID is 890389b165 and your phone number is 313-555-0246."}
+      ],
+      "conflict": "Policy needs 2 of 4 fields to read referral history; customer gives only phone. No doc states verification is unneeded; gold steps 0-1 give and call the tool unverified.",
+      "scorer": {"field": "referrals[faa78faa461cf918]: MISSING row; user_discoverable_tool_calls[d58fe3a37afdae12]: MISSING row; user_discoverable_tools[fc21fceb1501a934]: MISSING row",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

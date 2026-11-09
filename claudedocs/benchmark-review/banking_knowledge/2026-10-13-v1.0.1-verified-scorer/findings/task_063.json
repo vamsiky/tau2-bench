@@ -1,0 +1,37 @@
+{
+  "task_id": "task_063",
+  "severity": "Blocker",
+  "headline": "Two credit cards (Bronze Rewards and Silver Rewards) give the exact same savings boost and both meet every customer condition, but only Silver Rewards is accepted.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "On the optimal savings account (Silver Plus, 3.0% tier 1 at $8,000), Bronze Rewards and Silver Rewards both add +0.15%. Both have a $0 annual fee and both run a real credit check that a 700 score passes (640 and 680 minimums). Nothing in the instructions or KB breaks the tie, yet gold action 1 accepts only 'Silver Rewards Card'.",
+      "evidence": [
+        "doc_savings_accounts_silver_plus_account_009: \"| Bronze Rewards Card | +0.15% |\" and \"| Silver Rewards Card | +0.15% |\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\" and \"Annual fee: $0.00\"",
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\" and \"Annual fee: $0.00\"",
+        "user_scenario: \"My goal is to maximize the interest I'll earn over one year\"; \"My credit score is around 700\"; \"I only want a card that actually checks credit\"",
+        "gold[1].arguments.card_type = \"Silver Rewards Card\"",
+        "Computed at $8,000: Silver Plus + Silver Rewards = 3.15% -> $252; Silver Plus + Bronze Rewards = 3.15% -> $252; next best Silver Plus + Green Rewards (business card, $100 fee) 3.1% -> $248 gross; Silver + Crypto-Cash Back 3.0% -> $240",
+        "Replay: gold with card_type 'Bronze Rewards Card' -> verified=(False, ['table credit_card_applications differs'])"
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "apply_for_credit_card derives the application_id from card_type, so an agent recommending Bronze Rewards, which is equally optimal on every stated criterion, produces a different credit_card_applications row and fails. On average this is a coin flip for a correct agent. Both cards also earn the same 1.0% on the groceries and gas the customer mentions, so card rewards do not break the tie either.",
+      "suggested_fix": "Change one bonus in silver_plus_account_009 (e.g. Bronze Rewards +0.10%), or add a customer constraint that only Silver Rewards satisfies."
+    }
+  ],
+  "solution_check": "Paper statements rule out Green savings (paperless required). $8,000 is below Gold's $10k minimum (Gold Rewards, which would lower it to $5k, needs a 720 score and Rho-Bank+). A 700 score plus 'must check credit' leaves Bronze Rewards, Silver Rewards, Crypto-Cash Back (660, $75 fee) and the business Green Rewards card (690, $100 fee); EcoCard (score 0), Gold Rewards (720), Platinum (750) and Diamond (780) drop out. The best APY is Silver Plus 3.0% + 0.15%, but two cards tie on that bonus. The gold's Silver Plus account is right; the gold's card choice is one of two equal answers.",
+  "prior_status": "persists",
+  "prior_note": "The task file and silver_plus_account_009 are unchanged since v1.0.0; the tie the prior review reported is still there and still fails correct work.",
+  "notes": "If an agent treated Gold as openable below its $10k ongoing minimum (opening deposit is only $5,000), Gold + Silver Rewards at 5.7% would earn $456 - $120 maintenance = $336 and beat Silver Plus. gold_account_009 says falling below $10,000 'can affect your eligibility for the highest rate', and the Gold docs never say whether paper statements are available, so a careful agent excludes Gold. The prior review, which also used a relaxed scorer, reached the same verdict. The verified scorer does not relax credit_card_applications, so the verdict holds under both scorers. In this task the user calls apply_for_credit_card only if the agent tells them to apply themselves; the agent has no apply tool, so that path is the natural one."
+}

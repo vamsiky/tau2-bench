@@ -1,0 +1,17 @@
+{
+  "task_id": "task_003",
+  "severity": "None",
+  "headline": "Clean: Silver and Gold both meet the hard requirements at a $0 fee, and the cash-back tie-break picks Silver because her spending is mostly travel (4% vs 2.5%).",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Hard filters: 0% foreign fee, purchase protection, limit of at least $100k possible. Bronze (2.75% FTF), EcoCard (1.0% FTF) and Crypto-Cash Back ('purchase protection on this card is No') fail; Diamond Elite is invitation-only and she has 'not received communications from the bank'. Silver ('Foreign transaction fee with a premium subscription: 0%', 90-day protection, limits '$10,000 to $100,000') and Gold (0% FTF, 105-day protection, up to $112,500) pass at $0; Platinum passes but costs $200. Tie on fee goes to cash back: Silver 4.0% on travel versus Gold 2.5% flat, with travel her main spend, so Silver. This matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and the analysis is unchanged under v1.0.1.",
+  "notes": "The 'premium subscription' in silver_001 is identified as Rho-Bank+ through gold_001's 'Rho‑Bank+ premium subscription'. Silver's ceiling of exactly $100,000 meets 'at least a 100,000 dollar credit limit'. Credit scores are still written as dollar amounts in the card docs (e.g. gold_001 'Minimum credit score required: $720', bronze_001 '$640', silver_001 '$680', platinum_001 '$750'); v1.0.1 removed the '$105 days'/'$135 days' corruptions but not these. Reporting rule used across this batch: the corruption is an issue (Minor) only where the credit score decides the task; otherwise it is a note. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

@@ -1,0 +1,37 @@
+{
+  "task_id": "task_033",
+  "severity": "Minor",
+  "headline": "The 11/13 incident protocol (tool 1822, then tool 0218, then a real transfer) clearly applies and the gold matches it, but ACTION grading ignores order and count, so the sequence itself is never checked.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "doc_011 requires 1822 on the first request, 0218 on the second, and transfer_to_human_agents on the third, in that order. The gold actions are compared on agent_tool_name only (transfer on nothing), and action matching ignores order, so calling both speed-bump tools together and transferring at once, or transferring first, still passes.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_011: \"Note: Always maintain this order. Each tool must be unlocked before it can be called. Do not skip steps.\"",
+        "gold[0..3] compare_args = ['agent_tool_name']; gold[4] compare_args = []",
+        "evaluator_action._check_actions: existence match per gold action, no ordering"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "Agents that skip the staged handling (all tools on the first request) score the same as protocol-faithful agents.",
+      "suggested_fix": "Add an order-aware assertion (e.g. record each speed-bump call with a sequence index and grade on DB), or an env assertion that 1822 precedes 0218 precedes the transfer."
+    }
+  ],
+  "solution_check": "The symptoms (statement paid, money deducted from checking, not reflected on the card) and the date (11/14 falls before the 11/15/2025 11:59 PM cutoff) match doc_011. Verification isn't required. Unlock+call 1822 on request 1, unlock+call 0218 on request 2, transfer on request 3, which matches the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; I add the same Minor ACTION-leniency defect as task_032.",
+  "notes": "Nothing ambiguous in the materials. The user scenario's three scripted requests line up with the three-step protocol."
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "task_046",
+  "severity": "Major",
+  "headline": "Closure is blocked by a pending dispute, but the gold quietly forbids paying off the card's $125 balance, which the customer will ask for if the agent mentions it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "hidden_ordering",
+      "severity": "Major",
+      "summary": "The gold stops after the dispute check, which is right because closure is blocked. But the account also has a $125 balance. The customer is scripted to ask for it to be paid from checking whenever the agent mentions it. Nothing in the documents says to stop checking at the first unresolvable blocker or not to process a payment the customer authorizes. That rule exists only in the author notes.",
+      "evidence": [
+        "db.json credit_card_accounts.cc_224959b99e_bsilver.current_balance = \"$125.00\"",
+        "doc_credit_cards_credit_card_account_logistics_003: \"Check these in order: ... 4. Outstanding balance: ... If a balance remains, the customer must pay it off before closure. If any requirement is not met, explain what must be resolved and do not proceed with retention offers.\"",
+        "user_scenario.instructions: \"If you are told about an outstanding balance: Act surprised but agree to pay it. ... please pay that off from my checking account.\"",
+        "description.notes: \"Per the retention protocol, requirements 1-3 should be checked first since they cannot be resolved during the call.\"",
+        "gold = [log_verification, unlock+call get_user_dispute_history_7291] only"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Replay check: gold plus extra reads (accounts, pending replacements) matches, but gold plus a $125 pay_credit_card_from_checking_9182 does not. An agent that runs all four eligibility checks and reports every blocker, which \"explain what must be resolved\" invites, will be asked to pay and will fail for a customer-authorized, documented action.",
+      "suggested_fix": "Either set the bsilver balance to $0.00 in this task's initial state, or add to logistics_003: \"If an earlier requirement cannot be resolved during the call, stop and do not process payments for later requirements.\""
+    }
+  ],
+  "solution_check": "doc_logistics_003 Step 1, item 1: get_user_dispute_history_7291 returns dsp_yuki_bsilver_001 with status UNDER_REVIEW (initial_state), so closure is blocked and the agent advises waiting. The customer's claim of no disputes must not be trusted. The gold is verification plus that read, which matches what I reconstructed. The divergence is whether the agent also surfaces the balance.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The payment-on-request divergence is independent of the prior scorer's relaxations, so it was simply not reported.",
+  "notes": "Under v1.0.1, extra reads (get_pending_replacement_orders_5765, get_all_user_accounts_by_user_id_3847) are not on this task's allowlist and do not change the hash (verified). Proceeding into retention (logging a closure reason, offering credit) is forbidden by doc_003 and would also fail. Customer flow steps 5-10 are leftovers from task_045 and do not apply once the dispute blocks closure."
+}

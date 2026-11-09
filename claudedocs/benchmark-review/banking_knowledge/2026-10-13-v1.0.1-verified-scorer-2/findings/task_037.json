@@ -1,0 +1,17 @@
+{
+  "task_id": "task_037",
+  "severity": "None",
+  "headline": "Clean: the replacement order and both fraud disputes are fully determined by the script, the transaction data, and the provisional-credit rules.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The replacement is the same as in task_036. For the disputes: give get_card_last_4_digits (cc_890389b165_silver gives 5320); both are unauthorized_fraudulent_charge, contacted_merchant false, full_refund, noticed today (11/14/2025), card_action cancel_and_reissue. Provisional credit is true for both under doc_015: the account opened 04/15/2024, the reason is fraud, $487.99 and $299.95 are within $25 to $5,000 (Mid Tier), and there is no prior dispute history. Even counting in-session filings, at most 1 prior dispute exists. The gold matches and replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this task clean.",
+  "notes": "The customer does not know her credit_card_account_id. The agent has to supply it, through give_discoverable_user_tool arguments or in chat, so the customer can run get_card_last_4_digits; that is feasible. Gold omits partial_refund_amount, which defaults to None, the same as passing null. card_last_4_digits must be the string \"5320\"."
+}

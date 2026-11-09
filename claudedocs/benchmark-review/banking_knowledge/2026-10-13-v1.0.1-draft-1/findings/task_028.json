@@ -1,0 +1,53 @@
+{
+  "task_id": "task_028",
+  "severity": "Major",
+  "headline": "The rewards math is fully documented and the gold values check out, but the agent has no way to confirm the customer's claim that the disputes were approved, and the sibling task 029 sends the same claim as a lie.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "doc_004 makes looking up the resolved disputes in cash_back_disputes the first required step before updating rewards, but no agent tool reads that table, and the agent never sees the user's tool output (the Status: RESOLVED or SUBMITTED line). So the agent has to decide whether the disputes are resolved based only on the customer's word, and tasks 028 and 029 send it the identical canned claim. Here the gold expects the agent to accept the claim and apply all six updates.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "tools.py: cash_back_disputes is written only by KnowledgeUserTools.submit_cash_back_dispute_0589; no agent tool or discoverable agent tool queries it (grep of tools.py: only db_query.py/data_model.py reference the table)",
+        "orchestrator.py run step: user tool results are routed ENV->USER; the agent only receives the user's text message",
+        "submit_cash_back_dispute_0589 output: auto_resolve true -> \"Status: RESOLVED - The dispute has been reviewed and approved\"; false -> \"Status: SUBMITTED - Your dispute has been queued for review.\" (visible to the user simulator only)",
+        "task_028 Phase 2 and task_029 Phase 2 use the same user line: \"Great, I've submitted all the disputes. I just got a notification that they've all been approved and resolved! Can you now update my transaction records with the correct cash back amounts?\"",
+        "task_028 initial_state task_config.dispute_settings.auto_resolve_disputes = true; task_029 = false"
+      ],
+      "gold_action_refs": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "An agent that follows doc_004 strictly, or that doubts disputes filed minutes earlier could already be resolved, declines to apply the updates. It then misses the six update_transaction_rewards_3847 writes and fails. A policy that trusts the claim passes 028 but fails task_029, so for a fixed agent the pair works out to one pass and one fail unless the user simulator happens to repeat its tool output.",
+      "suggested_fix": "Add an always-available or discoverable agent read tool for cash_back_disputes (which doc_004 already assumes exists) and document it, so the agent can see RESOLVED vs SUBMITTED. Alternatively, have the dispute tool's agent-visible output carry the status."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Some load-bearing reward-rate docs have values in the wrong format. EcoCard earn rates are written as dollar amounts of points, and the rounding-policy worked example has a garbled middle step. The final numbers are still recoverable (5 points/$ green, 1 point/$ otherwise; floor of amount x rate%), so the correct final state does not change.",
+      "evidence": [
+        "doc_credit_cards_ecocard_002: \"Green purchases: Earn $5.00 sustainability points per dollar spent\" / \"A $100 purchase at a qualifying green merchant earns 100 × $5.00 points.\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar, giving 126 points\" (intermediate step is incoherent, conclusion 126 is right)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "A careless reader could misread the EcoCard rate or the points-per-percent conversion, but both resolve from the examples and the seed data. No change to the gold state.",
+      "suggested_fix": "Write the EcoCard rates as \"5 points per $1\" and \"1 point per $1\"; fix doc_007's example to \"126.77 × 1 point per $1 = 126.77 -> 126 points\"."
+    }
+  ],
+  "solution_check": "I recomputed rewards for all 47 transactions of user 890389b165 using Silver 4% travel/software else 1%, Business Platinum 4% travel/software/media else 1.5%, Crypto 2%, EcoCard 5 points/$ green else 1 point/$, with points = floor(amount x rate). Exactly six stored values differ: txn_57ecc6da56c2 47->95, txn_d80aef98f532 521->1390, txn_896ac64b98d7 128->642, txn_adea68821a1d 167->669, txn_0be1ccc37761 768->2049, txn_e647e242ce96 1875->750 (overpaid). These match gold[2..7] and gold[9..14] exactly. Under round-half-up 22 extra rows are off by 1, but doc_007 states floor explicitly, so the rounding is not a defect.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean and correctly confirmed floor rounding. It did not notice that the doc-required lookup of resolved disputes has no agent tool, which makes the update decision indistinguishable from task_029.",
+  "notes": "Grading-model facts confirmed: DB hash replay in evaluator_env.py; read allowlist from _derive_read_log_allowlist (no discoverable reads in this gold); parse_int=float normalization; get_now() = 2025-11-14 03:40. The overpaid transaction (txn_e647e242ce96) must be disputed. doc_003 covers any discrepancy and the user insists, but an agent that keeps refusing reaches a non-gold state. I count that as legitimate agent error, not a task defect. give_discoverable_user_tool is logged by tool name only, so the argument choice does not matter. Unlocking a discoverable tool is in-memory only and not hashed."
+}

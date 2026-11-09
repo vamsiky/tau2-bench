@@ -1,0 +1,40 @@
+{
+  "task_id": "task_078",
+  "severity": "Minor",
+  "headline": "The lost-wallet card handling can be worked out from the documents, but the grade also depends on the agent freezing the cards before closing them, which the documents don't require.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "Freezing a lost/stolen card leaves 'frozen_date' and 'unfrozen_date' fields on the card record, and a frozen card must be unfrozen before close_debit_card_4721 will accept it, so the final DB depends on whether the agent froze first. Doc 026 tells agents to recommend closing instead of freezing once loss/theft is confirmed, which gives a second defensible path with a different final state.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "tools.py freeze_debit_card_3892: card[\"frozen_date\"] = get_today_str(); unfreeze_debit_card_3893: card[\"unfrozen_date\"] = get_today_str()",
+        "tools.py close_debit_card_4721: \"Only ACTIVE or PENDING cards can be closed.\"",
+        "task_078 instructions step 1: \"I need to freeze all of them right away and get replacements.\"",
+        "Replay check: gold minus freeze/unfreeze for dbc_mc78a5b9d2_lb/_green gives a different agent and user DB hash"
+      ],
+      "gold_action_refs": [
+        4,
+        5,
+        13,
+        14,
+        16,
+        17
+      ],
+      "why_it_matters": "An agent that follows doc 026, recommends closing outright, and gets the simulated customer's agreement (the script says to follow the agent's guidance) closes the cards without the freeze/unfreeze round trip. Its card records then lack the two date fields and the unfreeze tool is never logged, so the hash differs from gold. A replay that drops the freeze/unfreeze calls for the closed cards confirmed the mismatch for task_078. The customer's explicit opening request to freeze makes the gold path the usual one, so this is rated Minor.",
+      "suggested_fix": "Exclude transient freeze bookkeeping fields (frozen_date/unfrozen_date) from the hash, or have close_debit_card_4721 accept FROZEN cards and clear those fields, so both paths converge."
+    }
+  ],
+  "solution_check": "I worked through it on my own: verify, then freeze all three cards because the customer asks. Then read transactions: Light Green chk_mc78a5b9d2_3 has two pending rows (btxn_9034c8e42248, btxn_3e4b057911a1), so per doc 025 req 4 it cannot be closed. Light Blue has two 'lost' replacements in 12 months (03/15/2025 and 07/25/2025), so it hits the ENTRY limit of 2 and the customer declines the $25 fee. Green is MID tier (tier names from doc 005), so it gets EXPEDITED $15 with CLASSIC $0. That leaves unfreeze+close for LB and Green (reason 'lost') and one EXPEDITED order for Green. This matches gold, and gold replays without errors.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The #402 change only added a gold read of get_all_user_accounts_by_user_id_3847, which an agent must call anyway. The freeze-path residue is newly reported here.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Doc 029 names tiers without defining which accounts belong to each. The only checking-account tier mapping is in doc 005 (account closure), which is in required_documents, and agents must apply it to debit-card replacement by analogy. ENTRY tier also has a 48-hour post-closure wait (doc 029), so Light Blue could not be reordered today even with the fee. get_credit_card_accounts_by_user (gold[7]) is a non-discoverable read with no DB effect; the user has no credit cards."
+}

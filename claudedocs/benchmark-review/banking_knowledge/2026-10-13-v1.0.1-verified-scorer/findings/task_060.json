@@ -1,0 +1,17 @@
+{
+  "task_id": "task_060",
+  "severity": "None",
+  "headline": "Clean: Silver Plus is the only savings account meeting all six needs, and the 14-day rule forces opening it before closing the older Green checking.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Savings: 12-15 withdrawals rules out Bronze (6), Green (8) and Silver (10; the customer holds no Platinum card). A $2.5-4k balance rules out Gold ($10k) and everything above. Silver Plus fits: 15 withdrawals, $2,500 minimum, daily compounding, $25 ATM rebates, 0.025% relationship bonus, and goals tracking (silver_plus_004 'Built-in savings goals tracking | Yes'). Ordering: the Blue checking was opened 11/04/2025 (10 days) and the Green checking 07/17/2025 (120 days). general_002 requires a checking account held at least 14 days, so savings must be opened before Green is closed. Closing Green: 120 days is past the 60-day window and the balance is $0.00, so no fee. Replay: closing first makes the savings open fail (accounts table differs). The gold order replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; that still holds, though one part depends on the verified scorer (see notes).",
+  "notes": "Scorer dependence: close_bank_account_7392 stores the free-text 'reason' as closure_reason. The verified scorer strips that field (replay of a custom reason: verified True, exact hash False). Under upstream exact-hash grading, an agent that passes any reason other than the default 'Customer requested closure' would fail. general_005 lists a 'Notice period: 3 days' for mid-tier checking without defining it; the gold closes immediately, and an agent that refused to close until the notice period ends would diverge. I judged that unlikely. The user's verification info omits the address; the gold logs the DB address, as competent agents do after looking the user up. Passing waive_early_closure_fee=true changes early_closure_fee_waived and fails, but nothing in the KB authorizes a waiver."
+}

@@ -1,0 +1,47 @@
+{
+  "task_id": "task_095",
+  "severity": "Major",
+  "headline": "The wrong-boost diagnosis is solvable, but the same contested 0.025% Gold Rewards 'relationship bonus' makes $98 versus $100 a coin flip.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "As in task_094, the gold treats the Gold Rewards Card's 0.025% purely as a credit-card bonus that loses to EcoCard. doc_013 calls it a relationship bonus on top of the base rate, and doc_045 says relationship bonuses stack with credit-card bonuses.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"As a Gold Rewards Card holder, you receive an additional 0.025% relationship bonus APY on top of the base rate.\"",
+        "doc_bank_accounts_bank_accounts_(general)_045: \"credit card APY bonuses DO stack with ... Relationship bonuses for holding multiple Rho-Bank products\"",
+        "doc_savings_accounts_gold_account_014 table: \"| Gold Rewards Card | +0.025% |\"",
+        "task notes: actual 5.625% = \"base 5.5% + Purple 0.1% + Gold Rewards 0.025%\"",
+        "gold[6].arguments.amount = 98.00; gold[8].arguments.expected_apy = 6.85, actual_apy = 5.625"
+      ],
+      "gold_action_refs": [
+        6,
+        8
+      ],
+      "why_it_matters": "Under the stacking reading the expected APY is 5.5 + 0.75 + 0.6 + 0.025 = 6.875%, the credit is 96000 x 1.25% / 12 = $100.00, and the report says 6.875. Both rows differ from the gold (replayed: hash differs).",
+      "suggested_fix": "Same as task_094: make doc_013 say the 0.025% is the Gold Rewards Card's credit-card APY bonus and does not stack."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_013's example total of 6.0% for 5.5% + 0.025% is a corrupted value.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"Total APY with the bonus: 6.0%\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "It is cosmetic for a careful agent, but it adds noise to the very component that is already contested.",
+      "suggested_fix": "Change the total to 5.525%."
+    }
+  ],
+  "solution_check": "Base 5.5%. Checking boosts: Green +0.75% (pairing 1) vs Purple +0.1% (pairing 14, purple_account_001); the highest is 0.75 (doc_046). Credit cards: Platinum 0.15, Gold Rewards 0.025, EcoCard 0.6; the highest is 0.6. Expected 6.85%. Actual 450 x 12 / 96000 = 5.625%. Difference 96000 x 1.225% / 12 = $98.00, which matches the gold. The divergence only appears if doc_013's bonus is treated as a separate component.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated the same defect Major, and it is unchanged in v1.0.1.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. Both apply_savings_account_credit_6831 and submit_interest_discrepancy_report_7294 cast amounts with float(), and record ids embed f'{amount}' / f'{expected_apy}', so 33 and 33.0 hash identically, but any difference in value (even one cent) changes the hash. Gold read get_bank_account_transactions_9173 and get_all_user_accounts_by_user_id_3847 are allowlisted, so skipping either changes the hash. Monthly interest convention: the posted credits equal balance x APY / 12 exactly (simple, not daily-compounded), so the agent can infer the convention from the data. The customer first names a Silver Rewards Card and then corrects it to Gold Rewards, which is scripted and harmless. The account's Sydney address is cosmetic."
+}

@@ -1,0 +1,36 @@
+{
+  "task_id": "task_066",
+  "severity": "Minor",
+  "headline": "The savings/checking/credit-card combination is uniquely derivable, but the savings account name the gold uses (\"Green Account\") is not the name the documents use for that product (\"Green Account (savings)\").",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "open_bank_account_4821 hashes account_class into the account id, and the gold passes \"Green Account\" for the savings product, while every document names that product \"Green Account (savings)\" and the checking-opening doc uses the parenthesised form as an example class name.",
+      "evidence": [
+        "gold[4].arguments = {\"account_type\": \"savings\", \"account_class\": \"Green Account\"}",
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"3. Evergreen Account (checking) + Green Account (savings)\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"",
+        "replay: substituting \"Green Account (savings)\" -> verified match False, \"table 'accounts' differs\""
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An agent that copies the product name as the documents print it (\"Green Account (savings)\"), by analogy with the checking doc's own example, creates a different account id and fails the accounts table.",
+      "suggested_fix": "State the exact savings class string (\"Green Account\") in doc_002 or in the Green savings spec doc, or make the tool normalise the parenthetical qualifier."
+    }
+  ],
+  "solution_check": "Enumerated every savings product with minimum balance <= $6,000 (Bronze 2.0%, Silver 2.5% tier 1, Silver Plus 3.0% tier 1, Green 4.0%; Gold's $5,000 reduced minimum needs a Gold Rewards Card, which requires Rho-Bank+ that Riley lacks), every documented pairing boost (Bluest needs a $75,000 opening deposit, Gold Years needs age 62, Dark/Light Green are age-capped), and every card bonus and fee. Green + Evergreen (+0.55) + Silver Rewards (+0.45, $0 fee) = 5.00% = $300 net is the unique net-yield maximum; the highest gross APY (Green+Evergreen+EcoCard 5.05%, $50 fee) nets $253, and the script's annual-fee question steers to Silver Rewards. Gold replay matches itself; skipping get_all_user_accounts_by_user_id_3847 fails (required read).",
+  "prior_status": "new",
+  "prior_note": "Prior review rated the task clean; the combination is still correct, the new finding is the account_class naming risk.",
+  "notes": "Grading-model facts confirmed against the snapshot: gold replay + hash compare (evaluator_env.py); read logging only for gold-named discoverable reads (_derive_read_log_allowlist, call_discoverable_agent_tool); parse_int=float on discoverable args; apply_for_credit_card casts annual_income to float. Verified scorer (working-repo _verified_db_match) compares agent_discoverable_tools by tool-name set only and strips accounts.closure_reason; all other tables exact. Replays used the grep_only retrieval variant (no embeddings needed) with the gold-derived allowlist. Validity depends on the verified scorer's closure_reason relaxation only if the agent passes a reason to close_bank_account_7392 (replay: passing a reason matches under verified, fails exact hash). Doc arithmetic slip in doc_savings_accounts_gold_account_013 (\"Total APY with the bonus: 6.0%\" for 5.5%+0.025%) does not affect this task. Author notes say Gold savings is blocked at $6k without mentioning the Gold Rewards Card override; the override is blocked anyway by the Rho-Bank+ requirement in doc_credit_cards_gold_rewards_card_001. The 14-day tenure ordering (open savings before closing Light Blue) is documented in doc_002 and enforced by the tool."
+}

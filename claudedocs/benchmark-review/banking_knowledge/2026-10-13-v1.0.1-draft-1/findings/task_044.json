@@ -1,0 +1,17 @@
+{
+  "task_id": "task_044",
+  "severity": "None",
+  "headline": "Clean: the only Rho-Bank card that beats the competitor's 8% cash back with no foreign fees is the Platinum Rewards Card, so the retention path is unique.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Closure checks find a $0 balance with no disputes or replacements. Closure history is empty and found_better_card is logged. A KB scan of all card earn rates finds Platinum Rewards (10% on everything, 0% FX, $200 fee with first-year $0 promo per platinum_009) as the only card above 8% on all purchases (Diamond Elite is 5%; Business Silver is 10% only on travel/software with a 1.5% FX fee). The customer applies with income 145000 and no subscription, and no card is closed. This matches gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review found it clean. The required doc platinum_rewards_card_002 changed only its title, from 'Earning 4% Cash Back' to 'Earning 10% Cash Back', which removes an internal contradiction.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. apply_for_credit_card normalizes annual_income to float, so 145000 and 145000.0 hash the same."
+}

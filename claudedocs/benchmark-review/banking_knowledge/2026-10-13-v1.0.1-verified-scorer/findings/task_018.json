@@ -1,0 +1,31 @@
+{
+  "task_id": "task_018",
+  "severity": "Minor",
+  "headline": "The documented round-down rule reproduces the six gold disputes exactly; the only defect is that the rounding doc is missing from required_documents.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The floor-rounding policy doc that decides which transactions are discrepant (doc_credit_cards_credit_cards_(general)_007) is not listed in required_documents, so the golden_retrieval config, which inlines only required_documents and exposes no search tool, never shows it to the agent.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_018.required_documents = [general_003, general_006, crypto-cash_back_001/002, business_platinum_001/002, ecocard_001/002, silver_rewards_card_001/002] (no general_007)",
+        "src/tau2/domains/banking_knowledge/retrieval_toolkits.py: KnowledgeToolsPlain 'Used by: no_knowledge, full_kb, golden_retrieval' (no retrieval tools)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "In the golden_retrieval config, an agent that rounds half-up flags 22 extra transactions (for example txn_e45e7acb56a0, Amazon $89.99: 90 vs stored 89) and fails.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 47 transactions for 890389b165 with Silver 4% Travel/Software else 1%, Crypto 2%, EcoCard 5x Green else 1x (Target/Walmart/Amazon/ThredUp excluded), and Business Platinum 4% Travel/Software/Media else 1.5%, flooring per doc_007. Exactly six mismatch, and they equal the gold set: Trader Joe's 95 vs 47, United 1390 vs 521, Patagonia 642 vs 128, Marriott 669 vs 167, LinkedIn Ads 2049 vs 768, Google Ads 750 vs 1875 (over-credit). Half-up gives 28 mismatches (22 false positives).",
+  "prior_status": "changed",
+  "prior_note": "The prior Major ('unwritten round down') was based on a missed document: doc_credit_cards_credit_cards_(general)_007 states the floor rule. What remains is a Minor required_documents omission.",
+  "notes": "The persona says she does not want to access transactions herself and wants the agent to 'manage everything', but instruction 3 tells her to use any tool she is given, so the user-side dispute calls in the gold are reachable. Instruction 4 makes her insist on disputing the overpaid Google Ads transaction, which the gold includes. No discoverable agent tools are involved, so the verified scorer's relaxations do not affect this task."
+}

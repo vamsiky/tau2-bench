@@ -1,0 +1,49 @@
+{
+  "task_id": "task_049",
+  "severity": "Minor",
+  "headline": "The gold is correct, but its DB check includes a transfer-request row that only the simulated customer can create, by calling its request_human_agent_transfer tool once when it asks for a human.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "Gold action 049_13 is the customer's own request_human_agent_transfer call, which writes a human_transfer_requests row. The task gives the simulator this tool (user_tools) and its docstring matches the scripted line 'Transfer me to a human agent.', so one call there is the expected behaviour. The row still depends only on the simulator: the agent cannot create or influence it.",
+      "evidence": [
+        "gold[17] (049_13) = {name: request_human_agent_transfer, requestor: user, arguments: {}}",
+        "task_049 user_tools: [\"apply_for_credit_card\", \"call_discoverable_user_tool\", \"request_human_agent_transfer\"]",
+        "KnowledgeUserTools.request_human_agent_transfer docstring: \"Use this when you want to speak with a real human agent instead of the automated system.\"",
+        "user_scenario step 9: \"Transfer me to a human agent.\"; step 10: \"After the agent transfers you, end the conversation.\"",
+        "Replay: gold without the customer call -> upstream FAIL, verified FAIL (table 'human_transfer_requests' differs)"
+      ],
+      "gold_action_refs": [
+        17
+      ],
+      "why_it_matters": "If the simulator only asks aloud and never calls the tool, a correct agent fails. The gold is right; this is a reliability risk in the simulator, not in the agent's task.",
+      "suggested_fix": "Optionally add 'Call the request_human_agent_transfer tool, then ask for a human' to step 9 so the call does not depend on the simulator's reading."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "For the Crypto-Cash Back card the customer gives two reasons, the fee and poor rewards. The gold logs annual_fee.",
+      "evidence": [
+        "user_scenario step 7: \"The annual fee is too high for what I'm getting. The crypto rewards aren't worth it anymore.\"",
+        "gold[14] (049_10).arguments.closure_reason = \"annual_fee\""
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "credit_card_closure_reasons is compared exactly. unhappy_with_rewards is a defensible label that fails, though the first-stated reason and the scripted downgrade branch support annual_fee.",
+      "suggested_fix": "Drop the second sentence or have the customer name the fee as the main reason."
+    }
+  ],
+  "solution_check": "Green: history shows a 'not_using_card' record from 08/20/2025, so close immediately. Eco: replacement order SHIPPED, so refuse closure despite the customer's lie. Gold: $175 balance against $50 in checking 08, so no payment and no closure. Crypto: no history; customer since 02/01/2024 (under 2 years), so offer a downgrade (refused), then the entry-tier $5 credit, refusing the fake Platinum claim. Agent-side actions match the gold. The transfer-request row comes from the customer's own tool call at step 9.",
+  "prior_status": "new",
+  "prior_note": "The prior review found this task clean. The gold's dependence on an unscripted user tool call is new and holds under both upstream and verified grading, since human_transfer_requests is compared exactly in both.",
+  "notes": "An agent that tries pay_credit_card_from_checking_9182 for $175 without first checking funds gets 'Error: Insufficient funds ...' and fails, because the write is logged and a balance rejection is not an input error under the verified relaxation. logistics_009 requires confirming sufficient funds first, so that rule is fair. required_documents includes doc_(general)_010, a purchase-decline transfer protocol that does not apply; its tool initial_transfer_to_human_agent_0218 is GENERIC and unlogged, so using it would not change the DB."
+}

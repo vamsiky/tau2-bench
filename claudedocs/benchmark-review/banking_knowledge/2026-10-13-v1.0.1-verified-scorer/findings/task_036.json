@@ -1,0 +1,17 @@
+{
+  "task_id": "task_036",
+  "severity": "None",
+  "headline": "A clean replacement-card task: account, reason, work address, and expedited shipping all come from the customer's script and the replacement docs.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Verify with phone and email, list the Silver card transactions (Electronics Express Miami $487.99 09/04/2025 and GamerZone LA $299.95 09/06/2025 are present), then follow doc_credit_card_replacements_001: reason fraud_suspected (stolen card info, not a stolen physical card), the work address given verbatim by the user, and expedited (strongly recommended for fraud; user scripted to accept; $10 Silver fee). The resulting order_replacement_credit_card_7291 call matches the gold.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated it clean; still clean.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. shipping_address is compared exactly as a string. The scripted address \"2500 Woodward Avenue, Suite 300, Detroit, MI 48201\" matches the DB address format, so a verbatim copy is natural, but an abbreviation (\"Ave\") would fail. Replay: an extra get_pending_replacement_orders_5765 read leaves the verified match True. description.notes describes the fraud dates as 11/04/2024 and 11/06/2024, while the DB has 09/04/2025 and 09/06/2025. Notes are not agent-visible."
+}

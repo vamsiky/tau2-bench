@@ -1,0 +1,36 @@
+{
+  "task_id": "task_048",
+  "severity": "Major",
+  "headline": "For the Gold card retention step, several Rho-Bank cards beat the competitor's 3.25% on travel and software, but the official answer only accepts an application for the Silver Rewards Card.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "logistics_003's 'found a better card' step says to offer a Rho-Bank card with similar or better benefits but gives no tie-breaker. The customer has no Platinum card, and the Platinum Rewards Card (10% on all purchases), Business Silver (10% on travel and software) and Diamond Elite (5% on all) all beat 3.25%. Gold accepts only a Silver Rewards Card application (4% travel/software).",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_003: \"Found a better card: Ask what features attracted them. If Rho-Bank offers a card with similar or better benefits, offer to help them apply instead of closing the current account.\"",
+        "doc_credit_cards_silver_rewards_card_002: \"eligible travel and software transactions to earn 4.0% back\"",
+        "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"",
+        "doc_business_credit_cards_business_silver_rewards_card_002: \"Earn 10.0% cash back on eligible travel and software purchases\"",
+        "gold[18] apply_for_credit_card card_type = \"Silver Rewards Card\"",
+        "instructions step 8: apply \"If the agent explains the card details and they're competitive or better than the competitor\""
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "An agent that recommends the objectively higher-earning Platinum Rewards or Business Silver card leads the simulator to apply for that card, which creates a different credit_card_applications record and fails the DB hash.",
+      "suggested_fix": "Add a rule to logistics_003 (e.g. 'recommend the same-category card whose bonus categories match the customer's stated spending, preferring no-annual-fee options'), or pin the card name in the user instructions."
+    }
+  ],
+  "solution_check": "Green: previous closure record 09/15/2025, so per Step 2 it is closed directly without logging. EcoCard: order ccord_..._eco_001 is SHIPPED, so it is blocked. Gold card: $175 is paid from checking '07', found_better_card is logged, and the customer applies for a card. Crypto: unhappy_with_rewards is logged and the entry-tier $5 credit applied (general_015 lists Crypto-Cash Back as Entry). Everything matches gold except that the recommended card is not uniquely determined. The gold replay runs without errors.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The task and docs are unchanged, but the card-recommendation tie was not reported before.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. Further low-probability risks: (a) the Crypto opener ('crypto rewards program isn't really worth it ... I don't use cryptocurrency much') could be logged as not_using_card, and description.notes describes the not_using_card playbook (subscriptions/credit score) while gold logs unhappy_with_rewards; (b) the user goal 'Close as many of your credit cards as possible' could lead the simulator to still ask that the Gold card be closed after applying for the new card."
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "task_072",
+  "severity": "Major",
+  "headline": "The refund amounts are reproducible from the documents, but both of them count ATM fees dated after the benchmark's fixed 'today' (Nov 14), so an agent that ignores future-dated charges refunds a different amount.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Both gold credits depend on 'posted' fee transactions dated after the fixed clock (2025-11-14 03:40). Bluest's $0.50 overcharge is dated 11/20/2025 and Light Green's $0.50 overcharge is dated 11/15/2025. With those excluded the credits are $13.50 and $3.00, not $14.00 and $3.50.",
+      "evidence": [
+        "utils.get_now() = datetime(2025, 11, 14, 3, 40, 0); get_current_time returns \"The current time is 2025-11-14 03:40:00 EST.\"",
+        "db.json bank_account_transaction_history[btxn_fcd7ef3a24ed] = {account_id: chk_lj82d4f1a9, date: \"11/20/2025\", description: \"NON-RHO ATM FEE\", amount: -2.5} (paired with rebate btxn_28f01ff82384 +2.0 on 11/20)",
+        "doc_checking_accounts_bluest_account_010: \"Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal\"",
+        "db.json bank_account_transaction_history[btxn_49c0c0b3b8c1] = {account_id: chk_538bfb9cba, date: \"11/15/2025\", description: \"FOREIGN ATM FEE - 2% OF WITHDRAWAL (MIN $3.00)\", amount: -4.0} for a $200 withdrawal (btxn_b1576a6388be)",
+        "doc_checking_accounts_light_green_account_013: \"More than $100 and up to and including $300 | $3.50\"",
+        "gold[7].arguments = {\"account_id\": \"chk_lj82d4f1a9\", \"amount\": 14.00, \"credit_type\": \"fee_refund\"}",
+        "gold[8].arguments = {\"account_id\": \"chk_538bfb9cba\", \"amount\": 3.50, \"credit_type\": \"fee_refund\"}"
+      ],
+      "gold_action_refs": [7, 8],
+      "why_it_matters": "The agent learns the date from get_current_time, which it has to call to fill log_verification.time_verified. It then sees fees marked 'posted' up to six days in the future. An agent that limits the review to activity up to today, or declines to refund charges that have not happened yet, credits $13.50 and $3.00. The transaction IDs and DB hash then differ from the gold, so the run scores 0. An agent that takes every November row at face value matches the gold.",
+      "suggested_fix": "Move the 11/15-11/20 transactions for chk_lj82d4f1a9 and chk_538bfb9cba to on or before 11/14/2025, or move the fixed clock past 11/20/2025."
+    }
+  ],
+  "solution_check": "I recomputed both accounts from the docs and the seeded rows. Bluest (domestic out-of-network fee $2.00 rebated, foreign fee $0.00, docs bluest_003/007/010): London $8.00 and Tokyo $3.50 foreign fees should be $0, so +11.50; the 11/14 $2.00 fee has no rebate, so +2.00 owed as a missing rebate; the 11/20 fee is $2.50 against $2.00, so +0.50. Total $14.00. By count that is 3 fee corrections and 1 rebate, so doc_017's majority rule gives fee_refund. Light Green (4 free out-of-network withdrawals then $1.50; foreign tiers $2.00/$3.50/$5.00): the 11/05 fee was charged on the 3rd withdrawal, which is free (+1.50); no fee was charged on the 11/09 5th withdrawal (-1.50); the 11/13 $80 foreign withdrawal was charged $5.00 against $2.00 (+3.00); the 11/15 $200 foreign withdrawal was charged $4.00 against $3.50 (+0.50). The 11/11 6th withdrawal at $1.50 and the 11/17 and 11/19 foreign fees are correct. Net $3.50. Both match the gold, but only when the after-clock rows are counted.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor for fiddly netting. I find the netting documented (doc_017 asks for \"the net correction across all identified fee discrepancies\"), but both gold amounts depend on after-clock transactions, which the prior review did not flag.",
+  "notes": "Grading-model facts confirmed in the snapshot: the read-log allowlist (build._derive_read_log_allowlist), parse_int=float in call_discoverable_agent_tool, and the fixed clock. apply_checking_account_credit_5829 hashes `checking_credit:{account_id}:{credit_type}:{amount}:{today}` into the txn id, so splitting a credit or choosing a different credit_type changes the hash. doc_017 forbids splitting (\"may only be called ONCE per checking account\") and gives the majority credit_type rule, so splitting is documented as wrong. Netting the missing $1.50 Light Green fee against overcharges is hard, but doc_017's 'net correction' language supports it, so I treat it as difficulty, not a defect. The Bluest missing-rebate inference relies on bluest_007 (\"If your aggregate ATM fees exceed $50 ... the excess will not be rebated\") and on the seeded pattern of a rebate after every NON-RHO fee; bluest_003's phrase 'third-party ATM fees' is looser but the outcome is the same. v1.0.1 changed only the 11/11 Light Green fee description (\"NON-RHO ATM FEE - AFTER FREE ALLOWANCE\" to \"NON-RHO ATM FEE\"). That fee is correct (6th withdrawal), so there is no grading impact and no remaining answer leak. Fixture oddity that is not load-bearing: the Light Green 11/17 $350 foreign withdrawal exceeds the documented $150 daily ATM limit (light_green_001), but its $5.00 fee is correct. The gold reads (get_all_user_accounts, get_bank_account_transactions) are discoverable, documented in docs (general)_009/_018, and needed anyway to get account ids and fees. log_verification arguments match db.json users[lj82d4f1a9]."
+}

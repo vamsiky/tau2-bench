@@ -1,0 +1,48 @@
+{
+  "task_id": "task_079",
+  "severity": "Minor",
+  "reason": "Green card's only pending row is an $89.99 refund: doc _025 req 4 forbids closing, req 5 allows a waiver; gold closes and reorders.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Pending refund: req 4 blocks closure, req 5 waives",
+      "kind": "ambiguous_choice",
+      "step": 19,
+      "gold": {
+        "call": "close_debit_card_4721",
+        "args": {
+          "card_id": "dbc_cr89a2b3c4_green",
+          "reason": "stolen"
+        },
+        "output": "Debit Card Closed Successfully\nCard ID: dbc_cr89a2b3c4_green\nPrevious Status: ACTIVE\nNew Status: CLOSED\nClosure Reason: Stolen ..."
+      },
+      "doc_faithful": {
+        "call": "close_debit_card_4721",
+        "args": {},
+        "output": "",
+        "note": "Plausible misreading: literal req-4 reader skips closing the Green card (gold step 19) and its replacement order (gold step 24); card stays ACTIVE."
+      },
+      "refs": [
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_025",
+          "quote": "4. No pending transactions: The card must not have any pending or processing transactions. If pending transactions exist, inform the customer they must wait for all transactions to settle before the card can be closed."
+        },
+        {
+          "source": "doc_bank_accounts_bank_accounts_(general)_025",
+          "quote": "If pending refunds exist, inform the customer they must wait for the refunds to process (typically 3-5 business days) or acknowledge in writing that the refunds will be credited to the linked checking account instead."
+        },
+        {
+          "source": "db:bank_account_transaction_history[btxn_d0b8b00ed468]",
+          "quote": "account_id: chk_cr89a2b3c4_3, description: REFUND - AMAZON.COM RETURN, amount: 89.99, type: refund, status: pending"
+        }
+      ],
+      "conflict": "btxn_d0b8b00ed468 ($89.99 refund, pending) is both a pending transaction (req 4: block) and a pending refund (req 5: waivable). Gold steps 19/24 close and reorder; specific rule wins.",
+      "scorer": {
+        "field": "debit_cards[dbc_cr89a2b3c4_green].status: gold \"CLOSED\" agent \"ACTIVE\"; debit_cards[dbc_7582b7fbf183]: MISSING row; debit_card_orders[dcord_247604a033e4]: MISSING row",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "task_069",
+  "severity": "Blocker",
+  "reason": "Gold step 2 opens Silver Plus savings (3.5%), but doc gold_account_003 gives Gold savings ATM rebates, so Gold (5.7%) wins.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Blocker",
+      "title": "Gold savings has ATM rebates; gold excludes it",
+      "kind": "gold_value_wrong",
+      "step": 2,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "rp65a7b3c4", "account_type": "savings", "account_class": "Silver Plus Account"},
+               "output": "Bank account opened successfully!\n  - Account ID: 4974e9096233f54e\n  ...\n  - Account Class: Silver Plus Account"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "rp65a7b3c4", "account_type": "savings", "account_class": "Gold Account"},
+                       "output": "Bank account opened successfully!\n  - Account ID: ea5af121ea163b18\n  ...\n  - Account Class: Gold Account",
+                       "note": "Gold savings meets the ATM-rebate requirement and the $10,000 minimum; Blue checking and Silver Rewards stay the same (5.5% + 0.2% = 5.7%)."},
+      "refs": [
+        {"source": "doc_savings_accounts_gold_account_003",
+         "quote": "ATM fee rebate cap per month: $30"},
+        {"source": "doc_savings_accounts_gold_account_001",
+         "quote": "Your account earns an APY of 5.5% on the balance you maintain."},
+        {"source": "doc_savings_accounts_silver_account_005",
+         "quote": "Yes. You can receive ATM fee rebates up to 15 each month."},
+        {"source": "task:description.notes",
+         "quote": "Needs ATM fee rebates on savings account - blocks Gold Account, Silver Account, Green Account (savings), Bronze Account"}
+      ],
+      "conflict": "Author notes say Gold/Silver savings lack ATM rebates; docs _003 and silver_005 say they have them. Gold 5.7% and Silver 4.125% beat gold's Silver Plus 3.5%.",
+      "scorer": {"field": "accounts[4974e9096233f54e]: MISSING row (Silver Plus Account); accounts[ea5af121ea163b18]: EXTRA row (Gold Account)",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "task_060",
+  "severity": "Major",
+  "headline": "Silver Plus is the unique savings fit and the open-savings-before-closing order is documented, but the gold closure leaves the free-text closure reason at a hidden default, so an agent that records a reason fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 stores its optional free-text 'reason' argument in accounts[...].closure_reason. Gold omits it, so the record gets the hidden default 'Customer requested closure'. No document says which reason to pass or to leave it out, so an agent that records a sensible reason produces a different DB state.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\"; body: account[\"closure_reason\"] = reason",
+        "unlock output: \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason value anywhere in the KB)",
+        "gold[6].arguments.arguments: {\"account_id\": \"58d57780cc15e32d\"} (no reason)",
+        "replay: reason='Customer wants to consolidate checking accounts' gives a different hash; reason='Customer requested closure' gives the same hash"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "Passing a reason (e.g. 'Customer wants to consolidate checking accounts') is a reasonable, even diligent, use of an offered parameter, but it fails DB grading. Only omitting the argument, or guessing the exact default string, matches gold.",
+      "suggested_fix": "Exclude closure_reason from the hashed state, or have the closure doc state the exact reason string and put it in the gold call."
+    }
+  ],
+  "solution_check": "The Blue checking (opened 11/04/2025) is 10 days old, so closing Green (07/17/2025, $0.00) first would leave no checking account at least 14 days old (doc_(general)_002). The ordering is documented. Green is 120 days old, past the 60-day window, so no early-closure fee applies. Savings criteria: 12-15 withdrawals, relationship bonus, $2,500-4,000, daily compounding, ATM rebates, goals tracking. Only Silver Plus meets them all (15 withdrawals, 0.025% bonus, $2,500 minimum, daily, ATM rebates 25, goals tracking Yes). Silver allows 10 withdrawals (this user has no Platinum card), Green 8, Bronze 6, and Gold needs $10k. The gold replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean under a scorer that ignored closure_reason. Under upstream exact-hash grading, the free-text reason is compared.",
+  "notes": "doc_(general)_005 lists 'Notice period: 3 days' for mid-tier checking without defining it; gold closes immediately, and no tool models a notice period. waive_early_closure_fee=false passed explicitly gives the same hash as gold (verified)."
+}

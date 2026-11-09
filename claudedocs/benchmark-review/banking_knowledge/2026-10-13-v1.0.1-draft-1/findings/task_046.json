@@ -1,0 +1,50 @@
+{
+  "task_id": "task_046",
+  "severity": "Major",
+  "headline": "The official answer stops after finding a pending dispute, but the documents and the customer's own script also support paying off the $125 balance she agrees to pay, which would fail the task.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "logistics_003 tells the agent to check all four closure requirements and 'explain what must be resolved'. The Business Silver card also has a $125 balance, and the customer is scripted to agree to pay it from checking if told. Gold treats not paying as the only correct outcome.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_003: \"If any requirement is not met, explain what must be resolved and do not proceed with retention offers.\"",
+        "db.json credit_card_accounts.cc_224959b99e_bsilver.current_balance = \"$125.00\"; accounts['05'].current_holdings = \"2850.00\"",
+        "instructions step 3: \"If you are told about an outstanding balance: ... Yes, please pay that off from my checking account.\"",
+        "gold has only actions 0-2 (verification + get_user_dispute_history_7291)",
+        "description.notes: \"requirements 1-3 should be checked first since they cannot be resolved during the call\" (the KB never states this)"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that reports both blockers (dispute and balance) and honors the customer's request to pay ends with a pay_credit_card_from_checking_9182 write. Replaying gold plus that payment gives a different DB hash, so correct and helpful behavior scores 0.",
+      "suggested_fix": "Set the bsilver balance to $0.00 in initial_state for this task, or add the payment to the gold, or remove the pay-the-balance branch from the user instructions."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The pending dispute fixture cannot be tied to the card being closed: its card_last_4_digits matches neither of the user's cards and its transaction does not exist.",
+      "evidence": [
+        "initial_state transaction_disputes.dsp_yuki_bsilver_001.card_last_4_digits = \"7823\"; get_card_last_4_digits gives 9568 for cc_224959b99e_bsilver and 7053 for cc_224959b99e_plat",
+        "transaction_id \"txn_bsilver_dup_001\" is absent from credit_card_transaction_history",
+        "logistics_003: \"The account must not have any active or pending transaction disputes.\" (account-level)"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Most agents will treat a user-level UNDER_REVIEW dispute (with 'bsilver' in its transaction id) as blocking, which matches gold. A careful agent that checks the last 4 could conclude the dispute is on another card and continue with closure.",
+      "suggested_fix": "Set card_last_4_digits to \"9568\" and add a txn_bsilver_dup_001 row on cc_224959b99e_bsilver."
+    }
+  ],
+  "solution_check": "Verify, then read dispute history: dsp_yuki_bsilver_001 is UNDER_REVIEW, so closure is blocked and no retention steps run. This matches gold actions 0-2. The gold replay runs without errors. Gold plus a $125 payment yields a different hash (checked by replay).",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The task file is unchanged; the balance-payment ambiguity was not reported before.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. Extra prudent reads (pending replacements, account lookup) are not logged because only get_user_dispute_history_7291 is on this task's allowlist."
+}

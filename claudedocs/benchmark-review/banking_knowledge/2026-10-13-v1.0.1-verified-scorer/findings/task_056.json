@@ -1,0 +1,37 @@
+{
+  "task_id": "task_056",
+  "severity": "Major",
+  "headline": "The business-savings opening procedure tells the agent to use account type 'savings', but the official answer uses 'business_savings', so an agent that follows the procedure document fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The internal procedure for opening business savings tells the agent, twice, to call open_bank_account_4821 with account_type 'savings'. The tool docstring lists 'business_savings', and gold action 5 uses 'business_savings'. The account id is a hash of user_id, account_type and account_class, so the two choices create different account records.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004, Tool: open_bank_account_4821, How to call: \"Set account_type to 'savings'.\"",
+        "doc_bank_accounts_bank_accounts_(general)_004, Tool: open_bank_account_4821, Expected outcome: \"Returns a new savings account record\"",
+        "tools.py open_bank_account_4821 docstring: \"account_type (string): Type of account to open. Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"",
+        "gold[5].arguments.arguments = {\"user_id\": \"b5e8f2a1c9\", \"account_type\": \"business_savings\", \"account_class\": \"Silver Plus Saver Account\"}",
+        "Replay: account_type 'savings' succeeds (the personal-savings eligibility passes on the customer's 2023 Green checking) and creates id 3e54498f671ab53f instead of gold c1b48f17bb35e876 -> verified=(False, ['table accounts differs'])"
+      ],
+      "gold_action_refs": [
+        5,
+        7
+      ],
+      "why_it_matters": "An agent that follows the KB's own procedure for business savings passes account_type 'savings'. The tool accepts it, the account opens, and the $3,200 transfer goes to the new id, so the conversation looks successful but the accounts table never matches gold. Only an agent that trusts the tool's enum over the explicit KB instruction passes.",
+      "suggested_fix": "Change general_004 to \"Set account_type to 'business_savings'\". Alternatively, have the tool reject 'savings' for a Saver-class account_class."
+    }
+  ],
+  "solution_check": "Business checking: zero overdraft fees removes True Blue ($25) and World Blue ($30). A monthly fee under $50 removes Beige ($200). ATM rebates of at least $15 remove Navy Blue ($10). A waiver at a $3-5k balance removes Lime Green ($15,000 waiver) and the startup-only Sky Blue. Debit cashback on general purchases removes Hunter Green (eco vendors only). Cobalt Blue remains ($20 fee waived at $2,500, $15 rebates, 1.0% debit cashback, $0 overdraft). Business savings: requiring same-day ACH removes Bronze, Silver and Emerald Saver. A minimum under $25k removes Gold Plus Saver, Platinum Reserve and Diamond Vault. Silver Plus Saver is the only remaining product that documents 20 withdrawals plus a 0.025% multi-product relationship bonus; Gold Saver documents no withdrawal limit, minimum or relationship bonus. The source for the transfer is Navy Blue (opened 08/01/2025, 105 days, $3,200 >= $2,500), and the amount is 3200. This matches the gold apart from the account_type contradiction.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The general_004 text is unchanged since v1.0.0, so the contradiction predates this release but was not reported.",
+  "notes": "Gold Saver Account docs (001-009) give no withdrawal limit, ongoing minimum balance or relationship bonus. The author notes eliminate it on withdrawals ('sweep-focused'), which the docs do not support. The documented relationship bonus on Silver Plus Saver still makes Silver Plus Saver the defensible single answer, so I did not raise this as a separate issue. The business-checking account_class 'Cobalt Blue' matches general_003 ('options include Navy Blue, Cobalt Blue, True Blue, etc.') and the seeded DB style (level 'Navy Blue'). An agent writing 'Cobalt Blue Business Checking' (the doc title) would fail, but general_003 is explicit. The verified scorer's relaxations (extra discoverable calls, closure_reason) are not needed for this task's validity."
+}

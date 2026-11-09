@@ -1,0 +1,79 @@
+{
+  "task_id": "task_088",
+  "severity": "Major",
+  "headline": "Three decline problems with a reachable gold, but the documents invite an account-to-account transfer the gold does not expect and disagree on freezing versus closing the cloned card, and the purchase type of the fraud charge is never stated.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The Green balance ($380.47) is below the $449.99 purchase. The CODE 51 procedure says to offer a transfer from another account, and the customer asks whether anything can be done, but the script has no answer to a transfer offer and the gold has no transfer.",
+      "evidence": [
+        "doc_checking_accounts_checking_accounts_(general)_006 CODE 51 step 3: \"Offer options: 'Would you like to transfer funds from another account, or would you prefer to make a smaller transaction?' If they want to transfer, help them do so.\"",
+        "chk_cec8333d41_green current_holdings 380.47; pending mobile_deposit 3000.0 (11/11/2025)",
+        "user_scenario: \"Is there anything I can do? Can I get access to the money sooner?\"",
+        "Replay: gold + transfer_funds_between_bank_accounts_7291 -> verified fails (extra discoverable write, accounts differ)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "A doc-following agent offers the transfer, and a simulated user who needs the tablet for a deadline is likely to accept. The resulting write fails the task through no fault of the agent.",
+      "suggested_fix": "Script the customer's answer to a transfer offer (decline), or include the transfer in the gold."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "For an undamaged card with a chip/CVV mismatch and a fraud charge, CODE 82 says to follow the 'stolen card protocol' and to recommend freezing until the replacement arrives, while the dispute mapping requires close_and_reissue. The gold closes with reason fraud_suspected.",
+      "evidence": [
+        "doc_checking_accounts_purple_account_007 CODE 82: \"If suspicious transactions found: Follow stolen card protocol to assist the customer. Recommend freezing the card until a replacement arrives.\"",
+        "doc_031: \"'card_present_fraud' -> 'close_and_reissue'\"",
+        "gold[12] close_debit_card_4721 reason 'fraud_suspected'",
+        "Replay: closing as 'stolen' -> debit_cards differs (closure_reason, new card issue_reason 'stolen' vs 'fraud')"
+      ],
+      "gold_action_refs": [
+        12,
+        14
+      ],
+      "why_it_matters": "An agent that closes as 'stolen' per the 'stolen card protocol' wording, or freezes instead of closing, stores a different card state and fails.",
+      "suggested_fix": "Change CODE 82 to say: file a card_present_fraud dispute, then close the card with reason fraud_suspected and order a replacement."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The gold records the Miami fraud charge as transaction_type 'signature_purchase', but neither the script nor the data says how it was made.",
+      "evidence": [
+        "gold[10] transaction_type 'signature_purchase'",
+        "btxn_28eee7145c29 type 'debit_card_purchase', description 'ELECTRO MART MIAMI FL'",
+        "doc_031 transaction_type: \"Determine from user circumstances\"; script has no answer"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "An agent recording pin_purchase, or asking and getting an improvised answer, fails debit_card_disputes.",
+      "suggested_fix": "Script the transaction type or add it to the transaction record."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Part 2's opening line says to raise the stolen-card issue \"after the check hold issue is explained\", while the part header puts it after Part 1.5. Raising it before the chip-error issue leads to a transfer that ends the call before the Evergreen dispute.",
+      "evidence": [
+        "user_scenario Part 2 header: \"Transition after Part 1.5 is resolved\"",
+        "user_scenario Part 2 item 12: \"After the check hold issue is explained, bring up the second issue\"",
+        "gold[16] transfer_to_human_agents is last"
+      ],
+      "gold_action_refs": [
+        16
+      ],
+      "why_it_matters": "The outcome depends on which ordering the simulated user follows. The headers favour the gold ordering.",
+      "suggested_fix": "Fix the Part 2 transition sentence."
+    }
+  ],
+  "solution_check": "Reconstructed: Green has an insufficient balance because the $3,000 mobile deposit is pending (informational). Evergreen has a CODE 82 pattern with an undamaged card; reviewing transactions surfaces ELECTRO MART MIAMI $347.99, so file card_present_fraud close_and_reissue, close the card, and order STANDARD/CLASSIC. Blue was CANCELLED by 'unknown_caller' (CODE 43, customer denies reporting it), so transfer to the security team. The gold matches this path once the unscripted values line up.",
+  "prior_status": "changed",
+  "prior_note": "The prior Minor (guidelines doc not listed, soft liability) is superseded: liability 50 is clean here (noticed and reported 11/14), and the CODE 51 transfer offer, CODE 82 freeze/close wording, and unscripted transaction type are the material issues.",
+  "notes": "required_documents omits doc_bank_accounts_bank_accounts_(general)_032 (provisional credit guidelines) needed for provisional_credit_eligible; retrievable, Minor per calibration. Transfer reason 'fraud_or_security_concern' in gold[16] is not graded (transfers write nothing)."
+}

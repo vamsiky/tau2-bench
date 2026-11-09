@@ -1,0 +1,552 @@
+<!doctype html>
+<!--
+  Deep-Research Workflow — Docs Canvas
+  Renders: how the /deep-research dynamic workflow is implemented.
+  Source of truth: deep-research-wf_38c2bca7-670.js (the workflow script the
+  command generates) + its run journal wf_38c2bca7-670.json.
+  Aesthetic: night-observatory / signal-intelligence console.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deep-Research Workflow · how the harness is built</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+
+<style>
+  /* ===================================================================
+     THEME — "night observatory / signal console"
+     Amber = confirmed signal · coral = refuted · green = survives.
+     =================================================================== */
+  :root {
+    --bg:            #080b11;
+    --bg-elev:       #0c1018;
+    --surface:       #121826;
+    --border:        #20293a;
+    --text:          #dce3ef;
+    --text-muted:    #7e8da6;
+    --accent:        #ffb454;   /* phosphor amber — the signal */
+    --accent-soft:   rgba(255,180,84,.13);
+    --cyan:          #4fd6c9;
+    --green:         #5fd38a;
+    --code-bg:       #0a0e16;
+    --callout-note:  #4fd6c9;
+    --callout-warn:  #ffb454;
+    --callout-danger:#ff6b6b;
+    --callout-ok:    #5fd38a;
+    --sidebar-w:     288px;
+    --maxw:          840px;
+    --font-body:     "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:     "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --font-display:  "Space Grotesk", var(--font-body);
+  }
+  :root[data-theme="light"] {
+    --bg:#f6f3ec; --bg-elev:#fffdf8; --surface:#efeae0; --border:#ddd5c6;
+    --text:#1d2330; --text-muted:#5e6678; --accent:#b8730a;
+    --accent-soft:rgba(184,115,10,.12); --cyan:#0f8d80; --green:#1f8a4d;
+    --code-bg:#f1ece1; --callout-note:#0f8d80; --callout-ok:#1f8a4d;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; color: var(--text);
+    background:
+      radial-gradient(1100px 620px at 78% -8%, rgba(255,180,84,.07), transparent 60%),
+      radial-gradient(900px 540px at -6% 12%, rgba(79,214,201,.06), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    font-family: var(--font-body); line-height: 1.66;
+    font-size: 16px; -webkit-font-smoothing: antialiased;
+  }
+
+  #progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0;
+    background: linear-gradient(90deg, var(--cyan), var(--accent));
+    z-index: 50; transition: width .1s linear;
+  }
+
+  .shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+
+  aside {
+    position: sticky; top: 0; align-self: start; height: 100vh;
+    overflow-y: auto; background: var(--bg-elev);
+    border-right: 1px solid var(--border); padding: 26px 18px;
+  }
+  .brand {
+    font-family: var(--font-display); font-weight: 700; font-size: 1.08rem;
+    letter-spacing: -.01em; margin-bottom: 2px; display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot { width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); flex:none; }
+  .brand-sub { color: var(--text-muted); font-size: .78rem; margin-bottom: 18px; font-family:var(--font-mono); }
+  .nav-search {
+    width: 100%; padding: 8px 11px; margin-bottom: 14px; font-size: .82rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family:var(--font-mono);
+  }
+  .nav-search:focus { outline:none; border-color: var(--accent); }
+  nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav-link {
+    color: var(--text-muted); text-decoration: none; font-size: .87rem;
+    padding: 6px 11px; border-radius: 7px; border-left: 2px solid transparent;
+    transition: background .12s, color .12s;
+  }
+  .nav-link .idx { font-family:var(--font-mono); font-size:.72rem; color:var(--accent); opacity:.7; margin-right:7px; }
+  .nav-link:hover { background: var(--surface); color: var(--text); }
+  .nav-link.active { color: var(--text); background: var(--accent-soft); border-left-color: var(--accent); }
+  .nav-link.hidden { display: none; }
+
+  main { padding: 60px clamp(20px, 6vw, 76px); }
+  .content { max-width: var(--maxw); margin: 0 auto; }
+
+  header.doc-head { margin-bottom: 40px; animation: fadeUp .6s ease both; }
+  .eyebrow { font-family:var(--font-mono); font-size:.74rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  header.doc-head h1 { font-family: var(--font-display); font-weight:700; font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.05; letter-spacing:-.02em; margin: 0 0 12px; }
+  header.doc-head p.lede { color: var(--text-muted); font-size: 1.08rem; margin: 0; max-width: 60ch; }
+
+  .stat-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin:26px 0 6px; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .stat .n { font-family:var(--font-display); font-weight:700; font-size:1.5rem; color:var(--accent); line-height:1; }
+  .stat .l { font-size:.72rem; color:var(--text-muted); margin-top:5px; font-family:var(--font-mono); }
+
+  section { scroll-margin-top: 24px; padding-bottom: 30px; animation: fadeUp .5s ease both; }
+  section h2 {
+    font-family: var(--font-display); font-weight:600; font-size: 1.55rem; letter-spacing:-.01em;
+    margin: 40px 0 14px; padding-top: 10px; display:flex; align-items:baseline; gap:12px;
+  }
+  section h2 .num { font-family:var(--font-mono); font-size:.85rem; color:var(--accent); opacity:.8; }
+  section h3 { font-family:var(--font-display); font-weight:500; font-size: 1.16rem; margin: 26px 0 10px; }
+  a { color: var(--accent); text-decoration-color: rgba(255,180,84,.4); text-underline-offset:2px; }
+  p, li { color: var(--text); }
+  strong { color: #fff; font-weight:600; }
+  :root[data-theme="light"] strong { color:#000; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 11px;
+    padding: 16px 18px; overflow-x: auto; position: relative; font-size: .845rem; line-height:1.6;
+  }
+  pre code { font-family: var(--font-mono); background: none; padding: 0; }
+  code { font-family: var(--font-mono); background: var(--surface); padding: .12em .42em; border-radius: 5px; font-size: .86em; }
+  .copy-btn {
+    position: absolute; top: 8px; right: 8px; font-size: .7rem; cursor: pointer;
+    background: var(--surface); color: var(--text-muted); border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 9px; opacity: 0; transition: opacity .15s; font-family:var(--font-mono);
+  }
+  pre:hover .copy-btn { opacity: 1; }
+
+  table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: .87rem; }
+  th, td { border: 1px solid var(--border); padding: 9px 13px; text-align: left; vertical-align: top; }
+  th { background: var(--surface); font-family:var(--font-display); font-weight:600; }
+  td code { font-size:.84em; }
+
+  .callout {
+    border-left: 3px solid var(--callout-note); background: rgba(79,214,201,.10);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0;
+  }
+  .callout.warn   { border-left-color: var(--callout-warn);   background: rgba(255,180,84,.11); }
+  .callout.danger { border-left-color: var(--callout-danger); background: rgba(255,107,107,.11); }
+  .callout.ok     { border-left-color: var(--callout-ok);     background: rgba(95,211,138,.11); }
+  .callout .tag { font-weight: 700; font-family:var(--font-display); }
+
+  .mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; }
+
+  details { border: 1px solid var(--border); border-radius: 11px; padding: 2px 16px; margin: 16px 0; background: var(--bg-elev); }
+  details summary { cursor: pointer; font-weight: 600; padding: 10px 0; font-family:var(--font-display); }
+  details[open] summary { border-bottom:1px solid var(--border); margin-bottom:10px; }
+
+  .pill { display:inline-block; font-family:var(--font-mono); font-size:.72rem; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); }
+  .pill.amber { color:var(--accent); border-color:rgba(255,180,84,.4); }
+  .pill.green { color:var(--green); border-color:rgba(95,211,138,.4); }
+  .pill.red   { color:var(--callout-danger); border-color:rgba(255,107,107,.4); }
+
+  .toolbar { position: fixed; top: 14px; right: 18px; z-index: 40; display: flex; gap: 8px; }
+  .icon-btn { background: var(--bg-elev); border: 1px solid var(--border); color: var(--text); border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; }
+  .menu-btn { display: none; }
+
+  @keyframes fadeUp { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { *{ animation:none !important; } }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    aside { position: fixed; left: 0; top: 0; z-index: 45; transform: translateX(-100%); transition: transform .2s; width: var(--sidebar-w); }
+    aside.open { transform: translateX(0); }
+    .menu-btn { display: block; }
+    main { padding-top: 64px; }
+    .stat-grid { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+  <div id="progress"></div>
+
+  <div class="toolbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Toggle navigation">☰</button>
+    <button class="icon-btn" id="themeBtn" aria-label="Toggle theme">◐</button>
+  </div>
+
+  <div class="shell">
+    <aside id="sidebar">
+      <div class="brand"><span class="dot"></span>deep-research</div>
+      <div class="brand-sub">workflow harness · internals</div>
+      <input class="nav-search" id="navSearch" placeholder="filter sections…" aria-label="Filter sections" />
+      <nav id="nav">
+        <a class="nav-link" href="#overview"><span class="idx">00</span>Overview</a>
+        <a class="nav-link" href="#pipeline"><span class="idx">01</span>The five-phase pipeline</a>
+        <a class="nav-link" href="#scope"><span class="idx">02</span>Phase 0 · Scope</a>
+        <a class="nav-link" href="#schemas"><span class="idx">03</span>The schema contract</a>
+        <a class="nav-link" href="#search-fetch"><span class="idx">04</span>Search → dedup → fetch</a>
+        <a class="nav-link" href="#ranking"><span class="idx">05</span>Claim ranking</a>
+        <a class="nav-link" href="#verify"><span class="idx">06</span>Adversarial verification</a>
+        <a class="nav-link" href="#synthesize"><span class="idx">07</span>Synthesis &amp; report</a>
+        <a class="nav-link" href="#degradation"><span class="idx">08</span>Graceful exit ramps</a>
+        <a class="nav-link" href="#primitives"><span class="idx">09</span>Orchestration primitives</a>
+        <a class="nav-link" href="#tuning"><span class="idx">10</span>Tuning knobs</a>
+        <a class="nav-link" href="#references"><span class="idx">11</span>References</a>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="content">
+        <header class="doc-head">
+          <div class="eyebrow">workflow internals · ground truth from the generated script</div>
+          <h1>How the <span style="color:var(--accent)">/deep-research</span> dynamic workflow is implemented</h1>
+          <p class="lede">A multi-agent research harness that fans question → angles → web searches → fetched claims, kills weak claims by adversarial vote, and synthesizes a cited report. One ~350-line JavaScript orchestration script driving dozens of subagents.</p>
+
+          <div class="stat-grid">
+            <div class="stat"><div class="n">5</div><div class="l">phases</div></div>
+            <div class="stat"><div class="n">3</div><div class="l">votes / claim</div></div>
+            <div class="stat"><div class="n">15</div><div class="l">fetch budget</div></div>
+            <div class="stat"><div class="n">≈97</div><div class="l">max agent calls</div></div>
+          </div>
+        </header>
+
+        <section id="overview">
+          <h2><span class="num">00</span>Overview</h2>
+          <p><code>/deep-research</code> is not a prompt — it is a <strong>deterministic orchestration script</strong> run by the <code>Workflow</code> tool. The model writes (or loads) a JavaScript file whose control flow — loops, fan-out, barriers, early returns — is fixed code, while each <em>step</em> delegates judgement to a fresh subagent. The script is the skeleton; the agents are the muscle.</p>
+          <p>The harness is explicitly a port: its own header notes it is <em>“ported from bughunter architecture — WebSearch/WebFetch instead of git/grep.”</em> Where bughunter fans across a codebase to find and adversarially verify bugs, deep-research fans across the open web to find and adversarially verify <strong>claims</strong>.</p>
+          <p>The whole run is one value-producing function. It accepts a question as <code>args</code>, threads it through five phases, and returns a single structured report object — or, at any of four checkpoints where the evidence collapses, a structured explanation of <em>why</em> there is no report.</p>
+          <div class="callout"><span class="tag">Mental model.</span> Read it as a funnel with a kill-stage in the middle: <span class="pill amber">1 question</span> → <span class="pill">5 angles</span> → <span class="pill">≤15 sources</span> → <span class="pill">≤25 claims</span> → <span class="pill red">vote</span> → <span class="pill green">confirmed findings</span>. Every narrowing is deliberate and budgeted.</p></div>
+        </section>
+
+        <section id="pipeline">
+          <h2><span class="num">01</span>The five-phase pipeline</h2>
+          <p>The <code>meta.phases</code> array declares the five named phases up front; each <code>phase("…")</code> call in the body groups the subagents that follow under that label in the live progress view. The data path is a funnel with one <strong>barrier</strong> (a synchronization point where all prior work must complete) right before verification.</p>
+          <pre class="mermaid">
+flowchart TD
+  Q["args: research question"] --> G{"empty?"}
+  G -->|yes| ERR["return {error}"]
+  G -->|no| SCOPE["Scope agent → 5 angles<br/>SCOPE_SCHEMA"]
+  SCOPE --> PIPE
+  subgraph PIPE["pipeline — per angle, NO barrier"]
+    direction LR
+    S["Search<br/>SEARCH_SCHEMA"] --> D["dedup + budget gate"] --> F["Fetch / Extract<br/>EXTRACT_SCHEMA"]
+  end
+  PIPE --> RANK["rank claims<br/>importance × quality<br/>slice top 25"]
+  RANK --> V["3-vote adversarial verify<br/>VERDICT_SCHEMA<br/>━ BARRIER ━"]
+  V --> SY["Synthesize<br/>REPORT_SCHEMA"]
+  SY --> OUT["cited report"]
+          </pre>
+          <p>The two halves differ on purpose. <strong>Search→fetch is a <code>pipeline()</code> with no barrier</strong>: angle B can be fetching sources while angle D is still searching, so wall-clock equals the slowest single chain, not the sum of stages. <strong>Verification is a <code>parallel()</code> barrier</strong>: the full claim pool must exist before it can be ranked and sliced, so the harness waits for every fetch to land first.</p>
+        </section>
+
+        <section id="scope">
+          <h2><span class="num">02</span>Phase 0 · Scope</h2>
+          <p>The run opens by reading the question off <code>args</code> and guarding against an empty one — a workflow with no question has nothing to do, so it returns immediately rather than spawning agents.</p>
+          <pre><code class="language-javascript">phase("Scope")
+const QUESTION = (typeof args === "string" &amp;&amp; args.trim()) || ""
+if (!QUESTION) {
+  return { error: "No research question provided. Pass it as args: …" }
+}
+
+const scope = await agent(SCOPE_PROMPT, { label: "scope", schema: SCOPE_SCHEMA })
+if (!scope) {
+  return { error: "Scope agent returned no result — cannot decompose." }
+}</code></pre>
+          <p>The single <strong>scope agent</strong> decomposes the question into <strong>5 complementary search angles</strong>. The prompt does not hand it fixed angles — it gives <em>domain-aware exemplars</em> and asks it to choose angles that fit:</p>
+          <ul>
+            <li><strong>Generic:</strong> broad/primary · academic/technical · recent news · contrarian/skeptical · practitioner/implementation</li>
+            <li><strong>Medical:</strong> anatomy · common causes · serious differentials · authoritative refs · red flags</li>
+            <li><strong>Tech:</strong> state-of-art · benchmarks · limitations · industry adoption · cost/tradeoffs</li>
+          </ul>
+          <p>Each angle carries a <code>label</code>, a concrete search <code>query</code>, and a <code>rationale</code>. The instruction to make queries “specific enough to surface high-signal results” and “avoid redundancy” is what keeps the five searches from collapsing onto the same first page of results.</p>
+        </section>
+
+        <section id="schemas">
+          <h2><span class="num">03</span>The schema contract</h2>
+          <p>Every agent in the harness is <strong>schema-forced</strong>: instead of returning prose the model must call a structured-output tool whose shape is validated at the tool boundary, so the model <em>retries on mismatch</em> and the script never parses free text. Five schemas define the seams between phases — each phase's output schema is the next phase's input.</p>
+          <table>
+            <thead><tr><th>Schema</th><th>Produced by</th><th>Carries</th></tr></thead>
+            <tbody>
+              <tr><td><code>SCOPE_SCHEMA</code></td><td>scope agent</td><td><code>angles[]</code> (3–6) of <code>{label, query, rationale}</code></td></tr>
+              <tr><td><code>SEARCH_SCHEMA</code></td><td>search agents</td><td><code>results[]</code> (≤6) of <code>{url, title, snippet, relevance}</code></td></tr>
+              <tr><td><code>EXTRACT_SCHEMA</code></td><td>fetch agents</td><td><code>sourceQuality</code>, <code>publishDate</code>, <code>claims[]</code> (≤5) of <code>{claim, quote, importance}</code></td></tr>
+              <tr><td><code>VERDICT_SCHEMA</code></td><td>verifier votes</td><td><code>{refuted, evidence, confidence, counterSource}</code></td></tr>
+              <tr><td><code>REPORT_SCHEMA</code></td><td>synthesis agent</td><td><code>summary</code>, <code>findings[]</code>, <code>caveats</code>, <code>openQuestions[]</code></td></tr>
+            </tbody>
+          </table>
+          <p>The enums do real work downstream: <code>relevance</code> drives the dedup sort, <code>importance</code> and <code>sourceQuality</code> drive the claim ranking, and <code>refuted</code> drives the kill vote. The schema is where the orchestration's later arithmetic gets its inputs.</p>
+          <details>
+            <summary>The EXTRACT_SCHEMA in full</summary>
+            <pre><code class="language-javascript">const EXTRACT_SCHEMA = {
+  type: "object", required: ["claims", "sourceQuality"],
+  properties: {
+    sourceQuality: { enum: ["primary","secondary","blog","forum","unreliable"] },
+    publishDate: { type: "string" },
+    claims: { type: "array", maxItems: 5, items: {
+      type: "object", required: ["claim", "quote", "importance"],
+      properties: {
+        claim:      { type: "string" },              // falsifiable statement
+        quote:      { type: "string" },              // direct support from source
+        importance: { enum: ["central","supporting","tangential"] },
+      },
+    }},
+  },
+}</code></pre>
+          </details>
+        </section>
+
+        <section id="search-fetch">
+          <h2><span class="num">04</span>Search → dedup → fetch</h2>
+          <p>This is the heart of the harness and the one place to read closely. The whole search-to-extract path is a single <code>pipeline()</code> over the angles, with the URL-dedup and fetch-budget logic living <em>between</em> the two agent stages — not as a barrier, but as a stage that runs the moment each angle's search returns.</p>
+          <pre><code class="language-javascript">const searchResults = await pipeline(
+  scope.angles,
+
+  // stage 1 — one search agent per angle (runs in parallel)
+  angle => agent(SEARCH_PROMPT(angle), { phase: "Search", schema: SEARCH_SCHEMA })
+            .then(r => r &amp;&amp; { angle: angle.label, results: r.results }),
+
+  // stage 2 — dedup against shared state, then fan out fetchers
+  searchResult => {
+    const sorted = [...searchResult.results]
+      .sort((a, b) => relRank[a.relevance] - relRank[b.relevance])   // high first
+    const novel = sorted.filter(/* dedup + budget, below */)
+    return parallel(novel.map(source => () =>
+      agent(FETCH_PROMPT(source, searchResult.angle),
+            { phase: "Fetch", schema: EXTRACT_SCHEMA })))
+  }
+)</code></pre>
+
+          <h3>The dedup + budget gate</h3>
+          <p>Because the five angles overlap, the same URL surfaces more than once. A shared <code>seen</code> map and a decrementing <code>fetchSlots</code> counter (seeded at <code>MAX_FETCH = 15</code>) act as a cross-angle gate. Each result that survives both checks claims a slot; high-relevance results bypass the budget cut so the best evidence is never dropped for arriving late.</p>
+          <pre><code class="language-javascript">const novel = sorted.filter(r => {
+  const key = normURL(r.url)                       // strip www, trailing /, lowercase
+  if (seen.has(key)) {                             // exact-URL dupe across angles
+    dupes.push({ ...r, dupOf: seen.get(key) }); return false
+  }
+  if (fetchSlots &lt;= 0 &amp;&amp; relRank[r.relevance] &gt;= 1) {
+    budgetDropped.push(r); return false            // out of budget &amp; not high-rel
+  }
+  seen.set(key, { angle: searchResult.angle, title: r.title })
+  fetchSlots--                                     // claim a fetch slot
+  return true
+})</code></pre>
+          <pre class="mermaid">
+flowchart TD
+  R["search result URL"] --> N["normURL()<br/>strip www · trailing / · lowercase"]
+  N --> SEEN{"in seen map?"}
+  SEEN -->|yes| DUP["→ dupes[]  ·  drop"]
+  SEEN -->|no| BUD{"fetchSlots ≤ 0<br/>AND relevance ≠ high?"}
+  BUD -->|yes| BD["→ budgetDropped[]  ·  drop"]
+  BUD -->|no| KEEP["seen.set() · fetchSlots-- · FETCH"]
+          </pre>
+
+          <h3>Fetch &amp; extract</h3>
+          <p>Each surviving source gets a <strong>fetch agent</strong> that uses <code>WebFetch</code> to pull the page, rates its <code>sourceQuality</code>, and extracts 2–5 <strong>falsifiable claims</strong> — each with a supporting quote and an importance rating. Failure handling is precise about the difference between two outcomes:</p>
+          <div class="callout warn"><span class="tag">Null vs throw.</span> A user-skipped or dead agent returns <code>null</code> and is dropped via <code>.filter(Boolean)</code>. A genuine fetch error is <code>.catch()</code>-ed into a real record with <code>sourceQuality: "unreliable"</code> and <code>claims: []</code>. The comment is explicit that a skip must <em>not</em> be mislabeled “unreliable” — absence of a vote is not evidence.</div>
+        </section>
+
+        <section id="ranking">
+          <h2><span class="num">05</span>Claim ranking</h2>
+          <p>Once the pipeline drains, every source's claims are flattened into one pool, then sorted by a two-key ordering and truncated to the verification budget — verifying every claim from every source would be the most expensive phase, so the harness only adjudicates the top <code>MAX_VERIFY_CLAIMS = 25</code>.</p>
+          <pre><code class="language-javascript">const allSources = searchResults.flat().filter(Boolean)
+const allClaims  = allSources.flatMap(s => s.claims)
+
+const rankedClaims = [...allClaims]
+  .sort((a, b) =>
+    (impRank[a.importance]  - impRank[b.importance]) ||   // central first
+    (qualRank[a.sourceQuality] - qualRank[b.sourceQuality]))  // then primary-source first
+  .slice(0, MAX_VERIFY_CLAIMS)</code></pre>
+          <p>The ordering reads as a priority: <strong>central</strong> claims outrank supporting and tangential ones; ties break toward <strong>primary</strong> sources over secondary, blog, forum, and unreliable. So the 25 claims that reach the expensive vote are the most consequential and best-sourced available.</p>
+        </section>
+
+        <section id="verify">
+          <h2><span class="num">06</span>Adversarial verification</h2>
+          <p>This is the stage that earns the “fact-checked” label. Every ranked claim is put to a <strong>3-voter panel</strong> (<code>VOTES_PER_CLAIM = 3</code>), and each voter is prompted to be skeptical and actively try to <em>refute</em> — searching for contradicting evidence, checking the quote actually supports the claim, weighing source quality against claim strength, and watching for stale or marketing claims. The default is <code>refuted=true</code> when uncertain.</p>
+          <pre><code class="language-javascript">phase("Verify")
+const voted = (await parallel(                         // ── BARRIER ──
+  rankedClaims.map(claim => () =>
+    parallel(                                          // 3 independent voters
+      Array.from({ length: VOTES_PER_CLAIM }, (_, v) => () =>
+        agent(VERIFY_PROMPT(claim, v), { phase: "Verify", schema: VERDICT_SCHEMA }))
+    ).then(verdicts => {
+      const valid    = verdicts.filter(Boolean)        // null vote = abstain
+      const refuted  = valid.filter(v => v.refuted).length
+      const survives = valid.length &gt;= REFUTATIONS_REQUIRED
+                    &amp;&amp; refuted &lt; REFUTATIONS_REQUIRED
+      return { ...claim, verdicts: valid, refutedVotes: refuted, survives }
+    }))
+)).filter(Boolean)</code></pre>
+          <p>The survive rule is the subtle part, and the inline comment flags exactly the bug it avoids. A claim survives only if it was <strong>actually adjudicated</strong> — a quorum of valid votes (<code>≥ 2</code>) <em>and</em> fewer than 2 refutations. The first half matters: if two voters abstain (return <code>null</code>), then <code>refuted = 0</code>, and a naive <code>refuted &lt; 2</code> test would let an <strong>unverified</strong> claim pass. Requiring a quorum closes that hole — all-abstain ⇒ killed, not survived.</p>
+          <pre class="mermaid">
+sequenceDiagram
+  participant H as Harness
+  participant V1 as Voter 1
+  participant V2 as Voter 2
+  participant V3 as Voter 3
+  H->>V1: VERIFY_PROMPT · "try to refute"
+  H->>V2: VERIFY_PROMPT
+  H->>V3: VERIFY_PROMPT
+  V1-->>H: refuted = false
+  V2-->>H: refuted = true
+  V3-->>H: null  (abstain)
+  Note over H: valid = 2 · refuted = 1<br/>survives = (valid ≥ 2) AND (refuted &lt; 2) → ✓ kept
+          </pre>
+          <div class="callout danger"><span class="tag">Why nested <code>parallel</code>.</span> The outer <code>parallel</code> runs all 25 claims at once; the inner <code>parallel</code> runs each claim's 3 votes at once. With the concurrency cap (≈10–16 live agents) this is throughput-shaped, not literally 75 simultaneous calls — excess votes queue and drain as slots free.</div>
+        </section>
+
+        <section id="synthesize">
+          <h2><span class="num">07</span>Synthesis &amp; report</h2>
+          <p>Confirmed claims are partitioned from killed ones. The harness then builds a text block — each surviving claim with its vote tally, source, quote, and the most-confident non-refuting verifier's evidence — plus a transparency block listing the refuted claims, and hands both to a single <strong>synthesis agent</strong>.</p>
+          <pre><code class="language-javascript">const confirmed = voted.filter(c => c.survives)
+const killed    = voted.filter(c => !c.survives)
+
+const report = await agent(SYNTH_PROMPT, { label: "synthesize", schema: REPORT_SCHEMA })</code></pre>
+          <p>The synthesis prompt is instructional, not generative-from-scratch — it tells the agent to (1) merge claims that say the same thing and combine their sources, (2) group related claims into findings that address the question, (3) assign a per-finding <code>confidence</code> (high = multiple primary sources + unanimous votes; low = single blog-quality source), (4) write a 3–5 sentence executive summary, (5) note caveats and time-sensitivity, and (6) list 2–4 open questions.</p>
+          <p>The final return spreads the report and attaches the audit trail: the refuted claims with their vote tallies, the full source list with quality and angle, and a <code>stats</code> block — including a computed <code>agentCalls</code> total: <code>1 scope + N angles + S sources + (V × 3 votes) + 1 synth</code>.</p>
+        </section>
+
+        <section id="degradation">
+          <h2><span class="num">08</span>Graceful exit ramps</h2>
+          <p>A research run can dead-end honestly at several points, and the harness has a structured return for each — it never throws away a partial run or fabricates a finding. There are <strong>four early returns plus one salvage</strong>, each returning the same report shape with an explanatory <code>summary</code>.</p>
+          <table>
+            <thead><tr><th>#</th><th>Checkpoint</th><th>Condition</th><th>Returns</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>No question</td><td><code>args</code> empty</td><td><code>{error}</code> — usage hint</td></tr>
+              <tr><td>2</td><td>Scope failed</td><td>scope agent returned <code>null</code></td><td><code>{error}</code> — cannot decompose</td></tr>
+              <tr><td>3</td><td>No claims</td><td><code>rankedClaims.length === 0</code></td><td>empty findings + source/dupe stats</td></tr>
+              <tr><td>4</td><td>All refuted</td><td><code>confirmed.length === 0</code></td><td>findings <code>[]</code> + the refuted list (transparency)</td></tr>
+              <tr><td>5</td><td>Synthesis skipped</td><td>report agent returned <code>null</code></td><td><strong>salvage:</strong> verified claims raw, unmerged</td></tr>
+            </tbody>
+          </table>
+          <div class="callout ok"><span class="tag">Design stance.</span> “All claims refuted” is a <em>result</em>, not an error — the harness reports research as inconclusive and shows its work, rather than pretending. The salvage path (#5) is the clearest tell: if the final synthesis dies, it would rather hand back 8 verified-but-unmerged claims than throw on <code>report.findings</code> and discard the whole expensive run.</div>
+        </section>
+
+        <section id="primitives">
+          <h2><span class="num">09</span>Orchestration primitives</h2>
+          <p>The whole harness is built from a small vocabulary supplied by the <code>Workflow</code> runtime. Understanding these four is enough to read any workflow script.</p>
+          <table>
+            <thead><tr><th>Primitive</th><th>Role in deep-research</th></tr></thead>
+            <tbody>
+              <tr><td><code>agent(prompt, {schema})</code></td><td>Spawn one subagent; with a schema it returns a validated object (or <code>null</code> if skipped/dead). Every phase step is one of these.</td></tr>
+              <tr><td><code>pipeline(items, …stages)</code></td><td>Run each item through all stages independently — <strong>no barrier</strong>. Powers search→dedup→fetch so fast angles don't wait on slow ones.</td></tr>
+              <tr><td><code>parallel(thunks)</code></td><td>Run thunks concurrently and <strong>await all</strong> (a barrier). Used for the fetch fan-out per angle and the whole verify stage.</td></tr>
+              <tr><td><code>phase(title)</code> / <code>log(msg)</code></td><td>Group subsequent agents under a progress label; emit narrator lines (e.g. <em>“Fetched 12 sources → 31 claims → verifying top 25”</em>).</td></tr>
+            </tbody>
+          </table>
+          <p>The <code>phase</code> argument is also passed per-agent (<code>{ phase: "Fetch" }</code>) inside <code>pipeline</code>/<code>parallel</code> stages — this pins each agent to the right progress group even though the global <code>phase()</code> pointer has raced ahead while stages overlap.</p>
+        </section>
+
+        <section id="tuning">
+          <h2><span class="num">10</span>Tuning knobs</h2>
+          <p>Five constants at the top of the file set the entire shape of a run. They are the levers to scale rigor up or down.</p>
+          <pre><code class="language-javascript">const VOTES_PER_CLAIM      = 3    // panel size per claim
+const REFUTATIONS_REQUIRED  = 2    // refutes needed to kill (also the survive quorum)
+const MAX_FETCH             = 15   // total source fetch budget across all angles
+const MAX_VERIFY_CLAIMS     = 25   // claims that reach the expensive vote</code></pre>
+          <table>
+            <thead><tr><th>Constant</th><th>Effect if raised</th><th>Cost</th></tr></thead>
+            <tbody>
+              <tr><td><code>VOTES_PER_CLAIM</code></td><td>Stricter, less-noisy verdicts</td><td>×N agents on the hottest phase</td></tr>
+              <tr><td><code>REFUTATIONS_REQUIRED</code></td><td>Higher survive bar &amp; quorum</td><td>More claims killed; fewer findings</td></tr>
+              <tr><td><code>MAX_FETCH</code></td><td>Broader source coverage</td><td>More fetch agents, more dupes</td></tr>
+              <tr><td><code>MAX_VERIFY_CLAIMS</code></td><td>Deeper adjudication</td><td>Dominant cost: ×3 votes each</td></tr>
+            </tbody>
+          </table>
+          <p>Note that <code>REFUTATIONS_REQUIRED</code> is overloaded — it is both the kill threshold (<code>refuted ≥ 2</code>) and the survive quorum (<code>valid ≥ 2</code>). With 3 voters those coincide cleanly; raising the panel without revisiting this coupling would change both behaviors at once.</p>
+        </section>
+
+        <section id="references">
+          <h2><span class="num">11</span>References</h2>
+          <p>This canvas is reconstructed from the harness's own generated artifacts — the implementation is the script, not a prose spec.</p>
+          <ul>
+            <li><strong>Workflow script (implementation):</strong> <code>…/alpaca-trading/…/workflows/scripts/deep-research-wf_38c2bca7-670.js</code> — 349 lines, the source of every excerpt here.</li>
+            <li><strong>Run journal:</strong> <code>…/workflows/wf_38c2bca7-670.json</code> — cached agent results from one execution (used for resume; not the implementation).</li>
+            <li><strong>Skill registration:</strong> <code>deep-research</code> — “Deep research harness — fan-out web searches, fetch sources, adversarially verify claims, synthesize a cited report.”</li>
+            <li><strong>Lineage:</strong> ported from the <em>bughunter</em> workflow architecture; <code>WebSearch</code>/<code>WebFetch</code> substitute for <code>git</code>/<code>grep</code>.</li>
+          </ul>
+        </section>
+
+        <footer style="margin-top:48px;color:var(--text-muted);font-size:.82rem;border-top:1px solid var(--border);padding-top:18px;">
+          Rendered as a Docs Canvas from <code>deep-research-wf_38c2bca7-670.js</code>. Aesthetic: night-observatory / signal console (Space Grotesk · IBM Plex Sans · JetBrains Mono). Use the sidebar to navigate; ◐ toggles light/dark.
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+    const root = document.documentElement;
+
+    const saved = localStorage.getItem("canvas-theme");
+    if (saved) root.dataset.theme = saved;
+    else if (window.matchMedia("(prefers-color-scheme: light)").matches) root.dataset.theme = "light";
+    document.getElementById("themeBtn").onclick = () => {
+      root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
+      localStorage.setItem("canvas-theme", root.dataset.theme);
+      mermaid.initialize({ startOnLoad: false, theme: root.dataset.theme === "light" ? "neutral" : "dark", securityLevel: "strict" });
+      renderMermaid();
+    };
+
+    const sidebar = document.getElementById("sidebar");
+    document.getElementById("menuBtn").onclick = () => sidebar.classList.toggle("open");
+    sidebar.addEventListener("click", e => { if (e.target.closest(".nav-link")) sidebar.classList.remove("open"); });
+
+    if (window.hljs) {
+      document.querySelectorAll("pre code").forEach(block => {
+        if (!block.classList.contains("language-mermaid")) hljs.highlightElement(block);
+        const pre = block.parentElement;
+        const btn = document.createElement("button");
+        btn.className = "copy-btn"; btn.textContent = "Copy";
+        btn.onclick = () => { navigator.clipboard.writeText(block.innerText); btn.textContent = "Copied"; setTimeout(() => btn.textContent = "Copy", 1200); };
+        pre.appendChild(btn);
+      });
+    }
+
+    function renderMermaid() {
+      document.querySelectorAll(".mermaid").forEach(el => el.removeAttribute("data-processed"));
+      mermaid.run({ querySelector: ".mermaid" });
+    }
+    mermaid.initialize({ startOnLoad: false, theme: root.dataset.theme === "light" ? "neutral" : "dark", securityLevel: "strict" });
+    renderMermaid();
+
+    const links = [...document.querySelectorAll(".nav-link")];
+    const byId = new Map(links.map(l => [l.getAttribute("href").slice(1), l]));
+    const spy = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          links.forEach(l => l.classList.remove("active"));
+          byId.get(e.target.id)?.classList.add("active");
+        }
+      });
+    }, { rootMargin: "-10% 0px -80% 0px" });
+    document.querySelectorAll("section[id]").forEach(s => spy.observe(s));
+
+    const bar = document.getElementById("progress");
+    addEventListener("scroll", () => {
+      const h = document.documentElement;
+      bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + "%";
+    }, { passive: true });
+
+    document.getElementById("navSearch").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      links.forEach(l => l.classList.toggle("hidden", !l.textContent.toLowerCase().includes(q)));
+    });
+  </script>
+</body>
+</html>

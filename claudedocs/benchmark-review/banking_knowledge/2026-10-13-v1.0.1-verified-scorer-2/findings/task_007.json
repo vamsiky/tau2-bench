@@ -1,0 +1,17 @@
+{
+  "task_id": "task_007",
+  "severity": "None",
+  "headline": "Clean: on the fixed date (2025-11-14), the only personal card with an active points or cash sign-up bonus that a non-invited customer can get is EcoCard, because Silver's $500 bonus window closed on 2025-06-30.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The sign-up bonus promos in the personal-card KB are Silver's $500 statement credit (silver_010, 'Accounts must be opened within: 2025-01-01 to 2025-06-30', expired), EcoCard's 2,000 bonus points (ecocard_009, 'runs from 2025-08-01 through 2025-12-15', active) and Diamond Elite's $5,000 credit (diamond_elite_009, invitation-only). The others are 0% APR or fee-waiver promos, not points or cash. Business cards are excluded by the customer. With get_current_time = 2025-11-14, EcoCard is the only eligible bonus, so the lowest-fee tie-break never comes into play. That matches gold[0] (EcoCard, Jordan Mitchell, 62000, false).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and re-derivation agrees.",
+  "notes": "The agent needs the current date to rule out Silver's expired bonus, and if it skips that check it would recommend Silver ($0 fee). The date comes from get_current_time, as policy_header guideline 4 directs. EcoCard's bonus is written as '$2,000 sustainability points' (a cosmetic dollar sign; the deciding fact is the promo window). Diamond Elite would waive its fee, but 'Membership is by invitation only'. In the earlier Opus runs 3 of 4 passed; trial 1 made no application."
+}

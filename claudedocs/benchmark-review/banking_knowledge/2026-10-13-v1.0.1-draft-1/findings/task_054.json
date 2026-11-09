@@ -1,0 +1,36 @@
+{
+  "task_id": "task_054",
+  "severity": "Minor",
+  "headline": "The task is solvable as designed, but the customer's script never says whether she wants the free expedited shipping the gold answer records for her replacement card.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "Gold persists expedited_shipping=true on the replacement-card order, but the user script gives no answer to the expedited-shipping question the KB tells the agent to ask; the value depends on how the simulator improvises.",
+      "evidence": [
+        "gold[14].arguments: \"expedited_shipping\": true",
+        "doc_credit_cards_credit_card_replacements_001: \"Ask whether they want expedited shipping (advise on possible fees by tier; see Shipping selection).\"",
+        "doc_credit_cards_credit_card_replacements_001: \"If the reason is fraud_suspected or stolen, strongly recommend expedited shipping\"",
+        "doc_credit_cards_credit_card_replacements_001: \"Premium-tier and above (Gold, Platinum, Diamond Elite): $0.00 (complimentary).\"",
+        "user_scenario step 9: \"Yes, please send me a new card with a new number. ... Just send it to my address on file.\" (no shipping-speed preference)",
+        "tools.py order_replacement_credit_card_7291 stores \"expedited_shipping\": expedited_shipping in the credit_card_orders record"
+      ],
+      "gold_action_refs": [
+        14
+      ],
+      "why_it_matters": "If the agent defaults to standard shipping without asking, or the simulator answers 'standard is fine', the order row differs from gold and the DB hash fails even though the agent followed policy.",
+      "suggested_fix": "Add to the user script: 'If offered expedited shipping, accept it (it is free on your card).'"
+    }
+  ],
+  "solution_check": "Reconstructed: verify (log_verification with DB fields and get_current_time stamp), recognise the dispute blocks CLI (doc 007 step 2 'No Pending Disputes'; approve_credit_limit_increase_5847 rejects any SUBMITTED dispute), cap the Gold (premium-tier) increase at 50% of $5,000 = $2,500 (doc 006), submit 2500, run the step-2 checks (dispute history via doc 016's get_user_dispute_history_7291, pending replacements via doc replacements_005's get_pending_replacement_orders_5765, CLI history, 3 months payment history: 3 consecutive ON_TIME in db payment_history), approve new limit 7500, then order the fraud_suspected replacement to the address on file and file the dispute (purchase 11/11/2025 from txn_584f9c5d00_001, noticed 11/12/2025, contacted_merchant false, card_action cancel_and_reissue per doc 014, provisional credit eligible per doc 015: account open since 03/20/2023, fraud reason, $487.50 within the $25-$10,000 premium range, no prior disputes). Replaying gold in the snapshot succeeds at every step and matches this reconstruction; the only unscripted persisted value is expedited_shipping.",
+  "prior_status": "new",
+  "prior_note": "Prior v1.0.0 review rated this clean; the expedited-shipping dependency on an unscripted user answer was not reported then (the changed doc logistics_005 only lost a stray '$' in the 120-day entries and does not affect this premium-tier task).",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. Order between the replacement and the dispute does not change final state (separate tables); the replacement order's status 'ORDERED' is not one of the statuses approve_credit_limit_increase_5847 treats as blocking, so only dispute-before-CLI actually breaks the tool, which the docs warn about. Trap worth noting: get_credit_limit_increase_history_4829 called after the submit shows the just-submitted PENDING request; doc 005 says the cooldown 'applies only if your most recent request was approved', so a careful agent should not deny for cooldown. The four gold reads are each documented in the KB."
+}

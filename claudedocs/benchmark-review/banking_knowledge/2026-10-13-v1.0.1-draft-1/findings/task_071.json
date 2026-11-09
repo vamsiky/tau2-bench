@@ -1,0 +1,50 @@
+{
+  "task_id": "task_071",
+  "severity": "Major",
+  "headline": "The procedure document for business savings tells the agent to use the wrong account type, and the Sky Blue choice depends on a business age the customer is never given.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The internal business-savings opening procedure tells the agent to call open_bank_account_4821 with account_type 'savings', while the tool's own description and the gold use 'business_savings'.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_004 (Agent Tool Instructions, open_bank_account_4821): \"Set account_type to 'savings'.\"",
+        "tools.py open_bank_account_4821 docstring: \"account_type (string): Type of account to open. Must be one of: 'checking' (personal checking), 'savings' (personal savings), 'business_checking', 'business_savings'\"",
+        "gold[5].arguments.arguments = {\"user_id\": \"yt71c9e4f2\", \"account_type\": \"business_savings\", \"account_class\": \"Gold Saver Account\"}",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\" (account_type is part of the id and is stored in the record)"
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "An agent that follows general_004 literally calls the tool with account_type 'savings'; the call succeeds (the personal-savings check only needs a checking account open 14+ days, and chk_yt71c9e4f2 dates from 03/15/2022), but it creates a record with a different account_type and account_id, so the DB hash misses the gold.",
+      "suggested_fix": "Change general_004 to \"Set account_type to 'business_savings'.\""
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Sky Blue's first documented eligibility condition is company age (within 4 years of formation), but the customer's instructions never say when the business was formed, so the simulated user must invent an answer if a careful agent asks.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"## Verify Eligibility\\n- Confirm your company is within 4 years of formation.\"",
+        "doc_business_checking_accounts_sky_blue_009: \"Verify your company age is within 4. Confirm using formation documents that match your application details.\"",
+        "task_071.user_scenario.instructions: no formation date or business age is given (only the personal Green Account age, \"about 3 years\")",
+        "gold[4].arguments.arguments account_class = \"Sky Blue\""
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An agent that follows the Sky Blue eligibility check asks the business's age; if the simulator improvises an age over 4 years (or says it does not know), the agent correctly drops Sky Blue and the active November promotion (doc_bank_accounts_bank_accounts_(general)_013) sends it to Lime Green (APY 1.5%, overdraft fee $0.00, minimum balance $5,000; its mobile deposit limit should be checked, but Lime Green is the promotion's second choice), which also meets every stated requirement, so the opened account_class and its deterministic account_id differ from the gold.",
+      "suggested_fix": "Add the business's formation date (for example \"founded about 2 years ago\") to the user instructions, with a scripted answer if asked."
+    }
+  ],
+  "solution_check": "Checking: Sky Blue meets every requirement: mobile deposit $25,000/day (sky_blue_007), overdraft fee $0.00, funding requirement 0, APY 1.25%. The promotion active on 11/14/2025 (general_013) ranks it first, so the agent opens business_checking \"Sky Blue\". Savings: Gold Saver Account has same-day ACH 'Yes' and an outgoing wire fee of 15 (gold_saver_account_006), with no stated minimum balance; it meets the requirements and is first in the active savings promotion (general_015, 11/01-11/30; general_016 expired 11/12). Business-savings eligibility holds via biz_chk_yt71c9e4f2 (Cobalt Blue, opened 09/15/2025, 60 days, balance 12500.00). This matches gold[4] and gold[5] if the agent uses account_type 'business_savings' as the tool description says, not 'savings' as general_004 says.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; general_004's 'savings' instruction and the unscripted Sky Blue company-age check are defects it did not report (neither document changed in v1.0.1).",
+  "notes": "log_verification arguments match db users[yt71c9e4f2]. The account_class spellings follow the docs: \"Sky Blue\" matches general_003's style and the seeded level \"Cobalt Blue\", which the agent sees in the gold-required get_all_user_accounts read; \"Gold Saver Account\" matches general_004's 'ending with Account' rule and general_015's wording. The two opens are independent, so their order does not matter. Smaller risk, not filed as an issue: general_004 step 5 has the agent ask whether to transfer the opening deposit now. The script does not cover this, and a simulator that says yes would add a transfer write that is not in the gold. Gold Saver documents no opening-deposit amount, though, so a transfer is unlikely to go through cleanly. The v1.0.1 Sky Blue doc edits are cosmetic."
+}

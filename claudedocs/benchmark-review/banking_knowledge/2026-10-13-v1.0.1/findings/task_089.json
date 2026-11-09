@@ -1,0 +1,17 @@
+{
+  "task_id": "task_089",
+  "severity": "None",
+  "headline": "The three-card ATM-limit task is deterministic: the only write is a temporary limit increase whose value is fixed by both the customer's need and the 150% cap.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Green (doc_green_account_(checking)_012: '$600... all ATM withdrawals combined'): 11/14 withdrawals 100+80+60+60+50 = 350, so 250 remains against the $550 needed. The needed limit 350+550 = 900 equals the cap 1.5 x 600 = 900, so new_limit 900 under either reasoning, matching gold[8]. Blue has an OVERDRAFT FEE on 11/01/2025 (within 30 days), so it is ineligible per doc_..._040. The teen Light Green card has a fixed $150 ATM limit (doc_light_green_account_005). No other writes.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review rated this task clean, and it is unchanged and still clean in v1.0.1.",
+  "notes": "Even if an agent counts the 11/13 $100 Chase withdrawal as within a rolling 24 hours (the clock is 03:40 on 11/14), the needed limit (1000) exceeds the cap, so it still requests 900. The tool does not check overdraft history, so wrongly calling it for Blue would succeed and diverge, but that is an agent error the docs prevent. Sofia's account is under user_id sm16d4e9b2, so get_all_user_accounts_by_user_id_3847(dm42f8c3a7) does not list it; the agent must look it up separately, which affects only reads."
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "task_101",
+  "severity": "Major",
+  "reason": "Docs cap referral bonuses received, not submissions, per 9 days, so recommending all four referrals is supported; the customer then submits four and fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Rolling-window cap reads as payout limit or submission limit",
+      "kind": "ambiguous_choice",
+      "step": 3,
+      "gold": {
+        "call": "submit_referral",
+        "args": {"user_id": "nk80d5r2j7", "account_type": "Sky Blue Account"},
+        "output": "Referral request submitted successfully!\n  - Referral ID: 37bce99de414890e\n  - Referrer ID: nk80d5r2j7\n  - Account Type: Sky Blue Account"
+      },
+      "doc_faithful": {
+        "call": "submit_referral",
+        "args": {"user_id": "nk80d5r2j7", "account_type": "Lime Green Account"},
+        "output": "Referral request submitted successfully!\n  - Referral ID: 9918e7d3cff55db3\n  - Referrer ID: nk80d5r2j7\n  - Account Type: Lime Green Account\n  - Status: NO_PROGRESS",
+        "note": "Payout-only reading: agent recommends all 4; customer (script 17) submits two more after step 3 (Green Fee-Free Account and Lime Green Account, both appended)."
+      },
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_047", "quote": "You can receive at most 2 referral bonuses in any rolling 9-day window."},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_048", "quote": "You can have multiple referrals in progress, but you can only receive a maximum of 2 referral bonuses in any rolling 9-day window."},
+        {"source": "instructions", "quote": "If agent recommends all 4 referrals without mentioning rolling window:** \"Okay, let me submit these now.\" Then submit ALL 4 referrals"}
+      ],
+      "conflict": "Docs _047/_048 limit bonuses received and allow multiple referrals in progress; gold allows only 2 submissions (steps 2-3). Four submissions → two extra referral rows.",
+      "scorer": {"field": "referrals[9918e7d3cff55db3]: EXTRA row in agent DB (Lime Green Account); referrals[d0f0b9d55a064403]: EXTRA row in agent DB (Green Fee-Free Account)", "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

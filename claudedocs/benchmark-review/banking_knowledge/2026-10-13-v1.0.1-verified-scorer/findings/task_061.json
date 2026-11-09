@@ -1,0 +1,17 @@
+{
+  "task_id": "task_061",
+  "severity": "None",
+  "headline": "Clean: open Silver Plus savings first, then have the customer deposit a $25 check so the early-closure fee can be taken and the Green checking closed.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Savings selection is the same as task_060: Silver Plus. The second checking account (level 'Silver Account', opened 11/04/2025) is 10 days old, and Green (opened 10/01/2025) is 44 days old, so savings must be opened before Green is closed. Green is mid-tier at 44 days, inside the 60-day window: a $25 fee applies, and general_005 says the balance must be at least the fee because 'The fee is deducted directly from the account balance and there is no alternative payment method'. The balance is $0.00, so the user deposits the $25 check via deposit_check_3847 into 61d4e5f6a7b8c901. The tool then sees balance 25 - fee 25 = 0 and closes the account. This matches the gold, and the gold replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; that still holds, though one part depends on the verified scorer (see notes).",
+  "notes": "Scorer dependence: the closure_reason free text is stripped by the verified scorer; upstream, any non-default reason fails. One alternative path diverges from gold: the agent moves $25 from the Silver checking (balance $1,500) with transfer_funds_between_bank_accounts_7291 instead of the check (replay: accounts and user tool tables differ). The user script steers firmly to the $25 check as soon as the fee is mentioned, so I did not count this as a defect. The DB stores the second checking as level 'Silver Account', a savings product name. This may confuse an agent but does not change the answer, because the tool and doc 002 both treat it as class 'checking' and it is 10 days old either way. close_bank_account_7392 does not actually deduct the fee from current_holdings (the account closes with '$25.00' still on record), and the gold behaves the same way."
+}

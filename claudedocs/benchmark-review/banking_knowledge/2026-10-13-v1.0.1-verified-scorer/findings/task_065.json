@@ -1,0 +1,37 @@
+{
+  "task_id": "task_065",
+  "severity": "Major",
+  "headline": "The right pairing (Evergreen checking plus Green savings, opened before closing Light Blue) is clear, but the official answer only accepts the savings name 'Green Account' while the KB calls it 'Green Account (savings)'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The gold opens the savings product as account_class 'Green Account'. The KB names this product 'Green Account (savings)' in every title and in the pairing list, and the checking-opening procedure gives 'Green Account (checking)' as an example of a full official name. Only the savings procedure's rule ('ending with Account') points to the bare 'Green Account'. Because the account id is a hash of account_class, the two spellings produce different account records.",
+      "evidence": [
+        "doc_savings_accounts_green_account_(savings)_001 title: \"Green Account (savings) specifications and requirements\" (all nine Green savings docs use \"Green Account (savings)\")",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"3. Evergreen Account (checking) + Green Account (savings)\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)').\"",
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\"",
+        "gold[2].arguments.arguments account_class = \"Green Account\"",
+        "Replay: gold with account_class 'Green Account (savings)' -> verified=(False, ['table accounts differs'])"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that copies the product's official name from the KB ('Green Account (savings)'), or follows general_001's example where the parenthetical is part of the name, opens a correctly chosen account under a different id. The accounts table then differs and the task fails, although the product choice was right.",
+      "suggested_fix": "Make the open tool normalize account_class (strip a trailing ' (savings)'/' (checking)'), or state in general_002 that the Green savings account_class is exactly 'Green Account'."
+    }
+  ],
+  "solution_check": "At $6,000 with no credit card, the savings accounts within reach are Bronze 2.0%, Silver 2.5% (tier 1), Silver Plus 3.0% (tier 1) and Green 4.0%; Gold needs $10k. Checking boosts from the checking docs: Evergreen + Green savings +0.55% -> 4.55%. The best alternative is Silver Plus + Blue +0.35% (+0.25% direct deposit +0.025% relationship) <= 3.625%. Bronze boosts reach at most 2.85% (Dark Green, which is GPA-, age- and 17-26-gated), and Silver + Green checking reaches 2.775%. So the answer is Evergreen Account + Green savings. Light Blue (opened 11/01/2024, $0, past its 30-day window) is the only checking older than 14 days, so the savings must be opened before Light Blue is closed. Replay: closing first makes the savings open fail. This matches the gold apart from the naming issue.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The naming contradiction exists in v1.0.0 and v1.0.1 alike and was not reported.",
+  "notes": "Scorer dependence: closure_reason free text is ignored by the verified scorer; under upstream grading a non-default reason fails. The 'Evergreen Account' checking class matches general_001's 'ending with Account' rule without ambiguity. silver_account_002 contains an unrendered template token ('[[linked_checking_apy_bonus]]'), a cosmetic corruption that does not affect this task because Silver is not optimal. The gold has no get_all_user_accounts read, so the agent's own reads are not logged."
+}

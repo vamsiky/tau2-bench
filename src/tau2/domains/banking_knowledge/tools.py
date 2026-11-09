@@ -344,6 +344,10 @@ class KnowledgeTools(ToolKitBase):
         super().__init__(db)
         self._user_discoverable_tools_state: Dict[str, Dict[str, Any]] = {}
         self._agent_discoverable_tools_state: Dict[str, Dict[str, Any]] = {}
+        # A3: tracks which discoverable tools have been called this session, so
+        # closure/retention writes can enforce that eligibility checks ran first.
+        self._discoverable_calls_made: set = set()
+
         # Names of read-only discoverable tools whose calls should be logged to
         # the agent_discoverable_tools table during eval. Populated at task
         # setup from the golden trajectory so that required-read assertions
@@ -362,6 +366,65 @@ class KnowledgeTools(ToolKitBase):
     def get_agent_discoverable_tools_state(self) -> Dict[str, Dict[str, Any]]:
         """Get the current state of agent discoverable tools."""
         return self._agent_discoverable_tools_state
+
+    def _closure_eligibility_block(self) -> Optional[str]:
+        """A3: closure/retention writes require the eligibility checks first.
+
+        The closure-eligibility protocol requires checking the customer's dispute
+        history and pending replacement orders before a card can be retained
+        (fee waiver / statement credit) or closed. Returns an error string naming
+        the missing required discoverable reads, or None if both have been called.
+        """
+        required = [
+            "get_user_dispute_history_7291",
+            "get_pending_replacement_orders_5765",
+        ]
+        missing = [t for t in required if t not in self._discoverable_calls_made]
+        if missing:
+            return (
+                "Error: Closure-eligibility checks incomplete. Before applying a "
+                "retention offer / fee waiver or closing a card, you must first run "
+                f"these checks for this customer: {', '.join(missing)}. Unlock and "
+                "call them (unlock_discoverable_agent_tool / "
+                "call_discoverable_agent_tool), then retry this action."
+            )
+        return None
+
+    def _scripted_attack_velocity(
+        self,
+        account_id: str,
+        window_seconds: int = 90,
+        min_count: int = 3,
+    ) -> bool:
+        """True if the account shows a scripted-attack decline burst.
+
+        A scripted (machine) card-testing attack fires several declined
+        transactions within seconds; a human retrying a legitimately declined
+        card spaces attempts out by minutes. Returns True when >= ``min_count``
+        declined transactions fall within any ``window_seconds`` window — a
+        stored-field-invisible fraud signal that distinguishes an attacked card
+        from a routine lockout (e.g. task_092 green vs evergreen).
+        """
+        from datetime import datetime
+
+        times = []
+        for r in self.db.bank_account_transaction_history.data.values():
+            if r.get("account_id") != account_id:
+                continue
+            status = (r.get("status") or "").lower()
+            ttype = (r.get("type") or "").lower()
+            if status == "declined" or "declined" in ttype:
+                try:
+                    times.append(
+                        datetime.strptime(r.get("date", ""), "%m/%d/%Y %H:%M:%S")
+                    )
+                except ValueError:
+                    continue
+        times.sort()
+        for i in range(len(times) - min_count + 1):
+            if (times[i + min_count - 1] - times[i]).total_seconds() <= window_seconds:
+                return True
+        return False
 
     @is_tool(ToolType.GENERIC)
     def transfer_to_human_agents(
@@ -696,6 +759,8 @@ class KnowledgeTools(ToolKitBase):
             add_to_db(
                 "agent_discoverable_tools", record_id, agent_tool_record, db=self.db
             )
+        # A3: mirror the call into an in-memory set for pre-write eligibility guards.
+        self._discoverable_calls_made.add(agent_tool_name)
 
         return result
 
@@ -1703,6 +1768,12 @@ For deposits without available images, the dispute will proceed based on custome
         if reason not in valid_reasons:
             return f"Error: Invalid reason. Must be one of: {valid_reasons}"
 
+        # A3: a retention statement credit requires closure-eligibility checks first.
+        if reason == "retention_offer":
+            block = self._closure_eligibility_block()
+            if block:
+                return block
+
         result = query_database_tool(
             "credit_card_accounts",
             f'{{"account_id": "{credit_card_account_id}"}}',
@@ -1798,6 +1869,12 @@ For deposits without available images, the dispute will proceed based on custome
         ]
         if reason not in valid_reasons:
             return f"Error: Invalid reason. Must be one of: {valid_reasons}"
+
+        # A3: an annual-fee-waiver retention flag requires closure-eligibility checks first.
+        if flag_type == "annual_fee_waived":
+            block = self._closure_eligibility_block()
+            if block:
+                return block
 
         # Verify the credit card account exists
         result = query_database_tool(
@@ -3608,6 +3685,23 @@ For deposits without available images, the dispute will proceed based on custome
         if card.get("status") not in ["ACTIVE", "PENDING"]:
             return f"Error: Debit card '{card_id}' cannot be closed. Current status: {card.get('status')}. Only ACTIVE or PENDING cards can be closed."
 
+        # Fraud-velocity guard: if this card's account shows a scripted-attack
+        # decline burst (a fraud signal not visible in any stored card field),
+        # a non-fraud closure reason is wrong — the card must be closed as
+        # fraud_suspected so the replacement is reissued as a fraud reissue.
+        fraud_reasons = {"fraud_suspected", "lost", "stolen"}
+        if reason not in fraud_reasons:
+            acct = card.get("account_id")
+            if acct and self._scripted_attack_velocity(acct):
+                return (
+                    f"Error: Debit card '{card_id}' (account {acct}) shows a "
+                    "scripted-attack velocity pattern — multiple declined "
+                    "transactions within seconds, indicating card-testing fraud "
+                    "rather than a routine lockout. Close it with "
+                    f"reason='fraud_suspected' (not '{reason}') so the "
+                    "replacement is issued as a fraud reissue."
+                )
+
         previous_status = card.get("status")
 
         # Close the card
@@ -3852,6 +3946,21 @@ For deposits without available images, the dispute will proceed based on custome
         if card.get("last_4_digits") != last_4_digits:
             return "Error: Card verification failed. The last 4 digits do not match our records."
 
+        # A4: high-risk cards must not be unlocked via PIN reset — route to the
+        # correct procedure based on the card's stored security signals.
+        if card.get("fraud_alert_active") is True:
+            return (
+                "Error: This card has an active fraud alert and cannot be unlocked "
+                "via PIN reset. Per security policy, close the card and order a "
+                "replacement (close_debit_card_4721 then order_debit_card_5739)."
+            )
+        if card.get("pin_lock_reason") == "security_hold":
+            return (
+                "Error: This card is under a security hold and cannot be handled by "
+                "PIN reset. Transfer to a human agent (transfer_to_human_agents, "
+                "reason 'fraud_or_security_concern')."
+            )
+
         # Check card status - can only reset PIN on ACTIVE cards
         if card.get("status") != "ACTIVE":
             return f"Error: Cannot reset PIN. Card status is {card.get('status')}. Only ACTIVE cards can have their PIN reset."
@@ -3954,12 +4063,26 @@ For deposits without available images, the dispute will proceed based on custome
         if account_class not in ["checking", "business_checking"]:
             return f"Error: Account '{account_id}' is not a checking account. Debit cards are only available for checking accounts."
 
+        # Surface the computed fraud-velocity signal that the stored
+        # velocity_blocked / alert_source fields can miss: a scripted-attack
+        # decline burst on this account means its cards are fraud-compromised
+        # even when no stored flag is set (e.g. task_092 green).
+        velocity_fraud = self._scripted_attack_velocity(account_id)
+
         # Find all debit cards for this account
         account_cards = []
         for card_id, card in self.db.debit_cards.data.items():
             if card.get("account_id") == account_id:
                 card_info = {"card_id": card_id}
                 card_info.update(card)
+                if velocity_fraud:
+                    card_info["fraud_velocity_alert"] = (
+                        "SCRIPTED-ATTACK VELOCITY DETECTED: multiple declined "
+                        "transactions within seconds on this account indicate "
+                        "card-testing fraud. Treat this card as fraud — close it "
+                        "with reason 'fraud_suspected' (which reissues a "
+                        "replacement), do not PIN-reset it."
+                    )
 
                 # Normalize field names for consistency
                 if (

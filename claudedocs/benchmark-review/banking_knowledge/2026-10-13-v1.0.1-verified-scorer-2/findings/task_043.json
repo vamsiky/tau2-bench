@@ -1,0 +1,17 @@
+{
+  "task_id": "task_043",
+  "severity": "None",
+  "headline": "Platinum card closure with a $75 balance payoff and a 2+-year annual-fee waiver; every graded value is derivable from the documents and data.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "I followed retention protocol doc_..._logistics_003. Step 1: no disputes, no replacement orders, account opened 11/10/2022, balance $75.00, so pay $75 from checking '05' ($2,850 available) per logistics_009. Step 2: no closure history. Step 3: reason 'annual_fee' ('It's really just the annual fee'). Step 4: customer since 11/10/2022 (more than 2 years), so apply the annual_fee_waived flag with reason loyalty_benefit, expiring one year after 11/14/2025 = 11/14/2026. The result matches all 15 gold actions, and the replayed gold reproduces it.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also found this task clean, and the verdict holds under v1.0.1.",
+  "notes": "The customer also says 'I've been thinking about simplifying my finances', but 'It's really just the annual fee' makes annual_fee the reason. The user has a debit card with issue_date 01/05/2026 (after the fixed clock); it does not bear on a credit-card closure. The required reads (dispute history, replacement orders, all-accounts lookup) are documented in the required docs (general_016, replacements_005, bank_accounts_009)."
+}

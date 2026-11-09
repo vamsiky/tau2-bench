@@ -1,0 +1,35 @@
+{
+  "task_id": "task_100",
+  "severity": "Minor",
+  "headline": "Hunter Green is the correct referral, but the customer's 'mid-July' account-opening claim conflicts with the 09/10 date on file, so the agent must trust the database over the customer.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Minor",
+      "summary": "The customer says her first account was opened in mid-July (about 4 months ago, which would clear World Blue's and Lime Green's 90-day tenure), while the DB's earliest checking account is 09/10/2025 (65 days).",
+      "evidence": [
+        "instructions step 5: \"I opened my first account with Rho-Bank back in mid-July this year ... about four months now\"",
+        "biz_ti87k4x9m2_worldblue.date_opened = 09/10/2025; biz_ti87k4x9m2_cobaltblue.date_opened = 10/01/2025",
+        "doc_bank_accounts_bank_accounts_(general)_047: \"the date your earliest checking account was opened\"",
+        "doc_business_checking_accounts_world_blue_001: \"at least 90 days\""
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "An agent that accepts the customer's date recommends World Blue ($300) and fails; the DB lookup (gold[2], which is required in the read log) settles it at 65 days.",
+      "suggested_fix": "Have the customer say she 'thinks' it was mid-July, or align the claim with a non-checking product so the discrepancy is explainable."
+    }
+  ],
+  "solution_check": "Tenure 65 days (09/10 to 11/14). With $31,000: World Blue (90d), Lime Green (90d), and True Blue ($50k, 90d) are ineligible; Hunter Green $175 (60d, $10k) beats Cobalt Blue $150 (60d), Sky Blue $150 (45d, new LLC under 4 yrs), and Navy Blue $100. No prior referrals. The user submits 'Hunter Green Account', matching gold[3].",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Minor for the same vague-tenure issue; unchanged.",
+  "notes": "gold[2] (get_all_user_accounts_by_user_id_3847) is allowlisted, so skipping the DB read also fails the hash. This is intended, since the read is what defeats the trap."
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "task_050",
+  "severity": "Minor",
+  "headline": "A simple $2,500 credit-limit increase on a Gold card is solvable, but the document that says which tier the Gold card belongs to is not in the task's required-document list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The CLI documents give limits by Entry/Mid/Premium tier but never map card names to tiers. The mapping (Gold Rewards Card = Premium) lives in doc_credit_cards_credit_cards_(general)_015, which is missing from required_documents. It can still be retrieved from the full knowledge base.",
+      "evidence": [
+        "required_documents = [logistics_004, logistics_005, logistics_006, logistics_007, replacements_005, (general)_016]; no (general)_015",
+        "doc_credit_cards_credit_card_account_logistics_006: \"Premium-tier cards: Maximum increase of 50% of current credit limit per request.\" (no card-to-tier map)",
+        "doc_credit_cards_credit_cards_(general)_015: \"Premium Tier (Gold Rewards Card, Business Gold Rewards Card)\"",
+        "Sibling tasks 051, 052 and 053 list (general)_015 in required_documents"
+      ],
+      "gold_action_refs": [
+        2,
+        12
+      ],
+      "why_it_matters": "Under a retrieval setup that shows only the required documents, the agent has to infer Gold's tier. Mid and Premium give the same answer here ($2,500 is 50% of $5,000; 3 months of history), so only an Entry-tier guess (25% cap, $1,250) would change the outcome.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_015 to required_documents."
+    }
+  ],
+  "solution_check": "Gold Rewards Card (Premium) with credit_limit $5000.00, balance $0.00 (0% utilization), opened 03/20/2023. No CLI history, no disputes, no replacement orders, 3 consecutive on-time payments. Following logistics_007: the $2,500 request is within the 50% cap, so submit 2500, run the checks, and approve new_credit_limit 7500. This matches gold[2] and gold[12], and the replay reproduces the gold state.",
+  "prior_status": "new",
+  "prior_note": "The prior review noted the missing tier map but rated the task clean. Calibration rates a retrievable required document missing from the list as Minor.",
+  "notes": "Because approve_credit_limit_increase_5847 derives its record ID from (account, user, increase), it collides with the submit record and writes no APPROVED row. Gold and agent behave the same, so the quirk is harmless. logistics_007 'Step 3' is an empty heading ('.'), which is cosmetic since logistics_006 carries the content. No finding depends on the verified relaxations."
+}

@@ -1,0 +1,52 @@
+{
+  "task_id": "task_065",
+  "severity": "Major",
+  "headline": "Evergreen checking plus Green savings is the unique highest-APY pairing and the ordering is documented, but two free-text values in the gold (the 'Green Account' spelling and the default closure reason) are not uniquely derivable.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Gold opens the savings account with account_class 'Green Account'. The KB calls this product 'Green Account (savings)' everywhere and shows the parenthetical form as an official class name ('Green Account (checking)'), while the savings procedure says the class must end with 'Account'. account_class is part of the deterministic account id.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_002: \"It must be the full official name ending with “Account” (for example, “Silver Plus Account”, “Gold Account”).\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "doc_savings_accounts_green_account_(savings)_001 title: \"Green Account (savings) specifications and requirements\"; doc_bank_accounts_bank_accounts_(general)_012: \"Evergreen Account (checking) + Green Account (savings)\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\" (no normalization)",
+        "gold[2].arguments.arguments: \"account_type\": \"savings\", \"account_class\": \"Green Account\"",
+        "replay with 'Green Account (savings)' gives a different DB hash"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that copies the product's official name, 'Green Account (savings)', by analogy with the 'Green Account (checking)' example opens an account with a different id and class string, and DB grading fails although the product choice is correct.",
+      "suggested_fix": "Normalize/validate account_class against a canonical product list in open_bank_account_4821, or state in doc_(general)_002 that the Green savings class string is exactly 'Green Account'."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 stores its optional free-text 'reason' argument in accounts[...].closure_reason. Gold omits it, so the record gets the hidden default 'Customer requested closure'. No document says which reason to pass or to leave it out, so an agent that records a sensible reason produces a different DB state.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\"; body: account[\"closure_reason\"] = reason",
+        "unlock output: \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no reason value anywhere in the KB)",
+        "gold[5].arguments.arguments: {\"account_id\": \"chk_rp65a7b3c4\"} (no reason)"
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "Passing a reason (e.g. 'Customer wants to consolidate checking accounts') is a reasonable, even diligent, use of an offered parameter, but it fails DB grading. Only omitting the argument, or guessing the exact default string, matches gold.",
+      "suggested_fix": "Exclude closure_reason from the hashed state, or have the closure doc state the exact reason string and put it in the gold call."
+    }
+  ],
+  "solution_check": "With $6,000 and no card, the viable savings accounts are Bronze 2.0%, Silver 2.5%, Silver Plus 3.0% and Green 4.0%. Adding checking-pairing boosts (doc_(general)_012 plus checking docs): Green + Evergreen +0.55% = 4.55%, Silver Plus + Blue +0.35% = 3.35%, Silver + Gold Years +0.6% = 3.1% (Gold Years requires age 62+), Bronze + Dark Green +0.85% = 2.85% (age 17-26). Evergreen + Green is the unique maximum. Savings must open while Light Blue (11/01/2024) is still open, because the new Evergreen is 0 days old. Light Blue is past the 30-day window with a $0.00 balance, so it closes without a fee. Opening Evergreen before savings gives the same hash (verified).",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The closure_reason issue was hidden by the prior scorer, and the 'Green Account' spelling ambiguity was not reported.",
+  "notes": "Gold has no get_all_user_accounts_by_user_id_3847 read. The agent needs it to find chk_rp65a7b3c4, but it is not allowlisted, so it is not logged (harmless)."
+}

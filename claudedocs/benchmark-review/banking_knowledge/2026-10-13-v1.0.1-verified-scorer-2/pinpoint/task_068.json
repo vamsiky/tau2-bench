@@ -1,0 +1,30 @@
+{
+  "task_id": "task_068",
+  "severity": "Major",
+  "reason": "Gold step 3 opens checking as \"Green Account\", but the checking procedure doc _001 gives \"Green Account (checking)\" as the class example.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Checking class example is \"Green Account (checking)\"",
+      "kind": "ambiguous_choice",
+      "step": 3,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "rp65a7b3c4", "account_type": "checking", "account_class": "Green Account"},
+               "output": "Bank account opened successfully!\n  - Account ID: 722980a6c8eec6ab\n  ...\n  - Account Class: Green Account"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "rp65a7b3c4", "account_type": "checking", "account_class": "Green Account (checking)"},
+                       "output": "Bank account opened successfully!\n  - Account ID: 662d6d08711816cc\n  ...\n  - Account Class: Green Account (checking)",
+                       "note": "Copies the class name from the procedure's own example; the class string is hashed into the account id."},
+      "refs": [
+        {"source": "doc_bank_accounts_bank_accounts_(general)_001",
+         "quote": "Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')."},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_005",
+         "quote": "MID TIER (Blue Account, Green Account (checking))"}
+      ],
+      "conflict": "Doc _001 example: \"Green Account (checking)\". Gold step 3: \"Green Account\". Both readings are document-supported, gold accepts only one.",
+      "scorer": {"field": "accounts[662d6d08711816cc]: EXTRA row (Green Account (checking)); accounts[722980a6c8eec6ab]: MISSING row (Green Account)",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

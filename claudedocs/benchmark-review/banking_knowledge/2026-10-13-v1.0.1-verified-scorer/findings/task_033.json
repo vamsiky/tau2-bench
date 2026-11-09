@@ -1,0 +1,36 @@
+{
+  "task_id": "task_033",
+  "severity": "Minor",
+  "headline": "The incident transfer protocol is clear and the gold follows it, but the grader cannot tell whether the agent waited for the third request or skipped identity verification as instructed.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "ACTION grading is presence-only, so it cannot enforce the documented sequence (1822 on request 1, 0218 on request 2, transfer on request 3) or the instruction not to verify identity or troubleshoot.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_011: \"Always maintain this order... Do not skip steps.\" and \"Do not ask for verification information or attempt to verify the user's identity.\"",
+        "evaluator_action._check_actions ignores order and extra calls; gold[4].compare_args = []"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "why_it_matters": "An agent that fires 1822, 0218 and the transfer all at the first request, or that verifies identity first, still scores 1. Correct work is never failed.",
+      "suggested_fix": "Grade order relative to the user's requests, or add an NL/ENV assertion that no verification happened before the transfer."
+    }
+  ],
+  "solution_check": "Symptoms (statement paid, deducted from checking, not reflected) match doc_011, and get_current_time (11/14 03:40) is inside the window that ends 11/15/2025. The user makes 3 transfer requests, giving unlock+call 1822, unlock+call 0218, then transfer_to_human_agents. That is identical to the gold.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this task clean. The task is well-posed; the new Minor finding is ACTION-grading leniency.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. ACTION-only task; the verified scorer has no effect."
+}

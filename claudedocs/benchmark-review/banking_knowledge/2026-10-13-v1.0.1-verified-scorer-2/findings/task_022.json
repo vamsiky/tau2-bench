@@ -1,0 +1,30 @@
+{
+  "task_id": "task_022",
+  "severity": "Minor",
+  "headline": "Solvable but long: across 77 transactions on four cards, the documented rates, exclusions and round-down rule give exactly the ten gold disputes. Only the rounding document is missing from the required list.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The rounding rule that decides which rows count as errors lives in doc_credit_cards_credit_cards_(general)_007, which is not listed in required_documents. The agent can still find it with KB search or grep in the default alltools configuration.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "task_022.required_documents = [\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_006\", \"doc_credit_cards_diamond_elite_card_001\", \"doc_credit_cards_diamond_elite_card_002\", \"doc_credit_cards_diamond_elite_card_003\", \"doc_business_credit_cards_business_platinum_rewards_card_001\", \"doc_business_credit_cards_business_platinum_rewards_card_002\", \"doc_business_credit_cards_business_silver_rewards_card_001\", \"doc_business_credit_cards_business_silver_rewards_card_002\", \"doc_business_credit_cards_business_silver_rewards_card_005\", \"doc_credit_cards_ecocard_001\", \"doc_credit_cards_ecocard_002\", \"doc_credit_cards_ecocard_004\"] (no _007)"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Under a retrieval configuration that only shows required_documents (golden_retrieval / required_docs prompt), the agent never sees the rounding rule, so whether a row counts as a 1-point error depends on whichever convention the agent assumes.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to required_documents."
+    }
+  ],
+  "solution_check": "Recomputed all 77 transactions for f9bf8de0be. Rules: Diamond 5%; Business Platinum 4% Travel/Software/Media else 1.5%; Business Silver 10% Travel/Software with doc _005 exclusions, and no 2x promo because the account opened 06/10/2024, before the 2024-11-14 window; EcoCard 5x Green except Target/ThredUp; floor. Floor gives exactly the 10 gold rows with no false positives or misses, e.g. ffeede (Dell $1,849.99 excluded -> 1849, stored 18499), ba8b47 ('Target - Eco Collection' $145.67 -> 145, stored 728), 4f5e24 (ThredUp coded Green $78.34 -> 78, stored 391), and 30cb41 (Marriott Bonvoy $534.21 -> 5342, stored 10684). Round-half-up adds 26 one-point false positives. The gold replay matches itself.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major assumed floor rounding was undocumented. Doc _007 documents it, and the seed follows it exactly, so only the Minor required_documents omission remains.",
+  "notes": "The task needs an exclusion lookup on 'Target - Eco Collection' (the doc_ecocard_004 Target exclusion) and on Dell coded Software (the Business Silver hardware exclusion). Both are explicit in the docs. Business Platinum WeWork $450 at 1.5% = 675 is correct: the 0% WeWork exclusion belongs to Business Bronze only. No relaxed comparison in the verified scorer applies."
+}

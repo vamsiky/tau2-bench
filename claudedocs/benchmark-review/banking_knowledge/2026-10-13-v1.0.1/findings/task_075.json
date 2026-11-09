@@ -1,0 +1,51 @@
+{
+  "task_id": "task_075",
+  "severity": "Blocker",
+  "headline": "The customer wants the account with the lowest foreign-ATM fees, but by the documents Purple and Bluest also charge $0 abroad (Purple adds operator-fee rebates), so Green Fee-Free is not the unique answer.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "The gold rests on an undocumented premise: that a foreign ATM withdrawal incurs both the out-of-network fee and the foreign fee, which gives Purple $45 and Bluest $36. The docs say Purple and Bluest charge no Rho-Bank fee on foreign ATM withdrawals, which ties them with Green Fee-Free at $0. Purple also rebates up to $30/month of operator surcharges (Bluest up to $50), which Green Fee-Free does not.",
+      "evidence": [
+        "task_075 description.notes: \"When using a foreign ATM that is not in Rho-Bank's network, BOTH the out-of-network ATM fee AND the foreign ATM withdrawal fee apply\" (no KB document states this)",
+        "doc_checking_accounts_bluest_account_003: \"Withdraw from ATMs abroad with no Rho-Bank fee: $0.00. Third-party ATM operator fees may still apply.\"",
+        "doc_checking_accounts_purple_account_001: \"No foreign ATM withdrawal fees: $0.00 per withdrawal (third-party ATM operator fees may still apply)\"; \"Global ATM fee rebates | Up to $30 per month\"",
+        "doc_checking_accounts_green_fee-free_account_005: \"Foreign ATM withdrawals are also fee-free: $0.00 per withdrawal. Third-party ATM operator fees may still apply.\"",
+        "Benchmark's own data contradicts the premise: task_074 seed rows for Purple foreign withdrawals (e.g. btxn_ar_purple_08 HSBC Hong Kong, btxn_ar_purple_10 UOB Singapore) carry no fee, and the gold treats them as correct; Light Blue/Evergreen foreign withdrawals carry only the foreign fee",
+        "gold[2].arguments.arguments account_class = \"Green Fee-Free Account\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "By the documents, Green Fee-Free, Purple and Bluest all cost $0 in Rho-Bank fees for 18 withdrawals of $350 abroad. No tie-breaker is given. If operator surcharges count as ATM fees, Purple (no deposit barrier) is strictly better. An agent that opens Purple has a defensible or better answer and fails the DB match.",
+      "suggested_fix": "Document that out-of-network fees also apply to foreign ATMs for Purple and Bluest (and align task_074's seed data with that), or give the customer a constraint that uniquely selects Green Fee-Free. Otherwise, accept any of the $0-fee accounts."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Bluest is ruled out only by its $75,000 minimum opening deposit, and the customer's available funds are never stated.",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_001: \"| Minimum opening deposit | $75,000 |\"",
+        "tools.py open_bank_account_4821 does not check any opening deposit",
+        "user_scenario.instructions: no balance or deposit capacity given"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Bluest has $0 Rho-Bank fees abroad and a $50/month rebate cap. Whether the agent may recommend it depends on what the simulator improvises when asked about the deposit.",
+      "suggested_fix": "State the customer's deposit capacity in the instructions."
+    }
+  ],
+  "solution_check": "Ages: Gold Years (62+), Light Green (13-24) and Dark Green (17-26) are excluded for a 32-year-old. Rho-Bank fees for 18 withdrawals of $350 abroad, per the docs: Green Fee-Free $0, Purple $0, Bluest $0, Light Blue 12 x $4 = $48, Evergreen 18 x $7 = $126, Blue/Green 18 x $10.50 = $189. Under the documents three accounts tie at $0, and Purple's operator-fee rebate makes it at least as good as Green Fee-Free. The gold's unique choice of Green Fee-Free needs the undocumented 'both fees apply' premise.",
+  "prior_status": "persists",
+  "prior_note": "Same Blocker as the prior review: the tie between $0-foreign-fee accounts is unresolved in v1.0.1 (task and docs unchanged). This review adds that the notes' 'both fees apply' premise is contradicted by bluest_003 and by task_074's own seed data.",
+  "notes": "Green Fee-Free's $22.50 monthly fee (waived at $150 daily balance) and Purple's $15 fee are not ATM fees and are outside the customer's criterion. Under the notes' premise, Purple would cost $45 unless its $30/mo rebate covered Rho's own fee, which task_074's data implies it does (making Purple $0 again)."
+}

@@ -1,0 +1,17 @@
+{
+  "task_id": "task_015",
+  "severity": "None",
+  "headline": "Clean: of the five referral offers the customer cites, only the Platinum Rewards Card offer matches a live documented program, and the gold gives and uses the referral-link tool for it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Checking each card against the KB on 2025-11-14: Crypto-Cash Back has no referral doc. Business Gold's terms match but 'accepts new referrals until 2025-09-15' (expired). EcoCard pays 'Receive 50 for each successful referral', not the claimed $200. Silver Zoom pays $150 for $7,500 and 'No new referrals are accepted after 2025-10-01'. Platinum ('referral bonus of $100', '$1,500 within 90 days') matches. Per general_009 the agent gives get_referral_link and the customer runs it with (890389b165, 'Platinum Rewards Card'). Replay adds user_discoverable_tools GIVEN, user_discoverable_tool_calls d58fe3a37afdae12 and referrals faa78faa461cf918, matching the gold. Passing arguments to give_discoverable_user_tool, reordering JSON keys, or adding an extra transfer gives the same hash.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was None and I re-derived it under exact-hash grading; it still holds.",
+  "notes": "No verification is needed (the agent does not read or modify customer data for the user), and the customer could not pass it anyway since she knows only user_id and phone. Fatima has no prior referrals in db.json, so the weekly cap is not a reason to expect auto-rejection. An agent that follows 042's 'unconfirmed_external_communication' at the first (Crypto) inquiry and transfers may end the episode early. That reading conflicts with general_009 and is the same tension reported as a Blocker in task_014. Grading model checked against snapshot fc0055d (tag v1.0.1): EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the one shared TransactionalDB); _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; call_discoverable_agent_tool/call_discoverable_user_tool parse JSON with parse_int=float; apply_for_credit_card casts annual_income to float itself; Action.compare_with_tool_call matches by name plus compare_args (all agent-passed args when compare_args is None; always true when compare_args is []); get_now() is fixed at 2025-11-14 03:40:00 and get_current_time returns 'The current time is 2025-11-14 03:40:00 EST.'. Nuance: 'writes are logged even when the tool returns an error string' is only partly true. Many write paths return before touching the DB (apply_for_credit_card with an invalid card_type, call_discoverable_agent_tool on an unknown/not-unlocked tool or bad JSON, user discoverable tools not yet given)."
+}

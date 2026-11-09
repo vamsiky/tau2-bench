@@ -1,0 +1,47 @@
+{
+  "task_id": "task_067",
+  "severity": "Major",
+  "headline": "The best account combination is clear from the documents, but the gold's account closure stores a hidden default reason that a careful agent can easily change.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The gold closes the Light Blue account with only account_id, so the persisted closure_reason is the hidden default \"Customer requested closure\". The agent sees 'reason' only as an optional string with no default shown, and no document says what reason text to use or to omit it.",
+      "evidence": [
+        "gold[8].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+        "tools.py format_discoverable_tool_for_agent prints only \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on reason)"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "accounts[chk_rp65a7b3c4].closure_reason is part of the hashed DB. An agent that passes any reason text (e.g. \"Customer upgrading to a new checking account\" or even \"Customer requested account closure\") produces a different DB hash and scores 0 despite doing the right thing.",
+      "suggested_fix": "Stop persisting the free-text reason in the hashed record (or normalize it), or document in doc_005 that reason must be omitted / set to exactly \"Customer requested closure\"."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Required credit-card docs write minimum credit scores as dollar amounts. The values are still readable and no credit score is needed to solve the task.",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_001: \"Minimum credit score required: $750.\"",
+        "doc_credit_cards_gold_rewards_card_001: \"Minimum credit score required: $720\"",
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Cosmetic corruption only; the customer's credit score is never at issue, so the correct final state is unchanged.",
+      "suggested_fix": "Remove the '$' from credit-score fields in the credit-card documents."
+    }
+  ],
+  "solution_check": "With $100,000: Platinum Plus 7.0% (platinum_plus_002, $100k minimum) pairs with Purple (+0.3%, purple_001) or Dark Green (+0.45%, but max age 26 per dark_green_001; customer is 34). Card bonuses on Platinum Plus (platinum_plus_009): Platinum Rewards +0.4% ($200 fee, net +$200), Crypto-Cash Back +0.25% ($75 fee, net +$175), Diamond Elite +0.6% (invitation only), Gold Rewards +0.1% (needs Rho-Bank+). Best: Purple + Platinum Plus + Platinum Rewards = 7.70%, $7,700 - $200 = $7,500. Competitors: Platinum 6.5% + Blue +0.8% + Platinum Rewards +0.25% = 7.55% (net $7,350); Gold Plus 6.0% has a $50k sweep and lower boosts. This matches the gold, including savings-before-close ordering.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; the optimisation still reproduces, but exact DB-hash grading makes the hidden default closure reason a new Major issue.",
+  "notes": "Same user/seed as task_066 (chk_rp65a7b3c4 Light Blue, opened 11/01/2024, $0.00). The gold read get_all_user_accounts_by_user_id_3847 is allowlisted and required; doc_009/doc_002 make it natural. Account class strings 'Platinum Plus Account' and 'Purple Account' are unambiguous. Including checking maintenance fees (Purple $15/mo, Blue $20/mo when unfunded) does not change the winner (7,320 vs 7,110 vs 7,200 for Platinum Plus with no checking boost). v1.0.1 edits to gold_rewards_card_001 ('$105 days' -> '105 days') and doc_005 are cosmetic for this task. Platinum Rewards first-year fee waiver promo ended 2024-12-31 (platinum_rewards_card_009), so the $200 fee applies."
+}

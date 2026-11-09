@@ -1,0 +1,33 @@
+{
+  "task_id": "task_074",
+  "severity": "Minor",
+  "headline": "After the v1.0.1 fix, all four refunds ($27.00, $14.50, $4.75, $3.70) can be rebuilt from the fee documents; one Purple error the gold depends on is dated after the fixed 'today'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Minor",
+      "summary": "Purple's $27.00 includes a duplicate $2.50 out-of-network fee dated 11/15/2025, after the fixed clock of 11/14/2025 03:40.",
+      "evidence": [
+        "src/tau2/domains/banking_knowledge/utils.py get_now(): return datetime(2025, 11, 14, 3, 40, 0)",
+        "db.json chk_ar72c5d8e3_1 11/15/2025: atm_fee -2.5, atm_fee -2.5, fee_rebate +2.5 for one -300.0 PNC withdrawal",
+        "gold[9] amount 27.00"
+      ],
+      "gold_action_refs": [
+        9
+      ],
+      "why_it_matters": "An agent that scopes the review to 'November through today' credits Purple $24.50 and fails. Reading the full posted November history, as the customer asks, reaches $27.00.",
+      "suggested_fix": "Move the duplicate fee to a date on or before 11/14/2025."
+    }
+  ],
+  "solution_check": "Purple (purple_account_012: $2.50 per out-of-network withdrawal; purple_account_001: foreign ATM fee $0.00; rebates up to $30/month, with seeded rebates offsetting each $2.50 fee): 11/03 RHO-BANK fee +$2.50, London +$8.00, Kuala Lumpur +$10.50, 11/11 fee $3.50 with no rebate +$3.50 (= +$1.00 overcharge +$2.50 missing rebate), 11/15 duplicate +$2.50. Total $27.00. Light Blue (2 free out-of-network withdrawals then $2.50; 2 free foreign then $4.00): RHO-BANK 11/03 +$2.50, 1st and 2nd out-of-network 11/05 and 11/06 +$5.00, 1st and 2nd foreign 11/08 and 11/09 +$8.00, Singapore 11/13 $5.50 instead of $4.00 +$1.50, and the 4th out-of-network withdrawal on 11/10 uncharged -$2.50. Net $14.50, matching the new gold. Dark Green (1% min $1.50; foreign 2.5% max $6.00): RHO +$1.50, BofA $4.00 instead of $2.00 +$2.00, HK $10.00 instead of $6.00 +$4.00, Chase $0.50 instead of $1.50 -$1.00, TD uncharged -$1.75. Net $4.75. Evergreen (1% max $2.50; foreign 2% min $3.00): RHO +$1.50, PNC $4.00 instead of $2.50 +$1.50, HK $10.50 instead of $7.00 +$3.50, KL $2.00 instead of $3.00 -$1.00, TD uncharged -$1.80. Net $3.70. Each account gets one fee_refund credit per doc_017. All four match the gold.",
+  "prior_status": "changed",
+  "prior_note": "The prior Blocker is largely resolved. v1.0.1 fixed the Light Blue under-refund ($8.00 to $14.50, verified) and scrubbed the answer-key annotations. The prior claim that Purple's domestic fee is undocumented is wrong (purple_account_012 gives $2.50). Only the after-clock duplicate remains, rated Minor as in 072/073.",
+  "notes": "The Purple 11/11 and 11/15 items reach the same amount under either reading (refund the excess fee plus the missing rebate, or rebate the full fee), so they are robust. Cosmetic inconsistencies: the customer (DOB 06/15/1989, age 36) holds a Dark Green Account limited to ages 17-26. Daily ATM limits are exceeded (Light Blue $400 vs a $500 Paris withdrawal; Dark Green $300 vs $400 HK). Replay: Light Blue credit 8.0 (the old gold) fails with ['table accounts differs', 'table bank_account_transaction_history differs'], and 14.5 matches. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

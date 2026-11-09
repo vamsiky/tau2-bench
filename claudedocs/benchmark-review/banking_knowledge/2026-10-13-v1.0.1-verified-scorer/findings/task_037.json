@@ -1,0 +1,17 @@
+{
+  "task_id": "task_037",
+  "severity": "None",
+  "headline": "A clean replacement-plus-two-fraud-disputes task: every argument, including both provisional-credit flags, follows from the customer's script and the dispute docs.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Replacement: as in task_036 (fraud_suspected, scripted work address, expedited accepted). Disputes: txn_d3b830f4a2a4 ($487.99, 09/04/2025) and txn_da8c64c97f95 ($299.95, 09/06/2025), both unauthorized_fraudulent_charge, contacted_merchant=false, full_refund, issue noticed 11/14/2025, card_action cancel_and_reissue (doc_014 says use it when a replacement was ordered), last4 5320 via the user tool. Silver mid-tier, both amounts in $25-$5000, account opened 04/15/2024, 0 prior disputes, so both are eligible under either reading of criterion 4 (the second filing sees at most 1 prior). This matches the gold, and replay shows filing disputes before the replacement order gives the same DB.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated it clean; still clean.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: upstream EnvironmentEvaluator compares exact agent/user DB hashes after replaying gold; call_discoverable_agent_tool logs reads only when in the gold-derived allowlist (_derive_read_log_allowlist) and always logs mutating tools; both call_discoverable_agent_tool and call_discoverable_user_tool parse JSON with parse_int=float; ACTION grading is presence-only on compare_args; KnowledgeUserTools shares the same TransactionalDB; get_now() = 2025-11-14 03:40. Additional facts: unlock_discoverable_agent_tool writes nothing to the DB (in-memory state only); give_discoverable_user_tool writes user_discoverable_tools keyed by tool name only (arguments not stored); user-tool results are routed back to the user only (Orchestrator ENV->USER), so the agent never sees them; no agent tool reads the cash_back_disputes table. Verified scorer (working repo _verified_db_match) confirmed: agent_discoverable_tools is a subset check, closure_reason stripped, every other table (incl. user_discoverable_tools, user_discoverable_tool_calls) exact. The user's script does not include the credit card account id, so the agent must supply cc_890389b165_silver when giving get_card_last_4_digits. That is derivable from get_credit_card_accounts_by_user. shipping_address is compared exactly as a string (see task_036)."
+}

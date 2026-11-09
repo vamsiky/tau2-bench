@@ -1,0 +1,35 @@
+{
+  "task_id": "task_087",
+  "severity": "Major",
+  "headline": "The decline-diagnosis steps are clear, but when the customer reports a fraudulent charge the KB says to escalate to the security team, while the gold files a dispute and replaces the card.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_039 lists \"Customer reports transactions they did not make\" as a case to escalate to the security team. The gold handles the $499.99 TechZone charge by filing a dispute, closing the card and ordering a replacement (doc_031/025/029). Neither the CODE 05 steps nor doc_039 say which applies.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_039: \"Escalate to security team when: ... - Customer reports transactions they did not make\"",
+        "doc_checking_accounts_checking_accounts_(general)_003: \"If fraud_alert_active is TRUE and alert_source is 'customer_initiated' \u2192 Ask customer to verify recent transactions. If they confirm all transactions are legitimate, clear the alert.\" (no instruction for the non-legitimate case)",
+        "gold[15] dispute btxn_70fb52ef4e29 card_present_fraud; gold[17] close fraud_suspected; gold[19] order EXPEDITED/PREMIUM"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "An agent that escalates per doc_039 transfers before filing anything and ends with no dispute, closure or order; it scores 0. The customer script accepts either path (\"If agent doesn't mention filing a dispute: Accept whatever they offer\").",
+      "suggested_fix": "Make doc_039 say to file a dispute and close/reissue for customer-reported fraud on a customer-initiated alert, and escalate only for bank-initiated alerts or identity doubts."
+    }
+  ],
+  "solution_check": "Reconstructed: Blue is FROZEN with velocity_blocked true -> unfreeze, then velocity_clear; Green Fee-Free FROZEN -> unfreeze; Evergreen has a customer-initiated alert, the customer disowns the 11/06 $499.99 TechZone row, so do not clear the alert, file card_present_fraud (PIN purchase per the text message, PIN not compromised, provisional true, liability $50 since reported via the alert on 11/06), close as fraud_suspected and order the best free PREMIUM-tier options (EXPEDITED $0, PREMIUM design $0). This matches the gold, which replays without errors.",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean; the escalation conflict in doc_039 was not reported.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. Liability $50 is defensible because the customer reported the fraud to the bank on the day of discovery (fraud alert on 11/06); counting from today's filing (6 business days) would give the $500 tier and min(500, 499.99) = 499.99, so a small residual risk remains. Clearing the Evergreen alert before reviewing transactions would change fraud_alert_active and fail, which is correct per the CODE 05 steps."
+}

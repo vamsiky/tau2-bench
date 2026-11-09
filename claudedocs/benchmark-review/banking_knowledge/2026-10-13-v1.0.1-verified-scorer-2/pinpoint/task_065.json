@@ -1,0 +1,29 @@
+{
+  "task_id": "task_065",
+  "severity": "Major",
+  "reason": "Gold step 2 opens savings as 'Green Account'; the docs name the product 'Green Account (savings)', which opens a different account and fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Two documented spellings for Green savings class",
+      "kind": "ambiguous_choice",
+      "step": 2,
+      "gold": {"call": "open_bank_account_4821",
+               "args": {"user_id": "rp65a7b3c4", "account_type": "savings", "account_class": "Green Account"},
+               "output": "Bank account opened successfully!\n  - Account ID: 4ba63ba5b4a98c12\n  ...\n  - Account Class: Green Account"},
+      "doc_faithful": {"call": "open_bank_account_4821",
+                       "args": {"user_id": "rp65a7b3c4", "account_type": "savings", "account_class": "Green Account (savings)"},
+                       "output": "Bank account opened successfully!\n  - Account ID: 248a704a4fbe44b2\n  ...\n  - Account Class: Green Account (savings)",
+                       "note": "Agent uses the product's full documented name, as in the Evergreen pairing rule and general_001's class example."},
+      "refs": [
+        {"source": "doc_checking_accounts_evergreen_account_001", "quote": "Link a Green Account (savings): +0.55% APY boost"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_001", "quote": "Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')"},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_002", "quote": "account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'"}
+      ],
+      "conflict": "Docs name it 'Green Account (savings)' and general_001 keeps the suffix in a class example; general_002's 'ending with Account' rule gives bare 'Green Account', which gold step 2 uses.",
+      "scorer": {"field": "accounts[4ba63ba5b4a98c12]: MISSING row (gold has); accounts[248a704a4fbe44b2]: EXTRA row",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

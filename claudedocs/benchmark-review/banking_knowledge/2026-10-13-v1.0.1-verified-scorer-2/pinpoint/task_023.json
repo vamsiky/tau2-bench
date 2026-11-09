@@ -1,0 +1,59 @@
+{
+  "task_id": "task_023",
+  "severity": "Minor",
+  "reason": "Customer says she opened the Platinum card November 2024, but the DB says 11/10/2022; her date voids the rebate and flips step 1.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Customer's open date contradicts the account record",
+      "kind": "instruction_conflict",
+      "step": 1,
+      "gold": {
+        "call": "apply_for_credit_card",
+        "args": {
+          "card_type": "Diamond Elite Card",
+          "customer_name": "Yuki Nakamura",
+          "annual_income": 95000,
+          "rho_bank_subscription": false
+        },
+        "output": "Credit card application submitted:\nYour application has been successfully submitted. ..."
+      },
+      "doc_faithful": {
+        "call": "apply_for_credit_card",
+        "args": {
+          "card_type": "Silver Rewards Card",
+          "customer_name": "Yuki Nakamura",
+          "annual_income": 95000,
+          "rho_bank_subscription": false
+        },
+        "output": "Credit card application submitted:\nYour application has been successfully submitted. ...",
+        "note": "Plausible misreading: agent trusts 'opened November 2024', treats year one as promo-waived, says she does not qualify, so she applies for Silver. Trusting the DB date (expected) gives gold."
+      },
+      "refs": [
+        {
+          "source": "instructions",
+          "quote": "you opened it in November 2024"
+        },
+        {
+          "source": "db:credit_card_accounts[cc_224959b99e_plat]",
+          "quote": "date_of_account_open = \"11/10/2022\""
+        },
+        {
+          "source": "doc_credit_cards_platinum_rewards_card_010",
+          "quote": "If your first cardmember year’s annual fee is waived under a promotional offer, the rebate does not apply to that year."
+        },
+        {
+          "source": "doc_credit_cards_platinum_rewards_card_009",
+          "quote": "- Start date: 2024-06-01\n- End date: 2024-12-31"
+        }
+      ],
+      "conflict": "Instructions: opened Nov 2024 (inside promo window 2024-06-01..12-31, rebate void). DB: 11/10/2022, year 11/10/2024-11/09/2025 clears $7,500 every window → Diamond.",
+      "scorer": {
+        "field": "credit_card_applications: gold row \"Diamond Elite Card\" MISSING, agent row \"Silver Rewards Card\" EXTRA",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

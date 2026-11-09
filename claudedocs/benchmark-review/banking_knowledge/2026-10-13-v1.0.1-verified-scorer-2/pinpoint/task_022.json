@@ -1,0 +1,43 @@
+{
+  "task_id": "task_022",
+  "severity": "Minor",
+  "reason": "The floor-rounding rule in doc _007 that yields exactly gold's ten disputes is missing from required_documents; half-up rounding adds 26 false one-point disputes.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Floor-rounding doc missing from required_documents",
+      "kind": "info_unavailable",
+      "step": 11,
+      "gold": null,
+      "doc_faithful": {
+        "call": "call_discoverable_user_tool",
+        "args": {
+          "discoverable_tool_name": "submit_cash_back_dispute_0589",
+          "arguments": {
+            "user_id": "f9bf8de0be",
+            "transaction_id": "txn_bd607cd406d8"
+          }
+        },
+        "output": "Cash back dispute submitted successfully. Your case has been queued for review.\n...\nDispute ID: dsp_f3302585697a",
+        "note": "Plausible misreading: agent without doc _007 rounds half-up (Diamond Elite Marriott $328.92 × 5% = 1644.6 → 1645 vs stored 1644) and disputes it after step 11. With _007, gold is exact."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_007",
+          "quote": "All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer."
+        },
+        {
+          "source": "task:required_documents",
+          "quote": "[\"doc_credit_cards_credit_cards_(general)_003\", \"doc_credit_cards_credit_cards_(general)_006\", \"doc_credit_cards_diamond_elite_card_001\", \"doc_credit_cards_diamond_elite_card_002\", \"doc_credit_cards_diamond_elite_card_003\", \"doc_business_credit_cards_business_platinum_rewards_card_001\", \"doc_business_credit_cards_business_platinum_rewards_card_002\", \"doc_business_credit_cards_business_silver_rewards_card_001\", \"doc_business_credit_cards_business_silver_rewards_card_002\", \"doc_business_credit_cards_business_silver_rewards_card_005\", \"doc_credit_cards_ecocard_001\", \"doc_credit_cards_ecocard_002\", \"doc_credit_cards_ecocard_004\"]"
+        }
+      ],
+      "conflict": "Floor (_007) gives exactly the 10 gold disputes (steps 2-11). required_documents omits _007; half-up flags 26 extra rows, e.g. txn_bd607cd406d8 1645 vs 1644.",
+      "scorer": {
+        "field": "cash_back_disputes[dsp_f3302585697a]: EXTRA row; user_discoverable_tool_calls[fb11a1eed842e798]: EXTRA row",
+        "upstream": "FAIL",
+        "verified": "FAIL"
+      }
+    }
+  ]
+}

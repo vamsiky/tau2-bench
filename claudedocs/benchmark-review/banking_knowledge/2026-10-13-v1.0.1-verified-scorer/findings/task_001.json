@@ -1,0 +1,17 @@
+{
+  "task_id": "task_001",
+  "severity": "None",
+  "headline": "Clean: the only no-annual-fee card with the highest everyday cash back is the Gold Rewards Card, which the customer qualifies for through her Rho-Bank+ subscription.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Listed every personal card's annual fee and earn rate from the KB: Bronze $0/1.0%, Silver $0/4% travel+software else 1.0%, Gold $0/2.5% all purchases (Rho-Bank+ required), Platinum $200, Crypto-Cash Back $75, EcoCard $50, Diamond Elite $495 and invitation-only. Travel is covered by a corporate card, so for everyday spend among $0-fee cards Gold (2.5%) is highest; the customer has Rho-Bank+, so the application is Gold/Sarah Bosch/100000/true. Replaying that call in the snapshot env matches the gold under both exact hash and the verified comparison.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean; the only change to a required doc (gold_rewards_card_001 purchase-protection '$105 days' -> '105 days') is cosmetic and does not affect this task.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. Replay: rho_bank_subscription=false instead of true fails credit_card_applications, so the result depends on the user simulator passing true; the scenario says the customer has Rho-Bank+ (mention only if asked), and the Gold doc says it is required, so a competent agent asks. Credit-score fields are still written as dollar amounts (gold_rewards_card_001: \"Minimum credit score required: $720\"); not load-bearing here because no credit score is given. Promo docs are irrelevant (Platinum fee-waiver window 2024-06-01 to 2024-12-31 has expired)."
+}

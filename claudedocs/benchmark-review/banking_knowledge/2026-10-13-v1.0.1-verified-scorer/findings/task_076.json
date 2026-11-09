@@ -1,0 +1,48 @@
+{
+  "task_id": "task_076",
+  "severity": "Major",
+  "headline": "Purple checking is the sensible answer, but Bluest also gives 2-day early deposit with equal or lower ATM fees and is ruled out only by a $75,000 opening deposit the customer is never asked about.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Among accounts with 2-day early direct deposit, Bluest's foreign ATM fee is $0.00 and its rebate cap is larger than Purple's. Under the notes' own fee-stacking arithmetic Bluest is cheaper ($16 vs $20). The gold excludes Bluest as 'NOT PRACTICAL' because of its opening deposit, but the customer's instructions say nothing about available funds.",
+      "evidence": [
+        "doc_checking_accounts_bluest_account_002: \"Deposit at least $75,000 to open your account.\"",
+        "doc_checking_accounts_bluest_account_001: \"| Early direct deposit | 2 day(s) before payday |\"",
+        "doc_checking_accounts_bluest_account_003: \"No foreign ATM withdrawal fees: $0.00\"; bluest_account_007: \"ATM fee rebates up to $50 per month\"",
+        "doc_checking_accounts_purple_account_001: \"| Early direct deposit | 2 days early |\"; \"Global ATM fee rebates: up to $30 monthly worldwide\"",
+        "task_076 description.notes: \"BLUEST ACCOUNT: $2.00 out-of-network x 8 = $16 ... (but requires $50k-100k minimum deposit - NOT PRACTICAL)\"",
+        "gold[2] account_class = \"Purple Account\""
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that ranks strictly on the customer's stated criterion (lowest ATM fees, 2-day early deposit) can recommend Bluest. An agent that asks whether she can deposit $75,000 gets an improvised answer. Either path can open Bluest and fail the accounts table.",
+      "suggested_fix": "Add a line such as 'You can only put a few thousand dollars into the new account' to the instructions."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The notes' arithmetic charges an out-of-network fee on top of the foreign fee (Purple $20), but no document says the fees stack. Task_074's gold treats Purple foreign withdrawals as $0. The choice of Purple doesn't change, only the fee the agent quotes.",
+      "evidence": [
+        "doc_checking_accounts_purple_account_001: \"No foreign ATM withdrawal fees: $0.00 per withdrawal\"",
+        "doc_business_checking_accounts_hunter_green_009: \"If you see both a foreign ATM fee and a domestic out-of-network fee for the same international withdrawal, share the transaction details for review.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "The final state is unaffected. It only matters if the stacking assumption is reused elsewhere (task_075).",
+      "suggested_fix": "Drop the stacking assumption from the notes or document it."
+    }
+  ],
+  "solution_check": "Accounts with 2-day early direct deposit: Purple, Bluest, Evergreen ('up to 2 days'), and Gold Years (age 62+, ineligible at 29). Fees for 8 foreign $300 withdrawals: Purple $0, Bluest $0, Evergreen 2% min $3 = $6.00 each = $48. One-day accounts (Blue, Green) cost $9.00 each. Purple is the practical answer once Bluest's $75,000 opening deposit and $112,500 balance requirement ($75/month fee below it) are treated as disqualifying. The gold matches that reading and replays cleanly.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. It did not note that the gold relies on an unstated affordability constraint to rule out Bluest.",
+  "notes": "Notes misstate Dark Green's age range (17-26 in dark_green_account_001, not 17-28) and Gold Years' (62+, not 60+). Neither affects the 29-year-old customer. Nothing here depends on the verified scorer's relaxations. Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

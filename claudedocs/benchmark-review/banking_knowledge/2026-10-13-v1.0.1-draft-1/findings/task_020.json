@@ -1,0 +1,38 @@
+{
+  "task_id": "task_020",
+  "severity": "Major",
+  "headline": "The seed rewards were stored with normal rounding while the knowledge base says rewards round down, so an agent that follows the docs finds nine extra 1-point overpayments and over-disputes.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "doc_007 says rewards are floored, but for user 755bcb4d5d the seed stores round-half-up values. Under the documented rule, nine correctly earned transactions show as 1 point over-credited, on top of the four gold errors (one of which, txn_b7e2d4c5f506, is itself an over-credit the gold disputes).",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "txn_a8f1c2d3e404 Microsoft 365 $79.99 on Business Silver (Microsoft excluded -> 1%, x2 promo) = 159.98 -> floor 159, stored \"160 points\"",
+        "txn_b7e2d4c5f503 Slack $44.99 Silver 4% = 179.96 -> floor 179, stored 180",
+        "Other floor mismatches (+1 each): a8f1c2d3e402 (1099.8 vs 1100), a8f1c2d3e406 (254.86 vs 255), a8f1c2d3e409 (313.56 vs 314), a8f1c2d3e414 Coursera (49.99 vs 50), b7e2d4c5f507 (22.99 vs 23), b7e2d4c5f509 (143.56 vs 144), b7e2d4c5f512 (187.5 vs 188)",
+        "gold[2..5] = {txn_a8f1c2d3e403, txn_b7e2d4c5f506, txn_a8f1c2d3e410, txn_a8f1c2d3e411}"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "why_it_matters": "A doc-faithful agent that disputes every discrepancy submits 13 disputes. One that disputes only under-credits misses the gold over-credit f506. Only an agent that uses round-half-up (contradicting doc_007) or applies an undocumented ignore-1-point rule reproduces the gold set; anything else changes cash_back_disputes and fails the hash.",
+      "suggested_fix": "Re-seed the nine non-error rows with floor values (e.g. txn_a8f1c2d3e404 -> \"159 points\"), so doc_007 and the data agree."
+    }
+  ],
+  "solution_check": "Computed all 26 rows. Silver Rewards earns 4% on Travel/Software, else 1%. Business Silver earns 10% on Travel/Software, else 1%, with the doc_005 exclusions (Microsoft, Coursera); it has a 2x promo for 6 months from opening on 02/13/2025 (doc_012), so txns before 08/13/2025 get 2x. The gold four are gross errors: e403 JetBlue 315x20% = 6300 vs 3150; f506 GitHub on the personal Silver 255x4% = 1020 vs 2550; e410 Southwest after the promo 380x10% = 3800 vs 1520; e411 Zoom 149.99x10% = 1499.9 vs 600. Round-half-up reproduces the gold with 0 false positives; the documented floor rule gives 13 disputes (9 extra).",
+  "prior_status": "changed",
+  "prior_note": "Prior rated this Minor on the assumption that rounding was undocumented and round-half-up was natural; doc_007 (unchanged since v1.0.0) documents floor, which turns the same data into a docs-vs-seed contradiction (Major).",
+  "notes": "doc_007 is absent from required_documents here; under golden_retrieval that omission happens to steer agents to round-half-up and the gold. Adding doc_007 without re-seeding would make this task fail under golden_retrieval as well. The same seed is shared by task_026 and task_027."
+}

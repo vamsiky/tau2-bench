@@ -1,0 +1,88 @@
+{
+  "task_id": "task_083",
+  "severity": "Blocker",
+  "headline": "This task is graded on exact tool-call text, and the official dispute calls leave out a required field, so they fail when run and no correct call can ever match them.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "All four gold file_debit_card_transaction_dispute_6281 calls omit customer_max_liability_amount, a required parameter with no default. Replaying them returns a TypeError error and files nothing.",
+      "evidence": [
+        "tools.py signature: \"customer_max_liability_amount: float,\" (no default)",
+        "Replay gold[6..9]: \"Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'\"",
+        "reward_basis = [\"ACTION\"]"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "A correct agent must include the field to file any dispute, so its arguments can never equal the gold's; reward is 0 for correct work.",
+      "suggested_fix": "Add customer_max_liability_amount to each gold call, or regrade the task on DB state."
+    },
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Blocker",
+      "summary": "ACTION grading with compare_args unset compares the inner arguments value as a literal JSON string. The gold strings use a particular key order, spacing and number spelling such as \"150.00\", so even a semantically identical call almost never matches byte for byte.",
+      "evidence": [
+        "data_model/tasks.py Action.compare_with_tool_call: \"if self.compare_args is None: compare_args = tool_call.arguments.keys()\" ... \"return tool_args == action_args\"",
+        "gold[6] arguments string contains \"\\\"disputed_amount\\\": 150.00\" and places card_action last",
+        "gold[6..9] compare_args = null"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "Even after the missing field is added, matching depends on JSON formatting, not on correctness.",
+      "suggested_fix": "Grade on DB state, or compare parsed JSON objects (and only the decisive keys) instead of raw strings."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The duplicate Austin Coffee Roasters charges share date, amount and description. The gold disputes the second-listed row, which is the earlier one only if the agent infers intra-day order from the most-recent-first listing; the doc's \"earliest (first)\" also invites picking the first-listed row.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173: stable sort by date descending; rows carry date only (MM/DD/YYYY), no time",
+        "Tool order for chk_dk83f5c2a1_gff: btxn_ff7d3926dee0 (11/11/2025, -67.25) listed before btxn_d937eaa1d21d (11/11/2025, -67.25)",
+        "gold[8] transaction_id btxn_d937eaa1d21d"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "Secondary here because the task is already unpassable; it would decide the transaction_id once the Blockers are fixed.",
+      "suggested_fix": "Give the duplicate rows timestamps, or state the tie-break rule in terms of list position."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "doc_032 does not say which list wins when a dispute meets both the REQUIRED and NOT REQUIRED lists. The gold resolves the conflict in opposite directions: the duplicate charge with no merchant contact is true (REQUIRED wins), and the PIN-shared GameStop dispute is false (NOT REQUIRED wins).",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'unauthorized_transaction' 'card_present_fraud' 'card_not_present_fraud' 'atm_cash_discrepancy' 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: 1. The dispute category is: 'goods_services_not_received' 'recurring_charge_after_cancellation' 'atm_deposit_not_credited' 'incorrect_amount' 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "gold[8] duplicate_charge contacted_merchant false, provisional_credit_eligible true",
+        "gold[9] unauthorized_transaction pin_compromised yes_shared, provisional_credit_eligible false"
+      ],
+      "gold_action_refs": [
+        8,
+        9
+      ],
+      "why_it_matters": "Secondary here (the task is unpassable); in DB-graded siblings the same conflict decides stored flags.",
+      "suggested_fix": "Add a precedence rule to doc_032."
+    }
+  ],
+  "solution_check": "Reconstructed: third-party ATM atm_cash_discrepancy $150 (250 requested, 100 received), goods_services_not_received $189.50 (merchant contacted, discretionary so false), duplicate_charge $67.25 (earlier row), unauthorized_transaction $475 with PIN shared (freeze_pending_investigation). Categories and amounts match the gold, but the gold calls are missing a required argument and are compared as raw strings, so the reconstruction cannot score.",
+  "prior_status": "persists",
+  "prior_note": "The prior Blocker (required liability field missing from ACTION-graded gold) is unchanged; the task file did not change in v1.0.1. The duplicate pick now agrees with the newest-first tool ordering but still depends on an intra-day inference.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. The four gold unlocks are compared by agent_tool_name only and are easy to match. Extra calls (freeze, close, reissue for the Green Fee-Free card the customer wants renumbered) are ignored by ACTION grading."
+}

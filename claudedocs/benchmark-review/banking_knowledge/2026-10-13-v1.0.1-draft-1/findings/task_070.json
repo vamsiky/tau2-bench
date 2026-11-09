@@ -1,0 +1,34 @@
+{
+  "task_id": "task_070",
+  "severity": "Major",
+  "headline": "The right answer (Sky Blue) depends on the business being under 4 years old, but the customer is never told how old the business is.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Sky Blue's first documented eligibility condition is company age (within 4 years of formation), but the customer's instructions never say when the business was formed, so the simulated user must invent an answer if a careful agent asks.",
+      "evidence": [
+        "doc_business_checking_accounts_sky_blue_001: \"## Verify Eligibility\\n- Confirm your company is within 4 years of formation.\"",
+        "doc_business_checking_accounts_sky_blue_009: \"Verify your company age is within 4. Confirm using formation documents that match your application details.\"",
+        "task_070.user_scenario.instructions: no formation date or business age is given (only the personal Green Account age, \"about 3 years\")",
+        "gold[4].arguments.arguments account_class = \"Sky Blue\""
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "An agent that follows the Sky Blue eligibility check asks the business's age; if the simulator improvises an age over 4 years (or says it does not know), the agent correctly drops Sky Blue and the active November promotion (doc_bank_accounts_bank_accounts_(general)_013) sends it to Lime Green (ATM rebate up to $25/mo, overdraft fee $0.00, minimum balance $5,000, APY 1.5%), which also meets every stated requirement, so the opened account_class and its deterministic account_id differ from the gold.",
+      "suggested_fix": "Add the business's formation date (for example \"founded about 2 years ago\") to the user instructions, with a scripted answer if asked."
+    }
+  ],
+  "solution_check": "Filtered business checking accounts against the four requirements: Sky Blue has overdraft fee $0.00 (sky_blue_001), funding requirement 0, APY 1.25% and ATM rebates up to 15/month (sky_blue_007), so it qualifies; Lime Green ($25 rebate, $0 overdraft per lime_green_002, $5,000 minimum, 1.5% APY) and Hunter Green ($20 rebate, $0 overdraft, $5,000 waiver, 1.0% APY) also qualify. The promotion active on 11/14/2025 (general_013, 11/01-11/30) ranks Sky Blue first; the expired October one (general_014) does not apply. Eligibility per general_003 holds (Green Account OPEN, balance 2850.00 >= $500, no CLOSED accounts), so open_bank_account_4821(224959b99e, business_checking, \"Sky Blue\") matches the gold, provided Sky Blue's company-age condition is assumed met.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean; it did not consider that Sky Blue's documented 4-year formation requirement is never answered by the customer's script.",
+  "notes": "Grading-model facts confirmed against the snapshot (fixed clock, read-log allowlist, numeric normalization). log_verification arguments match db users[224959b99e] exactly. The account_class spelling \"Sky Blue\" (no 'Account' suffix) follows general_003's examples \"Navy Blue, Cobalt Blue, True Blue\" and the seeded levels (biz_chk_b5e8f2a1c9.level = \"Navy Blue\"); an agent that appends 'Account' would get a different deterministic id, but the docs support the gold spelling, so this is not filed as an issue. The gold read get_all_user_accounts_by_user_id_3847 is discoverable and documented in general_009 as the eligibility check, so requiring it is fair. The opening phrase 'easiest to use and most perks' is not a discriminating criterion; the active promotion breaks the three-way tie. The v1.0.1 Sky Blue doc edits only add 'months' to the free-period length and do not affect this task."
+}

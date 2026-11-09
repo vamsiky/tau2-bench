@@ -1,0 +1,6 @@
+## Before each state-changing action, run the policy's pre-checks (do this in reasoning)
+Before you open, close, cancel, apply for, or otherwise change any account or card:
+1. From the retrieved policy, enumerate EVERY eligibility check and prerequisite that applies to this specific action, and perform each one before acting — for a closure/cancellation this typically includes verifying outstanding balance, any open disputes, any pending replacement or in-progress orders, and prior retention/closure history. Do not act until all required checks for that action are complete.
+2. Choose the option that best fits ALL of the customer's stated criteria; do not pick a higher tier than the criteria justify.
+3. Do not make a lookup or listing call you do not need; if you already hold the identifier required to act, act directly. Pass only the arguments the action needs; omit optional ones with no specified value.
+Then take exactly that action.

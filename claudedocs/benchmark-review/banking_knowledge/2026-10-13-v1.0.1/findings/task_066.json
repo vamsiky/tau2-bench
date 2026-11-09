@@ -1,0 +1,64 @@
+{
+  "task_id": "task_066",
+  "severity": "Major",
+  "headline": "The right accounts are derivable, but the grade also depends on two free-text strings the documents do not fix: the closing reason, and how the Green savings account is named.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 writes its free-text `reason` argument into the account record as `closure_reason`, and the gold closes the account without passing a reason, so only the tool default \"Customer requested closure\" matches. No document says what reason to record, or to leave it out.",
+      "evidence": [
+        "tools.py close_bank_account_7392: signature `reason: str = \"Customer requested closure\"`; on success `account[\"closure_reason\"] = reason`",
+        "gold[8].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"## Closure Procedure 1. Verify pre-closure requirements are met. 2. Determine the account tier and applicable fees/notice period. 3. Use close_bank_account_7392 to close the account.\" (no reason guidance)",
+        "Replay in snapshot: gold with the close call given reason \"Customer upgrading to a new checking account\" -> agent DB hash != gold DB hash"
+      ],
+      "gold_action_refs": [
+        8
+      ],
+      "why_it_matters": "The customer gives an explicit reason (swapping the basic Light Blue for a better account), and the unlocked tool schema shows an optional `reason` parameter. An agent that records that reason closes the right account with the right fee handling but fails the exact DB-hash match.",
+      "suggested_fix": "Exclude `closure_reason` from the hashed state, or make the KB prescribe a fixed reason string (or remove the parameter) so the persisted value is derivable."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The persisted account_class string for the Green savings product is ambiguous. The savings procedure says names must end with 'Account', but the checking procedure's own example 'Green Account (checking)' and every KB reference to the product ('Green Account (savings)') use a parenthetical qualifier. The gold uses the bare 'Green Account'.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "doc_bank_accounts_bank_accounts_(general)_012: \"3. Evergreen Account (checking) + Green Account (savings)\"; doc titles e.g. \"Green Account (savings) specifications and requirements\"",
+        "gold[4].arguments.arguments account_class = \"Green Account\"",
+        "tools.py open_bank_account_4821: account_id = _deterministic_id(f\"account:{user_id}:{account_type}:{account_class}\"); account_class is stored verbatim and not validated",
+        "Replay: account_class \"Green Account (savings)\" -> account_id 248a704a4fbe44b2 instead of 4ba63ba5b4a98c12 -> DB hash mismatch"
+      ],
+      "gold_action_refs": [
+        4
+      ],
+      "why_it_matters": "The KB's own example for the sibling product shows the parenthetical form as an acceptable official name. An agent that writes 'Green Account (savings)' opens the correct product but creates a different account record.",
+      "suggested_fix": "Make open_bank_account_4821 validate or canonicalize account_class against a fixed list. Alternatively, change doc_001's example to 'Green Account' and state the canonical savings string explicitly."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "One Green savings document contains corrupted arithmetic: it adds a 0.5% EcoCard bonus to the 4.0% base and gets 4.75%.",
+      "evidence": [
+        "doc_savings_accounts_green_account_(savings)_009: \"Example: 4.0% + 0.5% = 4.75% APY.\" and \"Rate boost: 0.5% bonus APY on top of the base 4.0% rate (example total: 4.75%)\"",
+        "doc_savings_accounts_green_account_(savings)_003/_005: \"you receive an additional bonus of 0.5%\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "It does not change the answer: even at +0.75%, EcoCard's $50 annual fee exceeds the extra interest on $6,000 ($45), and Silver Rewards (+0.45%, $0 fee) still wins. It is still a corrupted value on the exact product being chosen.",
+      "suggested_fix": "Change the example total to 4.5%."
+    }
+  ],
+  "solution_check": "At $6,000 the viable savings accounts are Bronze 2.0%, Silver 2.5% (below the $10k tier), Silver Plus 3.0% (tier 1), and Green 4.0%. Gold needs $10k and Platinum needs $50k. Green + Evergreen (+0.55%) + Silver Rewards (+0.45%, $0 fee) = 5.00%. The strongest rival is Silver + EcoCard (+2.2%, $50 fee) + Green checking (+0.25%) + a 0.025% relationship bonus = 4.975% gross, which is also worse net of the fee. Bluest needs a $75,000 opening deposit, Gold Years needs age 62+, and the Diamond Elite card is invitation-only with a $495 fee. This matches the gold. The open tool enforces the 14-day tenure rule, so the savings account must be opened before the Light Blue account (opened 11/01/2024) is closed. Gold replays cleanly; reordering the two opens or adding extra reads leaves the hash unchanged, while skipping the gold-required get_all_user_accounts read changes it.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean under a scorer that ignored closure_reason. Under upstream exact-hash grading the free-text reason and the unvalidated account_class string are live defects.",
+  "notes": "Grading facts confirmed: DB-hash replay (evaluator_env.py), read-log allowlist keyed by tool name with one record per tool (generate_agent_discoverable_tool_id(tool_name)), and parse_int=float in call_discoverable_agent_tool. The Evergreen monthly fee ($6 unless the daily balance is >= $500, doc_checking_accounts_evergreen_account_002) would cost more than the $33/yr boost on an empty checking account, but the customer asks only for the highest APY, so it is not counted. The customer's credit score is never given (Silver Rewards needs 680), but the customer applies through their own tool, so this does not block the gold. DB DOB 07/19/1991 makes the customer 34, not 33 as the persona says (cosmetic)."
+}

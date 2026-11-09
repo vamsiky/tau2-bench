@@ -1,0 +1,36 @@
+{
+  "task_id": "task_059",
+  "severity": "Major",
+  "headline": "Silver Rewards Card plus Green savings is the unique best combination for $5,000, but the gold's account name 'Green Account' is one of two plausible spellings the documents support, and the other one fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Gold opens the savings account with account_class 'Green Account'. The KB calls this product 'Green Account (savings)' everywhere and shows the parenthetical form as an official class name ('Green Account (checking)'), while the savings procedure says the class must end with 'Account'. account_class is part of the deterministic account id.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_002: \"It must be the full official name ending with “Account” (for example, “Silver Plus Account”, “Gold Account”).\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "doc_savings_accounts_green_account_(savings)_001 title: \"Green Account (savings) specifications and requirements\"; doc_bank_accounts_bank_accounts_(general)_012: \"Evergreen Account (checking) + Green Account (savings)\"",
+        "tools.py open_bank_account_4821: seed = f\"account:{user_id}:{account_type}:{account_class}\" (no normalization)",
+        "gold[5].arguments.arguments: \"account_class\": \"Green Account\"",
+        "replay with account_class 'Green Account (savings)' gives a different DB hash"
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "An agent that copies the product's official name, 'Green Account (savings)', by analogy with the 'Green Account (checking)' example opens an account with a different id and class string, and DB grading fails although the product choice is correct.",
+      "suggested_fix": "Normalize/validate account_class against a canonical product list in open_bank_account_4821, or state in doc_(general)_002 that the Green savings class string is exactly 'Green Account'."
+    }
+  ],
+  "solution_check": "At $5,000: Gold needs $10k (a Gold Rewards card lowers this to $5k but requires Rho-Bank+). Green 4.0% + Silver Rewards +0.45% (green_(savings)_003) gives $222.50 with a $0 fee. Green + EcoCard 0.5% gives $225 - 50 = $175. Green + Platinum 0.35% gives $217.50 - 200. Green + Diamond 0.6% gives $230 - 495. Silver tier 1 2.5% + EcoCard 2.2% gives $235 - 50 = $185. Silver Plus 3.0% + EcoCard 0.45% gives $172.50 - 50. Gold's choice is the unique maximum. Gold also requires the get_all_user_accounts_by_user_id_3847 read, which doc_(general)_002/009 make part of the eligibility check, so a procedure-following agent makes it.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The account_class spelling ambiguity was not reported, though it changes the account id under either scorer.",
+  "notes": "Two unlikely alternatives come from corrupted values. gold_account_013 prints 'Total APY with the bonus: 6.0%' for 5.5% + 0.025%. An agent that suggested Rho-Bank+ ($4.99/mo = $59.88/yr) + Gold Rewards + Gold (reduced $5k minimum) and believed that figure would compute $300 - 59.88 = $240.12. With the correct 5.525%, the net is $216.37, below gold. green_(savings)_009 prints '4.0% + 0.5% = 4.75%'. Neither changes the correct answer, and the user has no subscription (apply_for_credit_card rho_bank_subscription=false). Skipping the gold read changes the hash (verified); the KB requires the eligibility check, so I count this as expected behavior, not a defect. Sibling task_058 has the same scenario but no gold read, which is harmless now that extra reads are not logged."
+}

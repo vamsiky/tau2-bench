@@ -1,0 +1,35 @@
+{
+  "task_id": "task_087",
+  "severity": "Minor",
+  "headline": "The three-card CODE 05 diagnosis is derivable and the gold matches it; one security-alert document also tells agents to escalate when a customer reports a charge they did not make, which could lead a careful agent to transfer instead of filing the dispute.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Doc_..._039 lists 'Customer reports transactions they did not make' as a reason to escalate to the security team. The gold handles the Evergreen fraud in-channel (dispute, close, reorder) with no transfer.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_039: \"Escalate to security team when: ... Customer reports transactions they did not make\"",
+        "doc_checking_accounts_checking_accounts_(general)_003 CODE 05 step 3: customer-initiated alert -> \"Ask customer to verify recent transactions. If they confirm all transactions are legitimate, clear the alert.\"",
+        "gold[15] file_debit_card_transaction_dispute_6281, gold[17] close_debit_card_4721, gold[19] order_debit_card_5739; no transfer_to_human_agents"
+      ],
+      "gold_action_refs": [
+        15,
+        17,
+        19
+      ],
+      "why_it_matters": "An agent that escalates first ends the episode before the dispute, close and order writes and fails. The dispute procedure (doc_031) plus the card-action mapping is the more specific guidance, so most agents will follow the gold.",
+      "suggested_fix": "Limit doc_039's escalation bullet to bank-initiated alerts, or add 'after filing a dispute and replacing the card' to it."
+    }
+  ],
+  "solution_check": "Reconstructed per the CODE 05 order (status -> account -> fraud alert -> velocity): unfreeze Blue and clear its velocity block (reason velocity_clear; the two writes commute), and unfreeze GFF. On Evergreen, the customer-initiated alert is not cleared because the customer disputes the $499.99 TechZone charge: file card_present_fraud with pin_purchase (the customer cites the text), close fraud_suspected, and reorder PREMIUM tier EXPEDITED $0 + PREMIUM design $0 to the address on file. This matches gold[0..19].",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The doc_039 escalation tension is minor and new.",
+  "notes": "customer_max_liability_amount 50 is defensible because the customer reported the charge to the bank on 11/06 by replying to the fraud text. Counting from today's filing (11/06 -> 11/14, 5+ business days) would give the $500 tier (499.99 under a cap); this is the same liability-anchor ambiguity reported in 082/084-086, but here the script supplies a same-day report. The task file did not change in v1.0.1."
+}

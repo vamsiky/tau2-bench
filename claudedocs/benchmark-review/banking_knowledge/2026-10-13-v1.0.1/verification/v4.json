@@ -1,0 +1,337 @@
+{
+  "verifier_id": "v4",
+  "fact_checks": [
+    {
+      "fact": "DB grading replays gold actions on a fresh env and requires exact agent-side and user-side DB hash match",
+      "status": "Confirmed",
+      "evidence": "src/tau2/evaluator/evaluator_env.py EnvironmentEvaluator.calculate_reward: gold_environment.make_tool_call for each golden action, then agent_db_hash == predicted_agent_db_hash and user_db_hash == predicted_user_db_hash; db_reward 0/1. Predicted env is rebuilt by Environment.set_state, which re-executes only tools with mutates_state=True (toolkit.is_tool docstring)."
+    },
+    {
+      "fact": "Discoverable reads are logged only when the gold makes that read (_derive_read_log_allowlist)",
+      "status": "Confirmed",
+      "evidence": "runner/build.py _derive_read_log_allowlist collects agent_tool_name from gold call_discoverable_agent_tool actions; tools.py call_discoverable_agent_tool logs when underlying_mutates or name in self._read_log_allowlist. Nuance: the record id is generate_agent_discoverable_tool_id(tool_name) only, so one call to an allowlisted tool with any arguments satisfies the gold and repeats are no-ops; always-available reads (get_referrals_by_user, get_credit_card_accounts_by_user) are never logged."
+    },
+    {
+      "fact": "call_discoverable_agent_tool / call_discoverable_user_tool parse integers as floats",
+      "status": "Confirmed",
+      "evidence": "tools.py call_discoverable_agent_tool: json.loads(arguments, parse_int=float); KnowledgeUserTools.call_discoverable_user_tool: json.loads(arguments, parse_int=float). Replays: task_077 delivery_fee 0 vs 0.0 and task_089 new_limit 900 vs 900.0 give identical hashes."
+    },
+    {
+      "fact": "ACTION grading: at least one matching call per gold action on compare_args (all agent-passed args when unset); order/repetition ignored; inner arguments JSON string compared verbatim",
+      "status": "Confirmed",
+      "evidence": "evaluator_action._check_actions + data_model/tasks.py Action.compare_with_tool_call (compare_args = tool_call.arguments.keys() when None; tool_args == action_args). No normalization of the inner string. User-side tool calls are also extracted (extract_tool_calls includes UserMessage)."
+    },
+    {
+      "fact": "Agent and user toolkits share one DB; writes are logged even when the tool returns an error string",
+      "status": "Confirmed",
+      "evidence": "Gold replays give identical agent and user hashes for every assigned task. Caveat: call_discoverable_agent_tool does NOT log when the tool is unknown, not unlocked, the JSON is invalid, or the call raises TypeError (missing/extra args), e.g. task_083 gold calls return 'Error: Invalid arguments' and are not logged; tool-level error strings (e.g. task_089 Light Green limit-increase error) are logged."
+    },
+    {
+      "fact": "Clock is fixed (get_now in utils.py)",
+      "status": "Confirmed",
+      "evidence": "utils.get_now() -> datetime(2025, 11, 14, 3, 40, 0); get_today_str() -> 11/14/2025; get_current_time returns '2025-11-14 03:40:00 EST'."
+    },
+    {
+      "fact": "Some reads are always available, others discoverable and must be unlocked",
+      "status": "Confirmed",
+      "evidence": "Always-available @is_tool READs: get_user_information_by_*, get_referrals_by_user, get_credit_card_transactions_by_user, get_credit_card_accounts_by_user. Discoverable: get_all_user_accounts_by_user_id_3847, get_debit_cards_by_account_id_7823, get_bank_account_transactions_9173, get_debit_dispute_status_7483, get_user_dispute_history_7291, etc."
+    },
+    {
+      "fact": "(not in review.md) NL_ASSERTION is multiplied into the reward when it is in reward_basis",
+      "status": "Confirmed",
+      "evidence": "evaluator.py evaluate_simulation, EvaluationType.ALL (default in runner/batch.py and runner/simulation.py): task_needs_nl -> NLEvaluator; reward *= nl_reward_info.reward. Relevant to task_102."
+    }
+  ],
+  "task_verdicts": {
+    "task_077": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_029 ELITE TIER: \"CLASSIC design: design_fee $0 - PREMIUM design (metallic silver): design_fee $0 (complimentary) - CUSTOM design (uploaded image): design_fee $0 (complimentary)\"",
+        "user_scenario step 8: \"I'd like whatever the best option is that's free with my account. I don't want to pay extra for shipping or a fancy card design.\"",
+        "gold[22] order_debit_card_5739 delivery_option RUSH, card_design PREMIUM",
+        "Replay: gold with card_design CLASSIC -> (agent,user) hash match (False, False); EXPEDITED -> (False, False); close_debit_card_4721 on a FROZEN card returns 'Only ACTIVE or PENDING cards can be closed'",
+        "db debit_cards dbc_lj82d4f1a9_bluest has no card_design field, so no prior-design default exists"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the gold replay (no errors, new card dbc_8eed7b16caeb) and the CLASSIC divergence. The 'fancy card design' clause gives a second reading against the gold's PREMIUM; Major per calibration (two readings). Freeze/unfreeze/close sequence is enforced by the tool, as stated."
+    },
+    "task_079": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_026: \"If customer confirms the card is lost/stolen, recommend closing instead of freezing\"",
+        "user_scenario step 1: \"my wallet was stolen about an hour ago and I need to freeze all my debit cards immediately\"",
+        "Replay: gold minus gold[3..6] and gold[12..15] -> hash (False, False); diff = frozen_date/unfrozen_date '11/14/2025' on dbc_cr89a2b3c4_ev/_lb/_green plus freeze/unfreeze tool-log rows",
+        "seed: dbc_cr89a2b3c4_lb issue 08/10/2025 'lost' and _lb_old1 04/05/2025 'lost' (ENTRY, 2 replacements in 12 months); btxn_d0b8b00ed468 REFUND pending on chk_cr89a2b3c4_3"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the freeze-first vs direct-close divergence. The customer explicitly asks to freeze while doc_026 recommends closing, so both paths are document-supported and only one passes; Major holds. Tier and refund-waiver reasoning checked against doc_005/025/029."
+    },
+    "task_080": {
+      "verdict": "Adjusted",
+      "review_severity": "Major",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_015: \"4. Previous Disputes: The customer has not filed more than 2 disputes in the past 12 months\"",
+        "get_user_dispute_history_7291(tm92c4d7e8) -> 'No transaction disputes found for this user.'",
+        "At the third filing, disputes already filed = 2 (both today), and 2 is not 'more than 2', so eligible=true under both the 'prior history only' and the 'count today's earlier filings' readings",
+        "task_039 description.notes (same rule, benchmark convention): \"'has not filed more than 2 disputes' which means up to 2 prior disputes is allowed, so the 1st, 2nd, and 3rd disputes filed are all eligible\"; task_040/041 golds also follow this",
+        "Replay: gold[31] eligible_for_provisional_credit=false -> hash (False, False)"
+      ],
+      "citation_problems": [
+        "why_it_matters says an agent 'that counts the two disputes it has just filed ... writes eligible=false'; that is arithmetically wrong (2 is not more than 2). Only counting the dispute currently being filed (3) yields false."
+      ],
+      "note": "The gold (all three eligible) follows the literal rule and the benchmark's own convention in task_039-041; only a strained reading that counts the in-progress filing gives false. The real defect is that description.notes and the user script (step 16, 'you're happy to get more than you're supposed to have') are built around a 2-dispute cap the docs do not impose; per calibration, author-note contradictions are notes, and the script line triggers only if the agent invents a limit. Downgraded to Minor."
+    },
+    "task_081": {
+      "verdict": "Adjusted",
+      "review_severity": "Major",
+      "verified_severity": "Minor",
+      "evidence": [
+        "Same rule and data as task_080: doc_credit_cards_credit_cards_(general)_015 criterion 4; no prior disputes for tm92c4d7e8; gold[31..33] all eligible=true",
+        "task_081 description.notes contains no provisional-credit text; it says 'This is the exact same scenario as instance 080'",
+        "transfer_to_human_agents is ToolType.GENERIC with mutates_state False; gold[36] writes nothing"
+      ],
+      "citation_problems": [
+        "Evidence quotes description.notes \"Rule is \\u22642 disputes eligible for provisional credit... txn_39c2ddb4e1d2 ... does NOT get provisional credit\" as this task's notes; that text is in task_080's notes, not task_081's (the finding's own notes concede this).",
+        "Same arithmetic error as task_080 in why_it_matters."
+      ],
+      "note": "Inherits task_080's analysis: the gold is the literal and benchmark-consistent reading, so Minor. Human-transfer handling (4 user-side request_human_agent_transfer writes, ungraded transfer) checked and is fine."
+    },
+    "task_082": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'card_not_present_fraud' -> 'close_and_reissue'\" and \"**Note:** This parameter records metadata only; the agent must separately perform the indicated card action after filing the dispute.\"",
+        "gold[15] CryptoGems on dbc_mc47a2b9e1_gff: card_action close_and_reissue; gold closes/orders only dbc_mc47a2b9e1_blue (gold[17], gold[19])",
+        "Replay: gold + close_debit_card_4721(dbc_mc47a2b9e1_gff, fraud_suspected) succeeds ('Previous Status: ACTIVE ... New Status: CLOSED') and hash (False, False)",
+        "Replays also diverge for Blue reason fraud_suspected, FitLife provisional false, FitLife liability 500, ElectroniX pin 'unknown'",
+        "user_scenario step 8: \"I discovered this one today, January 9th.\""
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the missing GFF closure: the doc mandates performing close_and_reissue and the customer asks for a reissue, so the gold follows no supported reading; Blocker stands. The secondary Major issues (discretionary FitLife credit, pin_compromised for a PIN on a sticky note, lost vs fraud_suspected, unscripted shipping/design, liability anchor) all reproduce as hash-changing."
+    },
+    "task_083": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "reward_basis ['ACTION']; gold[6..9] compare_args null",
+        "tools.py file_debit_card_transaction_dispute_6281 signature: customer_max_liability_amount: float (no default)",
+        "Replay of gold[6..9]: each returns \"Error: Invalid arguments: ... missing 1 required positional argument: 'customer_max_liability_amount'\"",
+        "gold[6] arguments string contains \"disputed_amount\": 150.00 and no customer_max_liability_amount"
+      ],
+      "citation_problems": [],
+      "note": "Confirmed that ACTION grading compares the inner JSON string verbatim and that the gold strings omit a required argument, so a working agent call can never equal them. Blocker stands."
+    },
+    "task_084": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "gold[12] duplicate_charge disputed_amount 47.5, customer_max_liability_amount 50 (not capped); gold[14] card_present_fraud disputed_amount 412.88, liability 412.88 (capped)",
+        "tool docstring: \"customer_max_liability_amount (number): The maximum dollar amount ... based on Regulation E reporting timing rules and the disputed amount.\"",
+        "Replay: gold[12] liability 47.5 -> (False, False); gold[14] liability 500 -> (False, False)",
+        "get_bank_account_transactions_9173(chk_b8d92f4c17) lists btxn_d7f2a98c1b34 then btxn_e8c3b09d2c45 (both 11/06); gold picks the later-listed one, consistent with doc_018 'most recent first'",
+        "get_debit_dispute_status_7483 shows OPEN dispute on chk_e5a31c7d82 (ENTRY max 2)"
+      ],
+      "citation_problems": [],
+      "note": "No single liability rule reproduces both gold values, so a consistent agent fails one dispute row; Blocker stands. The duplicate-tie fix (#403) holds. The discretionary-credit and liability-anchor Majors also reproduce."
+    },
+    "task_085": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "gold[12] disputed_amount 14.99 with customer_max_liability_amount 50 (uncapped, unlike task_084 gold[14])",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"NOT REQUIRED (but may be offered at discretion) when: ... 2. Customer has not contacted merchant first (for non-fraud disputes)\"; gold[10] duplicate contacted_merchant false, provisional true",
+        "listing chk_b4d92f7c28: btxn_c3d4e5f6g703 then btxn_b2c3d4e5f602 (11/06); gold disputes b2c3 (earliest under newest-first)",
+        "CityFit rows are type debit_card_purchase; gold transaction_type 'recurring_payment' is inferred, not stated by the customer"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the computations ($100 ATM, $89.99 duplicate, corrected $14.99 recurring) and the liability/provisional ambiguities. Two more unscripted fields add risk: dispute 2's transaction_type and dispute 4's contacted_merchant are never stated by the customer. Major holds."
+    },
+    "task_086": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"'yes_observed': Customer believes PIN was observed/skimmed\"; script: \"I think someone skimmed my card at a gas station or something\"; gold[15] pin_compromised 'unknown', transaction_type 'pin_purchase' (no PIN/signature info in script)",
+        "Replay: gold[15] pin_compromised 'yes_observed' -> (False, False)",
+        "btxn_0788d2513c8c RHO-BANK ATM #6172 DEPOSIT +400.0; gold[16] disputed_amount 100.0",
+        "Evergreen order gold[20]: EXPEDITED/PREMIUM at $0 for 'best free options available for my tier'; replay CLASSIC -> (False, False)"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced the skimming/PIN-type ambiguity and the liability-anchor gap. The ATM-deposit issue ('I'll go with what you have' read as withdrawing the claim) is arguably Major-class rather than Minor, but the task is already Major, so the verdict stands."
+    },
+    "task_087": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_039: \"Escalate to security team when: ... Customer reports transactions they did not make\"",
+        "doc_checking_accounts_checking_accounts_(general)_003 CODE 05 step 3: \"If they confirm all transactions are legitimate, clear the alert.\"",
+        "transfer_to_human_agents writes nothing, so handling the dispute/close/reorder and then escalating still matches the gold",
+        "gold[19] EXPEDITED/PREMIUM for 'Can I just get the best option that is free?'; replay CLASSIC -> (False, False)"
+      ],
+      "citation_problems": [],
+      "note": "Re-derived the CODE 05 order for all three cards and the $50 liability (customer reported via the 11/06 fraud text). The doc_039 escalation conflict is resolvable by escalating after the writes, so Minor is fair. The PREMIUM design reading of 'best option that is free' is the natural one; unlike task_077 the script has no 'fancy design' counter-signal, so I did not raise it."
+    },
+    "task_088": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_checking_accounts_purple_account_007 CODE 82: \"If suspicious transactions found: Follow stolen card protocol to assist the customer.\" / \"Recommend freezing the card until a replacement arrives.\"",
+        "gold[10] transaction_type 'signature_purchase', pin_compromised 'no'; script has no PIN/signature line for ELECTRO MART MIAMI",
+        "card dbc_c8feebe975cf: chip_verification_failures 3, last_chip_failure_date 11/10/2025; btxn_28eee7145c29 ELECTRO MART MIAMI FL -347.99 11/09"
+      ],
+      "citation_problems": [],
+      "note": "CODE 82 text confirmed verbatim. A freeze (or freeze-and-reorder without closing, which order_debit_card_5739 allows because FROZEN is not ACTIVE) diverges from the gold, and the PIN/signature fields depend on simulator improvisation. Major holds."
+    },
+    "task_089": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "doc_checking_accounts_green_account_(checking)_012: \"daily ATM withdrawal limit of $600. This limit applies to all ATM withdrawals combined\"; 11/14 ATM rows on chk_dm42f8c3a7_green: 100+80+60+60+50 = 350; need 350+550 = 900 = 1.5 x 600 cap (rolling-24h reading adds the 11/13 $100 -> 1000, capped to 900)",
+        "doc_bank_accounts_bank_accounts_(general)_040: \"No overdraft fees in the last 30 days\"; btxn_9a71bb3d4cff OVERDRAFT FEE 11/01/2025 on chk_dm42f8c3a7_blue",
+        "doc_checking_accounts_light_green_account_011: \"These safeguards are built into the account and cannot be removed for a minor.\"",
+        "Replay: extra request_temporary_debit_card_limit_increase_8374 on teen card dbc_9c3e7f1b5d2a returns 'Light Green Account (teen checking) cards have policy-based limits that cannot be modified' and hash unchanged (True, True); extra Blue increase succeeds and hash diverges; new_limit 900.0 vs 900 identical"
+      ],
+      "citation_problems": [],
+      "note": "Audited from scratch. The only write is the Green limit increase, fixed at 900 under every reasonable usage count, and the two refusal branches are documented (overdraft rule, teen FAQ) and, for the teen card, also hash-safe. No defect found; None confirmed."
+    },
+    "task_090": {
+      "verdict": "Confirmed",
+      "review_severity": "Minor",
+      "verified_severity": "Minor",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_023: \"CLASSIC: Standard Rho-Bank blue design (default, no fee)\"",
+        "script item 9: \"Give the fastest option that's free\"; gold[10] EXPEDITED/CLASSIC; replay PREMIUM -> (False, False)",
+        "doc_bank_accounts_bank_accounts_(general)_041 STEP 5: \"2 prior locks: After unlock, MUST ask: ... reset your PIN\"; gold[14] reset 7294 on Blue"
+      ],
+      "citation_problems": [],
+      "note": "Design is unscripted but the documented default (CLASSIC) matches the gold, so Minor per calibration. The single-flag escalation on Evergreen (B1=3) is an ordering risk only, because a transfer writes nothing."
+    },
+    "task_091": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "script item 20: \"I want the most premium free option for both.\"; doc_029 PREMIUM TIER: \"Free expedited shipping on all replacements (delivery_fee: $0 for both STANDARD and EXPEDITED)\" and PREMIUM design $0; gold[14] STANDARD/CLASSIC",
+        "doc_029 ENTRY TIER: \"48-hour waiting period after card closure before a replacement can be ordered\"; gold[23] closes and gold[24] immediately reorders Light Blue (ENTRY per doc_005)",
+        "Replays: gold[14] EXPEDITED/PREMIUM -> (False, False); gold without gold[24] -> (False, False); pin_compromised 'unknown' -> (False, False)",
+        "tools.py: only reset_debit_card_pin_6284 sets card['pin_locked'] = False (line 3861)",
+        "seed users.tw34a7d9e2.date_of_birth '09/22/2001' vs script 'DOB: 09/22/1991'"
+      ],
+      "citation_problems": [],
+      "note": "Both Blocker issues reproduce: the Evergreen order contradicts the customer's stated choice, and the Light Blue reorder contradicts the ENTRY wait that the gold honors in tasks 077/079/080/084. Secondary Majors (Light Blue option choice, pin_compromised, unlock-by-reset) also reproduce."
+    },
+    "task_092": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\" and STEP 6 options include \"PIN reset (issues new PIN, invalidates potential compromise)\"",
+        "script item 23: \"If agent offers to reset the PIN on the Green card: Sure, set it to 4567.\"; gold[13]/[14] close fraud_suspected + reorder Green",
+        "doc_041 STEP 5: \"1 prior lock: After unlock, MUST offer ... PIN lock notifications\"; gold[18] unlocks Evergreen via reset 8127 (no unlock tool exists)"
+      ],
+      "citation_problems": [],
+      "note": "Re-derived the four card outcomes. The Green card's PIN-reset alternative and the unlock-by-reset convention each change the hash; same class and severity as task_091's unlock issue. Major holds."
+    },
+    "task_094": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"As a Gold Rewards Card holder, you receive an additional 0.025% relationship bonus APY on top of the base rate.\"",
+        "doc_bank_accounts_bank_accounts_(general)_045: \"credit card APY bonuses DO stack with other types of bonuses, such as: ... Relationship bonuses for holding multiple Rho-Bank products\" and its example (Gold Rewards/Platinum/EcoCard -> only EcoCard 0.6%)",
+        "doc_bank_accounts_bank_accounts_(general)_044 step 4 lists \"credit card bonuses, relationship bonus\" as separate components",
+        "seed: sav_wl94k7m3p8_gold 96000.00; interest 408.0; cards Platinum, Gold Rewards, EcoCard; gold 140.00 / 6.85 / 5.10 recomputed"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced 6.85% / $140 and the alternative 6.875% / $142. doc_044 explicitly treats relationship bonus as its own component, so the doc_013 reading is genuinely supported; Major holds."
+    },
+    "task_095": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "Same doc_013 / doc_045 / doc_044 conflict as task_094",
+        "gold[6] amount 98.00; gold[8] expected_apy 6.85, actual_apy 5.625 (= 450 x 12 / 96000)",
+        "Alternative: 5.5 + 0.75 + 0.6 + 0.025 = 6.875 -> 96000 x 1.25% / 12 = $100.00"
+      ],
+      "citation_problems": [],
+      "note": "Same defect class and severity as task_094, applied consistently. Arithmetic re-run matches the finding."
+    },
+    "task_097": {
+      "verdict": "Adjusted",
+      "review_severity": "Blocker",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_savings_accounts_silver_account_002 (required): \"If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY.\"",
+        "doc_savings_accounts_silver_account_009: \"When your Silver Account and Platinum Rewards Card are linked under the same customer profile, an additional 0.025% is added to your APY as a relationship bonus.\" (customer holds no Platinum Rewards Card)",
+        "task_093 gold expected_apy 4.275 (= 4.0 + 0.25 + 0.025) for a two-product customer",
+        "Replays: gold[9] 222.92 -> (False, False); gold[9] 220.83 -> (False, False)",
+        "seed: btxn_silver_interest_oct 333.33; balances 100000/70000/120000/18000; payroll direct deposit only into chk_mc80w7k3x9_blue"
+      ],
+      "citation_problems": [],
+      "note": "Reproduced all four account computations and the $222.92 alternative. The gold's omission has some document support ('may qualify', undefined eligibility, and silver_009 tying the 0.025% to Platinum Rewards Card holders), so per calibration this is two supported readings (Major), the same class and severity as 094/095. It would be a Blocker only if task_093's convention is treated as binding; that cross-task conflict is real and is logged in calibration_notes. The Silver Plus add-on gap (Major) and the one-cent rounding (Minor) hold. A further oddity: the 45-year-old customer holds a Light Green Account (ages 13-24 per light_green_002) whose +0.2% boost the gold uses for Diamond Elite."
+    },
+    "task_100": {
+      "verdict": "Confirmed",
+      "review_severity": "None",
+      "verified_severity": "None",
+      "evidence": [
+        "seed accounts: biz_ti87k4x9m2_worldblue opened 09/10/2025 (earliest) -> 65 days at 11/14/2025",
+        "doc_business_checking_accounts_hunter_green_001: \"Referrer reward: $175\" / \"A minimum relationship duration of 60 days\"",
+        "doc_business_checking_accounts_world_blue_001: \"at least 90 days\"; lime_green_003: \"minimum of 90 days\"; true_blue_002: 90 days; beige_012: 120 days",
+        "doc_bank_accounts_bank_accounts_(general)_047: tenure \"calculated from ... the date your earliest checking account was opened\""
+      ],
+      "citation_problems": [],
+      "note": "Re-derived the eligible set at 65 days (Navy 100, Cobalt 150, Sky Blue 150, Hunter Green 175). Hunter Green is the unique maximum, and the 'mid-July' claim is an intended verification check against the DB. Clean."
+    },
+    "task_101": {
+      "verdict": "Confirmed",
+      "review_severity": "Major",
+      "verified_severity": "Major",
+      "evidence": [
+        "doc_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window.\" / \"If you attempt to receive more than 2 referrals in a single 9-day period, the third referral ... will be automatically denied.\"",
+        "seed referrals: latest COMPLETE 10/25/2025 (Gold Years) and 10/10/2025 (Sky Blue); caps Gold Years 6/6, Sky Blue 7/8, Lime Green 2/12",
+        "script 13a (two if a limit is mentioned) vs 17 (all four otherwise)",
+        "Combined bonuses: Purple 45+35=80 > Green Fee-Free 20+35=55; Sky Blue 150+250=400 > Lime Green 200+150=350"
+      ],
+      "citation_problems": [],
+      "note": "The pair Purple + Sky Blue is correct under the 'submissions count toward the window' reading; the literal 'bonuses received' reading permits all four. Two supported readings, so Major holds."
+    },
+    "task_102": {
+      "verdict": "Confirmed",
+      "review_severity": "Blocker",
+      "verified_severity": "Blocker",
+      "evidence": [
+        "nl_assertions[0]: \"... recognizing that Ember Analytics exceeds the 4-year company age limit for Sky Blue eligibility.\"; reward_basis ['DB','NL_ASSERTION']",
+        "script item 7: \"They incorporated in late 2022, so that's about 3 years now.\"; Ember appears in no DB record, document, or initial_state (case-insensitive 'ember' hits in db.json are only 'November'/'December')",
+        "evaluator.py: reward *= nl_reward_info.reward when NL_ASSERTION is in reward_basis (EvaluationType.ALL default)",
+        "doc_business_checking_accounts_lime_green_003: \"Your bonus: $200\" vs sky_blue_001 \"Your bonus: $150\""
+      ],
+      "citation_problems": [
+        "Evidence says 'grep count 0' for Ember in db.json; a case-insensitive grep returns hits from 'November'. The substantive claim (no Ember record) is correct."
+      ],
+      "note": "With the agent-visible '3 years', Ember and TechFlow tie for Sky Blue, and the NL assertion requires a fact the agent cannot obtain, so the multiplied NL reward is chance. Blocker holds; the 'maximize the bonus' referrer-vs-combined ambiguity is a correct Major sub-issue."
+    }
+  },
+  "calibration_notes": [
+    "Card-design choice under 'best free option': task_077 rated Major, while tasks 086 and 087 (same PREMIUM-vs-CLASSIC choice for 'best free options' / 'best option that is free') are not flagged. The stated reason, 077's extra clause 'I don't want to pay extra for ... a fancy card design', justifies the difference; the finding files should say so. task_090 (Minor) is consistent because doc_023's CLASSIC default matches the gold.",
+    "Credit-card provisional-credit count (doc_015 criterion 4): tasks 080/081 rated Major on the premise that counting today's filings makes the third ineligible, yet tasks 039-041 use the convention 'the 1st, 2nd, and 3rd disputes filed are all eligible', which the 080/081 golds also follow. Under that convention 080/081 are Minor (author-note/script inconsistency only).",
+    "0.025% relationship bonus: tasks 094/095 Major, task_097 Blocker for the same contested component. 097 is adjusted to Major for consistency. The underlying benchmark-level conflict (task_093 gold includes the Silver relationship bonus for 2 products; task_097 gold omits it for 13 products) should be reported once as a cross-task defect, not only inside 097.",
+    "ENTRY-tier 48-hour replacement wait: honored by the golds of 077, 079, 080 and 084, violated by task_091 gold[24]. Rated Blocker in 091, which is consistent (the gold follows no supported reading).",
+    "Liability-anchor (customer_max_liability_amount) gap: flagged Major in 082, 084, 085 and 086 when discovery precedes filing by more than 2 business days, and not flagged in 087/088 where discovery or report was same-day. Consistent rule, but tasks 082-088 should share one cross-task finding.",
+    "Discretionary provisional credit (doc_032 'NOT REQUIRED (but may be offered at discretion)'): 082 FitLife (true) is the outlier against 083 GSNR, 084 incorrect_amount, 085 recurring and 086 GSNR/deposit (all false). Duplicate_charge without merchant contact is true in 083, 084 and 085 (consistent across tasks, conflicting with doc_032); flagged Major in 084/085, moot in 083."
+  ],
+  "methodology_note": "The review's grading model is accurate against the v1.0.1 snapshot. Every bullet reproduced, with two refinements the findings should carry: the discoverable-tool log is keyed by tool name only (one call with any arguments satisfies a gold read, and repeats are no-ops), and call_discoverable_agent_tool skips logging on TypeError, unknown or not-unlocked tools. Replay-based testing of hash divergence was used well and every replay claim I re-ran held. The main weakness is reasoning that is not cross-checked against other tasks: the 080/081 Major rests on an arithmetic slip that the benchmark's own convention in 039-041 contradicts, and 097's Blocker treats a weakly supported omission as unsupported while 094/095 rate the same component Major. Cross-task defect classes (liability anchor, discretionary provisional credit, card-design defaults, 0.025% bonus, unlock-by-reset) are scattered across per-task files and would be clearer as shared findings with one severity. The false-negative audit of task_089 found no missed defect."
+}

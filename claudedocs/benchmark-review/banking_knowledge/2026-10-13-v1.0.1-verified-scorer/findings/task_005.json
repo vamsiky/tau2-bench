@@ -1,0 +1,36 @@
+{
+  "task_id": "task_005",
+  "severity": "Minor",
+  "headline": "Gold matches the KB's bypass-code procedure, but it can only be reached if the simulated customer keeps talking after the transfer instead of ending the call as the simulator rules say.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The scenario scripts the customer to say \"Okay, I'll hold.\" after the agent transfers him and then return with the bypass code. The global user-simulator guideline tells the simulator to emit ###TRANSFER### once transferred, and that token ends the episode before any DB write happens.",
+      "evidence": [
+        "task_005 user_scenario: \"Once the agent confirms they are transferring you, say \\\"Okay, I'll hold.\\\" ONLY DO THIS NEXT STEP IF YOU HAVE BEEN TRANSFERRED ... Then, after a brief pause, act as if you've spoken to a human agent and are now back.\"",
+        "data/tau2/user_simulator/simulation_guidelines_tools.md: \"If you have been transferred to another agent, generate the '###TRANSFER###' token to indicate the transfer.\"",
+        "src/tau2/user/user_simulator.py UserSimulator.is_stop: returns True when TRANSFER in message.content",
+        "gold[0] transfer_to_human_agents precedes gold[1] log_verification and gold[2] change_user_email; reward_basis = [\"DB\"]"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2
+      ],
+      "why_it_matters": "If the simulator follows its global rule at the transfer, the conversation stops with no verification_history row and no email change, so the task scores 0 whatever the agent does. The outcome then depends on which instruction the user model obeys, not on the agent.",
+      "suggested_fix": "Have the customer present the bypass code before any transfer (e.g., after verification fails), or tell the simulator explicitly not to emit ###TRANSFER### at the first transfer in this scenario."
+    }
+  ],
+  "solution_check": "Verification fails (users[6680a37184].email is \"kenji.tanaka@outlook.com\", so only the phone matches). After the customer comes back with code 9K2X7M4P1N8Q3R5T6A, doc_customer_support_special_support_codes_001 says to check the exact code and log_verification with the code in name, user_id, address, email, phone_number and date_of_birth, plus the actual timestamp (get_current_time -> \"2025-11-14 03:40:00 EST\"). The agent then finds the account by name (unique Kenji Tanaka -> 6680a37184) and calls change_user_email to kenji.tanaka@gmail.com. Replaying this matches the gold exactly; putting the real name/user_id in the log fails verification_history.",
+  "prior_status": "new",
+  "prior_note": "Prior marked this clean; the transfer-token conflict comes from the harness's user-simulator guidelines, which the prior review did not consider.",
+  "notes": "Grading-model check (snapshot v1.0.1): confirmed _derive_read_log_allowlist, parse_int=float in call_discoverable_agent_tool/call_discoverable_user_tool, apply_for_credit_card casts annual_income to float, Action.compare_with_tool_call ignores requestor, fixed clock get_now()=2025-11-14 03:40:00. Verified scorer (_verified_db_match in working repo) read: only agent_discoverable_tools is relaxed (gold tool-name subset) and closure_reason is stripped; every other table exact. I could not measure how often the user model emits ###TRANSFER### here; the scenario wording is emphatic, so many runs will probably continue. Severity is Minor for that reason, and should go up if trajectories show early termination. Not counted as an issue: a security-minded agent might refuse the bypass (failed verification followed by a code to switch the email is a takeover pattern), but the doc's only acceptance condition is an exact code match, and its \"If you suspect the code has been exposed or misused\" clause gives no concrete trigger. The relaxed verified-scorer comparisons do not affect this task (no discoverable tools, no closure_reason)."
+}

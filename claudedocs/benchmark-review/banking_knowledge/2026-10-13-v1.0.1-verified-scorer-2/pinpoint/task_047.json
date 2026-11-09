@@ -1,0 +1,30 @@
+{
+  "task_id": "task_047",
+  "severity": "Minor",
+  "reason": "For the Platinum card the customer cites both the annual fee and low usage; gold step 12 accepts only annual_fee, so not_using_card fails.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Two stated Platinum closure reasons; gold accepts one",
+      "kind": "ambiguous_choice",
+      "step": 12,
+      "gold": {"call": "log_credit_card_closure_reason_4521",
+               "args": {"credit_card_account_id": "cc_c7d8e9f0a1_plat", "user_id": "c7d8e9f0a1", "closure_reason": "annual_fee"},
+               "output": "Closure reason logged successfully. ... Closure reason 'annual_fee' logged for account cc_c7d8e9f0a1_plat."},
+      "doc_faithful": {"call": "log_credit_card_closure_reason_4521",
+                       "args": {"credit_card_account_id": "cc_c7d8e9f0a1_plat", "user_id": "c7d8e9f0a1", "closure_reason": "not_using_card"},
+                       "output": "Closure reason logged successfully. ... Closure reason 'not_using_card' logged for account cc_c7d8e9f0a1_plat.",
+                       "note": "Agent logs the customer's second stated reason, also a valid doc category."},
+      "refs": [
+        {"source": "instructions",
+         "quote": "The annual fee on that one is really bothering me. I don't use it as much as I used to."},
+        {"source": "doc_credit_cards_credit_card_account_logistics_003",
+         "quote": "- closure_reason (string, required): One of: 'annual_fee', 'not_using_card', 'found_better_card', 'unhappy_with_rewards', 'simplifying_finances', 'negative_experience', 'other'."}
+      ],
+      "conflict": "Customer line maps to annual_fee and not_using_card (both in doc _003's list). Gold step 12 accepts only annual_fee; goal and downgrade branch favor it.",
+      "scorer": {"field": "credit_card_closure_reasons[clsr_4e79f7cf01a9].closure_reason: gold=\"annual_fee\" agent=\"not_using_card\"",
+                 "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

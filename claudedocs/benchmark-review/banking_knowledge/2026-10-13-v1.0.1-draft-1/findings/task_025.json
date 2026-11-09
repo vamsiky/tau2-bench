@@ -1,0 +1,37 @@
+{
+  "task_id": "task_025",
+  "severity": "Major",
+  "headline": "Which card is best for a $100,000 Apple Music license depends on unstated category calls: whether 'Apple' is excluded on Business Silver and whether Apple Music earns 4% on Business Platinum.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Gold (Business Platinum, 4% = $4,000) needs two category calls the docs do not settle: (1) Apple Music falls under the Business Silver merchant exclusion \"Apple\" (Hardware/Electronics heading), and (2) a consumer music-streaming licence counts as Platinum 'software' or 'media advertising'. If (1) fails, Business Silver pays 10% = $10,000 (or $20,000 with the double-cash promo if opening today counts). If (2) fails, Platinum drops to 1.5% = $1,500 and Silver Zoom's triple promo (3% = $3,000), Business Gold (2.5% operations software = $2,500), or Business Silver with promo ($2,000) wins.",
+      "evidence": [
+        "doc_business_credit_cards_business_silver_rewards_card_005: \"**Hardware/Electronics Merchants (Software Exclusion):** - Apple - Microsoft - Dell\"",
+        "doc_business_credit_cards_business_platinum_rewards_card_002: \"Travel, software, and media advertising purchases earn 4.0%\"; examples \"SaaS subscriptions, cloud hosting, and digital ad placements\"",
+        "doc_business_credit_cards_business_platinum_rewards_card_003 (media) lists ad placements only: \"Streaming audio and video media placements when billed by media networks or ad platforms\"",
+        "doc_credit_cards_credit_cards_(general)_005: \"Media (advertising spend, streaming services)\"",
+        "doc_business_credit_cards_silver_zoom_card_012: \"All other eligible purchases earn 3 × 1.0% during the promo period\" (claim window to 2025-12-31)",
+        "doc_business_credit_cards_business_silver_rewards_card_012: promo \"End date: 2025-11-14\" (today per get_now)",
+        "gold[0].arguments.card_type = \"Business Platinum Rewards Card\""
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "Equally reasonable category readings pick Business Silver, Silver Zoom, or Business Gold instead; the user applies for whatever the agent recommends, so the application row and the DB hash differ.",
+      "suggested_fix": "Name \"Apple Music\" in the Business Silver exclusion list, and say in the Business Platinum software doc that enterprise media/streaming licences qualify for 4%; or switch the purchase to an unambiguous SaaS vendor that is Platinum-only."
+    }
+  ],
+  "solution_check": "Intended path: Business Silver excludes Apple, giving 1% ($1,000, or $2,000 with the promo); Business Platinum treats the 'multi-year enterprise license' as software/media at 4% = $4,000 with the first-year fee waived (doc_011 window 2025-11-01..2026-02-28); Bronze 1% + $500 = $1,500; Silver Zoom 3% = $3,000; Gold 1-2.5%. Platinum wins only under both category calls above.",
+  "prior_status": "persists",
+  "prior_note": "Prior Major (Apple Music category ambiguity) persists unchanged; this review adds Silver Zoom's triple-cash promo and the Business Silver promo ending today as further alternatives that win under other readings.",
+  "notes": "No task files or required docs changed since v1.0.0."
+}

@@ -1,0 +1,9 @@
+{
+  "domain": "banking_knowledge",
+  "benchmark_version": "v1.0.0",
+  "benchmark_ref": "8ebb749",
+  "run_date": "2026-06-25",
+  "reviewer": "Claude (single-session review, then a separate verification pass)",
+  "prompts": ["prompts/review.md", "prompts/verification.md"],
+  "notes": "Predates the per-task findings JSON format, so review.md/review.html were written directly rather than rendered. Grading was modelled on a locally modified 'verified' scorer (superset of discoverable reads allowed, closure_reason ignored), not upstream v1.0.0 grading. 8ebb749 is the last upstream commit before the review; the banking data there is v1.0.0."
+}

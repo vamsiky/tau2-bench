@@ -1,0 +1,82 @@
+{
+  "task_id": "task_069",
+  "severity": "Blocker",
+  "headline": "The gold says the Gold savings account has no ATM-fee rebates, but the documents say it does ($30 a month), so a correct agent picks a much higher-yielding account than the gold's Silver Plus.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "The gold's savings choice (Silver Plus, 3.0% tier 1) rests on the author's claim that Gold, Silver, Green and Bronze savings lack ATM rebates. The documents give Gold Account a $30/month ATM fee rebate and Silver Account rebates up to 15/month, and both beat Silver Plus at exactly $10,000.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_003: \"ATM fee rebate cap per month: $30\"; \"Opening deposit minimum: $5,000\"; \"Ongoing minimum balance: $10,000\"",
+        "doc_savings_accounts_gold_account_001: \"Your account earns an APY of 5.5%\"",
+        "doc_savings_accounts_gold_account_014: \"Silver Rewards Card | +0.2%\"",
+        "doc_savings_accounts_silver_account_005: \"Do you rebate ATM fees? - Yes. You can receive ATM fee rebates up to 15 each month.\"",
+        "doc_savings_accounts_silver_account_003: \"At or above threshold | At least $10,000 | 4.0%\"",
+        "doc_savings_accounts_silver_plus_account_002: \"Tier 1 APY: 3.0% for balances below the Tier 2 threshold\" (threshold $15,000 per silver_plus_001)",
+        "description.notes: \"Needs ATM fee rebates on savings account - blocks Gold Account, Silver Account, Green Account (savings), Bronze Account\"",
+        "gold[2].arguments.arguments: \"account_class\": \"Silver Plus Account\"; gold[3]: \"Blue Account\""
+      ],
+      "gold_action_refs": [
+        2,
+        3
+      ],
+      "why_it_matters": "With $10,000 (customer: 'minimum balances up to that amount are fine'), Gold Account + Silver Rewards = 5.5% + 0.2% = 5.7% and Silver Account (tier 2) + Silver Rewards = 4.0% + 0.1% = 4.1%, both above the gold's Blue + Silver Plus + Silver Rewards = 3.0% + 0.35% + 0.15% = 3.5%. The user script even prompts 'Wait, does the Gold Account have ATM fee rebates?', and the documents answer yes. A correct agent therefore opens Gold savings (and a different checking account) and fails the DB hash.",
+      "suggested_fix": "Either remove the ATM rebate from Gold and Silver savings documents (gold_account_003/013, silver_account_005/009) or change the gold to the documented optimum and give the customer a constraint that makes the checking choice unique."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Once Gold savings is the documented best, no overdraft-protected checking account gives a Gold boost (Green has no overdraft coverage; Purple's docs never mention overdraft protection), so any overdraft-protected checking account ties and the checking choice is not unique.",
+      "evidence": [
+        "doc_checking_accounts_green_account_(checking)_001: \"No overdraft fees and no overdraft coverage\"",
+        "doc_bank_accounts_bank_accounts_(general)_012 Gold pairings: \"Green Account (checking) + Gold Account (savings)\", \"Purple Account (checking) + Gold Account (savings)\"",
+        "doc_checking_accounts_blue_account_003: \"If you opt in to overdraft protection, each transfer from a linked account ... incurs a $12.50 fee\""
+      ],
+      "gold_action_refs": [
+        3
+      ],
+      "why_it_matters": "Even a fixed task that picked Gold savings would need a tie-breaker for checking, otherwise checking account_class (and hence account_id) is a free choice.",
+      "suggested_fix": "Add a checking constraint or boost that selects exactly one overdraft-protected checking account."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The gold closes the Light Blue account with only account_id, so the persisted closure_reason is the hidden default \"Customer requested closure\". The agent sees 'reason' only as an optional string with no default shown, and no document says what reason text to use or to omit it.",
+      "evidence": [
+        "gold[6].arguments.arguments = \"{\\\"account_id\\\": \\\"chk_rp65a7b3c4\\\"}\" (no reason)",
+        "tools.py close_bank_account_7392: reason: str = \"Customer requested closure\"; account[\"closure_reason\"] = reason",
+        "tools.py format_discoverable_tool_for_agent prints only \"reason: string (optional) - The reason for closing the account\" (default value not shown)",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on reason)"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "accounts[chk_rp65a7b3c4].closure_reason is part of the hashed DB. An agent that passes any reason text (e.g. \"Customer upgrading to a new checking account\" or even \"Customer requested account closure\") produces a different DB hash and scores 0 despite doing the right thing.",
+      "suggested_fix": "Stop persisting the free-text reason in the hashed record (or normalize it), or document in doc_005 that reason must be omitted / set to exactly \"Customer requested closure\"."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Required credit-card docs write minimum credit scores as dollar amounts. The values are still readable and no credit score is needed to solve the task.",
+      "evidence": [
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\"",
+        "doc_credit_cards_bronze_rewards_card_001: \"Minimum credit score: $640\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "Cosmetic corruption only; the customer's credit score is never at issue, so the correct final state is unchanged.",
+      "suggested_fix": "Remove the '$' from credit-score fields in the credit-card documents."
+    }
+  ],
+  "solution_check": "Constraints: card with travel insurance (only Silver Rewards documents it), checking with overdraft protection (Blue documents it; Green explicitly lacks it), savings with ATM fee rebates, $10,000. Savings with documented ATM rebates: Gold ($30/mo, 5.5%), Silver (15/mo, 4.0% at >= $10k), Silver Plus (25/mo, 3.0% below $15k), Green (only for EcoCard holders, green_(savings)_009). Best is Gold 5.5% + Silver Rewards 0.2% = 5.7%, not the gold's 3.5% Silver Plus + Blue combination. The gold does not match the documents.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean, but it accepted the author's claim that Gold savings has no ATM rebates, which gold_account_003 contradicts.",
+  "notes": "Gold Account minimum balance is exactly $10,000, which the customer can meet. gold_account_003 and gold_account_013 are not in required_documents but are retrievable; required doc gold_account_001 is silent on rebates. The task notes' 'overdraft_protection_available = false' for Purple is not in any Purple document (Purple docs never mention overdraft). The gold does not call get_all_user_accounts_by_user_id_3847, so extra eligibility reads are unlogged. log_verification arguments match the DB."
+}

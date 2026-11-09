@@ -1,0 +1,70 @@
+{
+  "task_id": "task_084",
+  "severity": "Blocker",
+  "headline": "The stored liability amounts follow no single rule: the $47.50 duplicate gets $50 (not capped) while the $412.88 late fraud gets $412.88 (capped), so any consistent calculation misses one of them.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Blocker",
+      "summary": "customer_max_liability_amount is 50 for the $47.50 duplicate (above the disputed amount) but 412.88 = min(500, 412.88) for the late TechWorld fraud. Capping at the disputed amount, as the tool docstring says, gives 47.5 for the duplicate; not capping gives 500 for TechWorld. Discovery-based timing would also put the duplicate (noticed 11/10) and the incorrect-amount dispute (noticed 11/09) in the $500 tier.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"inform the customer of their liability exposure based on when they noticed the unauthorized activity: - Reported within 2 business days of statement: Maximum liability $50 - Reported within 60 days of statement: Maximum liability $500\"",
+        "tools.py file_debit_card_transaction_dispute_6281 docstring: \"customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount.\"",
+        "gold[12] btxn_e8c3b09d2c45 disputed_amount 47.5, \"customer_max_liability_amount\": 50",
+        "gold[13] btxn_f9d4c10e3d56 incorrect_amount discovery 11/09/2025, \"customer_max_liability_amount\": 50",
+        "gold[14] btxn_c2g7f43h6g89 disputed_amount 412.88, \"customer_max_liability_amount\": 412.88",
+        "user instructions step 9: \"my liability could be up to $500 since I'm reporting it after the 2-day window? That's still better than losing the full $412.\""
+      ],
+      "gold_action_refs": [
+        12,
+        13,
+        14
+      ],
+      "why_it_matters": "Each value is stored in debit_card_disputes. Neither \"always cap\" nor \"never cap\" reproduces the gold, so a consistent agent fails.",
+      "suggested_fix": "Document one formula (e.g. min(tier cap, disputed amount), timing measured from a stated date) and recompute all three gold values with it."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The duplicate Bella's Bistro rows have the same date, amount and description. The gold disputes the second-listed row; that is \"earliest\" only by inferring intra-day order from the newest-first listing, and the doc's \"earliest (first)\" invites the first-listed row.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173: stable sort by date descending; rows carry date only (MM/DD/YYYY), no time",
+        "Tool order for chk_b8d92f4c17: btxn_d7f2a98c1b34 (11/06/2025, -47.5) then btxn_e8c3b09d2c45 (11/06/2025, -47.5)",
+        "gold[12] transaction_id btxn_e8c3b09d2c45"
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "The transaction_id and dispute_id are stored; picking the other row fails. v1.0.1's newest-first sort makes the gold derivable, but only through this inference.",
+      "suggested_fix": "Add timestamps to the rows or phrase the tie-break as \"the lower of identical same-day rows in the tool output\"."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The duplicate charge is a REQUIRED category, but the customer has not contacted the merchant, which doc_032 lists as NOT REQUIRED for non-fraud disputes. The gold stores true without a stated precedence.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is REQUIRED when ALL of these conditions are met: ... 2. Dispute Category: ... 'unauthorized_transaction' 'card_present_fraud' 'card_not_present_fraud' 'atm_cash_discrepancy' 'duplicate_charge'\"",
+        "doc_bank_accounts_bank_accounts_(general)_032: \"Provisional Credit is NOT REQUIRED (but may be offered at discretion) when: 1. The dispute category is: 'goods_services_not_received' 'recurring_charge_after_cancellation' 'atm_deposit_not_credited' 'incorrect_amount' 2. Customer has not contacted merchant first (for non-fraud disputes) 3. Customer shared their PIN voluntarily (pin_compromised = 'yes_shared')\"",
+        "gold[12] duplicate_charge contacted_merchant false, provisional_credit_eligible true"
+      ],
+      "gold_action_refs": [
+        12
+      ],
+      "why_it_matters": "An agent that lets the NOT REQUIRED condition win stores false and fails.",
+      "suggested_fix": "Add a precedence rule to doc_032."
+    }
+  ],
+  "solution_check": "Reconstructed: Evergreen (PREMIUM, max 4, none open) gets duplicate_charge $47.50 and incorrect_amount $100; Light Blue (ENTRY, max 2, one open dispute dsp_5a5e134f5b86) can take one more, and the customer picks TechWorld card_present_fraud $412.88; close the Light Blue card for fraud and order nothing because of the ENTRY 48-hour wait. Structure matches the gold; the stored liability, duplicate row and duplicate provisional flag depend on the readings above. Gold replays without errors.",
+  "prior_status": "changed",
+  "prior_note": "Prior Blocker cited the duplicate tie (gold picked the second row while tool output was oldest-first) plus the liability inconsistency; v1.0.1's newest-first sort makes the duplicate pick derivable (now Major), but the liability inconsistency is unchanged and still blocks.",
+  "notes": "Grading-model check against the snapshot: confirmed call_discoverable_agent_tool parses JSON with parse_int=float; reads are logged only when in the gold allowlist; agent_discoverable_tools rows are keyed by tool name only (generate_agent_discoverable_tool_id), so repeat calls collapse to one row; user tools write to the same DB the agent hash covers. Verified scorer (working-repo _verified_db_match) strips closure_reason, but order_debit_card_5739 copies the closed card's closure_reason into the new card's issue_reason (lost/stolen kept, fraud_suspected->fraud, anything else->first_card), so the close reason still decides debit_cards whenever a replacement is ordered after the close. The Light Blue close reason does not matter under the verified scorer because no replacement is ordered. The EveryonePay dispute is correctly left unfiled because of the ENTRY limit."
+}

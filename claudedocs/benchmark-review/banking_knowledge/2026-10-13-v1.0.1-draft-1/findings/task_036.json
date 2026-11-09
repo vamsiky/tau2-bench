@@ -1,0 +1,17 @@
+{
+  "task_id": "task_036",
+  "severity": "None",
+  "headline": "Clean: the replacement-card order (fraud reason, work address, expedited) is fully determined by the customer's script and the replacement doc.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The customer verifies with name, phone, and email. She flags Electronics Express Miami (txn_d3b830f4a2a4, $487.99, 09/04/2025) and GamerZone LA (txn_da8c64c97f95, $299.95, 09/06/2025) on the Silver card and asks for a new card. doc_replacements_001 gives the reason (fraud_suspected for stolen card information), the confirmed alternate address (given verbatim by the user), and expedited shipping (strongly recommended for fraud; the user accepts if offered). order_replacement_credit_card_7291(cc_890389b165_silver, 890389b165, '2500 Woodward Avenue, Suite 300, Detroit, MI 48201', fraud_suspected, true) matches gold[2].",
+  "prior_status": "not_applicable",
+  "prior_note": "Agrees with the prior clean verdict.",
+  "notes": "The author notes give the fraud dates as 11/04/2024 and 11/06/2024; the DB has 09/04/2025 and 09/06/2025 (notes are not agent-visible). These are the oldest of the user's 47 transactions, so an agent showing only 'recent' ones may need the user's prompt to show more, which the script handles. 'stolen' vs 'fraud_suspected' is a small wording risk: the customer still has the physical card and says her card information was stolen, so fraud_suspected is the natural fit. Since v1.0.1, an optional get_pending_replacement_orders_5765 eligibility check is no longer logged (not in the allowlist)."
+}

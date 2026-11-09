@@ -1,0 +1,17 @@
+{
+  "task_id": "task_064",
+  "severity": "None",
+  "headline": "Clean: with the customer's Rho-Bank+ subscription, Gold Rewards Card plus Gold Plus Account is the unique best net yield on $30,000 ($1,905 against $1,845 for the next pair).",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "The constraints are 10-12 withdrawals (rules out Bronze 6 and Green 8 without EcoCard), no crypto, card fee under $100 (rules out Platinum $200, Diamond $495 and Green Rewards $100), and $30,000 (rules out Platinum savings at $50k). Computed with apy.py: Gold Plus (6.0%, $25k minimum, 25 withdrawals) + Gold Rewards (+0.35%, $0 with Rho-Bank+) = $1,905; Gold Plus + Bronze Rewards = $1,845; Gold Plus + Silver Rewards = $1,830; Silver (4.0%) + EcoCard (+2.2%, $50) = $1,810 before excess-withdrawal fees on 11-12 withdrawals against 10 free; Gold + EcoCard = $1,780. The gold (Gold Rewards Card with subscription true, 'Gold Plus Account') matches.",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior rated this clean; still clean.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). Gold Rewards requires a 720 credit score (gold_rewards_card_001), which the customer never states. The agent cannot check scores and the customer applies, so this does not change the graded state. db.json users[jl72b4e9d1].rho_bank_plus_subscription = true matches the script. gold_account_013's slip (\"Total APY with the bonus: 6.0%\") would rate Gold + Gold Rewards at $1,800 at most, still below $1,905. The v1.0.1 change to gold_rewards_card_001 only removed a '$' from \"105 days\"."
+}

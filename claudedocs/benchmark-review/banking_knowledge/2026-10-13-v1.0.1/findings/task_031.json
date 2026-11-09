@@ -1,0 +1,17 @@
+{
+  "task_id": "task_031",
+  "severity": "None",
+  "headline": "Clean: one Marriott charge to dispute as 'not as described'. Every field can be derived from the customer, the database, or the docs, and the provisional-credit decision is clearly 'not eligible'.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Verification: the customer gives phone and email (2 of 4), and the log fields come from users[890389b165]. The only Marriott charge for this user is txn_adea68821a1d ($167.34, 11/07/2025, Silver). The agent can't read the last 4 digits itself, so it gives get_card_last_4_digits (doc_013) and the user calls it with cc_890389b165_silver, returning 5320. Per doc_014/015: goods_services_not_as_described, contacted_merchant=true, full_refund, keep_active, issue noticed 'today' = 11/14/2025 from get_current_time, and eligible_for_provisional_credit=false because the reason is in the NOT-eligible list. All of this matches the gold; the gold replays cleanly (dispute dsp_e3462a840774).",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review also rated this clean; nothing in this task or its documents changed.",
+  "notes": "The customer says 'about two weeks ago' and 'around 160 dollars'; the record is 7 days ago and $167.34, but it is the only Marriott transaction, so there's no ambiguity. Passing partial_refund_amount null or omitting it stores the same None. doc_014 lists a 'reversal_of_charge' resolution that the tool rejects. That's harmless here: a rejected call returns before add_to_db, and its agent_discoverable_tools record is keyed by tool name, so it matches the successful call's record."
+}

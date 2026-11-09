@@ -1,0 +1,17 @@
+{
+  "task_id": "task_067",
+  "severity": "None",
+  "headline": "At $100,000 the documents single out Purple checking, Platinum Plus savings and the Platinum Rewards Card, and the official answer matches.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Platinum Plus 7.0% (min $100,000, opening $50,000) + Purple +0.3% (purple_account_001) + Platinum Rewards +0.4% (platinum_plus_account_009) = 7.70%. Net of the $200 fee that is $7,500, versus Crypto-Cash Back +0.25% ($75 fee) $7,475 and no card $7,300. Diamond Elite Card (+0.6%) is invitation-only, and Dark Green (+0.45% on Platinum Plus) is limited to ages 17-26 (customer DOB 07/19/1991). Next best: Platinum 6.5% + Blue +0.8% + Platinum Rewards +0.25% = 7.55%. Gold Plus, Gold, Silver and Silver Plus routes top out below 7.0%. The order constraint is the same as in task_066. Gold replays cleanly.",
+  "prior_status": "not_applicable",
+  "prior_note": "The prior review rated this task clean, and so does this one.",
+  "notes": "The margin between Platinum Rewards and Crypto-Cash Back on a net basis is only $25 ($200 vs $175), but both raw APY and net yield pick Platinum Rewards. The Platinum Rewards first-year fee waiver window ended 2024-12-31 (platinum_rewards_card_009), so it does not apply. Purple's $15/month maintenance fee ($180/yr if the checking account sits empty) is below its $300 boost. get_all_user_accounts_by_user_id_3847 is gold-required and is the only way to obtain chk_rp65a7b3c4. The persona says age 33, but DOB 07/19/1991 gives 34 on 11/14/2025 (cosmetic). Grading-model facts confirmed against the snapshot: reads are logged only when in the gold-derived allowlist (call_discoverable_agent_tool + _derive_read_log_allowlist); writes are always logged; call_discoverable_agent_tool parses JSON with parse_int=float; get_now() = datetime(2025, 11, 14, 3, 40, 0). Verified scorer (working-repo evaluator_env.py _verified_db_match) confirmed: gold discoverable tool names must be a subset of the agent's, closure_reason stripped from every record, all other tables compared exactly."
+}

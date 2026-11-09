@@ -1,0 +1,36 @@
+{
+  "task_id": "task_035",
+  "severity": "Minor",
+  "headline": "The emergency credit-bureau transfer is well specified, but the action grader cannot tell whether the agent escalated immediately or verified first, as the task intends.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 1,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "Doc_012 asks for immediate escalation with no identity verification: emergency tool first, then transfer. ACTION grading ignores order and extra calls, so an agent that verifies or troubleshoots first, or transfers before the emergency call, still passes.",
+      "evidence": [
+        "src/tau2/evaluator/evaluator_action.py _check_actions: each gold action passes if any predicted tool call matches it (order and count ignored)",
+        "Action.compare_with_tool_call: compare_args [] -> name match only; call_discoverable_agent_tool golds use compare_args ['agent_tool_name']",
+        "doc_credit_cards_credit_cards_(general)_012: \"Identity verification is NOT required for this incident protocol. IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents.\"",
+        "description.notes: \"requires IMMEDIATE transfer without identity verification or troubleshooting\""
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2
+      ],
+      "why_it_matters": "The 'immediate, no verification' part of the test is not graded. Correct work still passes.",
+      "suggested_fix": "Add an ordered check, or a check that log_verification was not called, if immediacy is meant to be tested."
+    }
+  ],
+  "solution_check": "The customer reports a sudden credit-score drop from a Rho-Bank delinquency report. Doc_012 is active 11/14/2025 to 11/18/2025, and the clock is 11/14/2025. The prescribed actions are unlock and call emergency_credit_bureau_incident_transfer_1114, then transfer_to_human_agents, which is the gold.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. Under the calibration rule for grader-invisible order, it is Minor. This is the weakest case in the 032-035 group, since the only invisible rules are 'then' and 'no verification'.",
+  "notes": "ACTION only. The customer has only apply_for_credit_card, so no user-side DB effects are possible."
+}

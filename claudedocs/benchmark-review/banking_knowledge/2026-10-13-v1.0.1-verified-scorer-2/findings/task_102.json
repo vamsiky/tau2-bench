@@ -1,0 +1,50 @@
+{
+  "task_id": "task_102",
+  "severity": "Major",
+  "headline": "With one referral slot open, the customer asks to 'maximize the bonus'. Ember to Lime Green pays her more ($200), while the gold's TechFlow to Sky Blue pays more only in combined terms ($400).",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Line 12 asks which single referral maximizes 'the bonus' without saying whose. The referrer's own bonus favors Ember to Lime Green ($200 against Sky Blue's $150), and the combined bonus favors TechFlow to Sky Blue ($400 against $350). The gold assumes combined, which only the sibling task_101's script states.",
+      "evidence": [
+        "user_scenario 12: \"Okay, so if I can only do one right now, which one should I prioritize? I want to maximize the bonus.\"",
+        "doc_business_checking_accounts_lime_green_003: \"**Your bonus**: $200 ... **Their bonus**: $150 ... Referred business must deposit $15,000\"",
+        "doc_business_checking_accounts_sky_blue_001: \"Your bonus: $150 for each successful referral / Their bonus: $250 welcome bonus\"",
+        "gold[2] submit_referral account_type \"Sky Blue Account\"",
+        "Replay: Lime Green Account instead changes referrals"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "A competent agent optimizing the customer's own payout recommends Ember to Lime Green, the customer submits it, and the DB fails. The NL assertion (TechFlow, not Ember, for Sky Blue) can still pass.",
+      "suggested_fix": "Change line 12 to 'maximize the combined bonus for both of us', matching task_101."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "This task shares the window-wording issue from task_101. Under the submission-count reading, the 11/10 Purple referral leaves one slot; under a payout-only reading, more could be submitted, since the 11/10 bonus ages out before any new referral pays.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_047: \"You can receive at most 2 referral bonuses in any rolling 9-day window.\"",
+        "doc_bank_accounts_bank_accounts_(general)_048: \"If you exceed this limit, additional referrals will be automatically denied\"",
+        "seed referrals ref_recent_purple_001 COMPLETE 11/10/2025"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that reads the cap as payout-only may let the customer submit several referrals (script line 13), which fails.",
+      "suggested_fix": "State that the cap limits new referral submissions per rolling 9-day window."
+    }
+  ],
+  "solution_check": "The DB corrects every customer claim: the last referral was 11/10 (inside the window, so 1 slot), Gold Years is 6/6, Sky Blue 7/8, and Ember is 5 years old (incorporated 2020), so not Sky Blue-eligible. Candidates for the slot: TechFlow to Sky Blue ($150/$250), Ember to Lime Green ($200/$150), and either to Hunter Green ($175/$125). The combined measure gives the gold's Sky Blue; the referrer measure gives Lime Green. The gold replays cleanly and matches itself.",
+  "prior_status": "persists",
+  "prior_note": "The prior review rated this Major because a higher-paying referral (Ember to Lime Green) exists. That still holds; the gold is right only under the combined-bonus reading.",
+  "notes": "reward_basis includes NL_ASSERTION, which checks that TechFlow (not Ember) is recommended for Sky Blue; that is satisfiable. The customer's corrections in lines 9-11b are an intended verification test."
+}

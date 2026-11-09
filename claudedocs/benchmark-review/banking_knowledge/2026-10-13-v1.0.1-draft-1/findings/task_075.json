@@ -1,0 +1,37 @@
+{
+  "task_id": "task_075",
+  "severity": "Major",
+  "headline": "Green Fee-Free is the unique cheapest account only if Rho-Bank's out-of-network fee and its foreign-ATM fee are both charged on each overseas withdrawal, and no personal-account document says they stack; read the other way, Purple ties at $0.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Under the literal reading (an overseas ATM is out of network, so Purple's $2.50 out-of-network fee applies alongside its $0 foreign fee), Green Fee-Free ($0 + $0) is uniquely cheapest. No personal-checking document says whether the out-of-network fee and the foreign-ATM fee stack. If the foreign fee replaces the out-of-network fee abroad, Purple and Bluest also come to $0 in bank fees. Purple then ties Green Fee-Free and is arguably better, because it also rebates ATM-operator surcharges up to $30 a month.",
+      "evidence": [
+        "doc_checking_accounts_green_fee-free_account_005: \"| Out-of-network ATM withdrawal fee | $0.00 |\" and \"| Foreign ATM withdrawal fee | $0.00 |\"",
+        "doc_checking_accounts_purple_account_012: \"You are charged $2.50 per cash withdrawal made at an out-of-network ATM.\" / \"Applies to withdrawals made at ATMs that are not in Rho‑Bank's ATM network.\"",
+        "doc_checking_accounts_purple_account_001: \"| Foreign ATM withdrawal fee | $0.00 |\" and \"Global ATM fee rebates: up to $30 monthly worldwide\"",
+        "doc_checking_accounts_purple_account_004: \"You are eligible for refunds of ATM operator fees up to a monthly cap of $30.\"",
+        "doc_checking_accounts_bluest_account_010: \"| Cash withdrawal at an out-of-network ATM | $2.00 per withdrawal |\"; doc_checking_accounts_bluest_account_003: \"No foreign ATM withdrawal fees: $0.00\"",
+        "doc_business_checking_accounts_navy_blue_008: \"confirm whether the withdrawal occurred in the U.S. (out-of-network fee applies) or abroad (foreign ATM fee applies)\" (business doc, implies no stacking)",
+        "doc_business_checking_accounts_hunter_green_009: \"If you see both a foreign ATM fee and a domestic out-of-network fee for the same international withdrawal, share the transaction details for review.\"",
+        "task_075 description.notes: \"THE KEY INSIGHT: When using a foreign ATM that is not in Rho-Bank's network, BOTH the out-of-network ATM fee AND the foreign ATM withdrawal fee apply.\"",
+        "gold[2].arguments.arguments account_class = \"Green Fee-Free Account\""
+      ],
+      "gold_action_refs": [2],
+      "why_it_matters": "An agent that reads the foreign-ATM fee as the only Rho-Bank fee abroad finds Green Fee-Free, Purple and Bluest all at $0. It may open Purple, the travel account that also rebates operator fees, which creates a different accounts row and fails the DB match.",
+      "suggested_fix": "Add one sentence to a personal-checking general doc (or to purple_account_012) saying the out-of-network fee also applies to foreign out-of-network ATMs in addition to the foreign ATM fee. Alternatively, make the customer's criterion read 'lowest Rho-Bank fees, ignoring operator surcharges'."
+    }
+  ],
+  "solution_check": "18 withdrawals of $350, user age 32 (DOB 08/22/1993), so Gold Years (62+), Light Green (13-24) and Dark Green (17-26) are excluded. Rho-Bank fees with stacking: Green Fee-Free $0; Bluest 18x$2.00 = $36 (plus a $75,000 opening deposit); Purple 18x$2.50 = $45; Light Blue 12x$2.50 + 12x$4.00 = $78; Evergreen 18x($2.50 + $7.00) = $171; Blue and Green checking are higher. Green Fee-Free matches the gold. Without stacking, Green Fee-Free, Purple and Bluest all come to $0.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this a Blocker on the claim that Purple's total is a plain $0, but purple_account_012 documents a $2.50 out-of-network fee, so Green Fee-Free wins under the literal reading. The tie survives only under the undocumented no-stacking reading, so I lowered the rating to Major.",
+  "notes": "Grading-model facts confirmed (DB hash replay, read-log allowlist, parse_int=float, fixed clock). open_bank_account_4821 does not enforce opening deposits, age, or balances. The Green Fee-Free $22.50 monthly fee (waived at a $150 daily balance) is not an ATM fee and does not change the ranking; its $500 daily ATM limit covers $350 withdrawals. The instructions call the user 31, but his DOB makes him 32 on 11/14/2025 (cosmetic). If operator surcharges count toward 'total ATM fees', Purple's operator-fee rebates could make it cheaper than Green Fee-Free even with stacking. Surcharge amounts are unknown, so a competent agent would compare Rho-Bank fees, as the gold does."
+}

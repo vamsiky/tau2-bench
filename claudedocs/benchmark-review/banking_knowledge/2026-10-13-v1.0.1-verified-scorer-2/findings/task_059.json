@@ -1,0 +1,36 @@
+{
+  "task_id": "task_059",
+  "severity": "Major",
+  "headline": "The gold opens the savings product as 'Green Account', but the documents name it 'Green Account (savings)' and give 'Green Account (checking)' as an official class string, so an agent can reasonably pick a spelling that fails.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "The exact account_class string for the Green savings product is ambiguous. The savings procedure's \"ending with 'Account'\" rule points to 'Green Account', which the gold uses. The checking procedure's own example 'Green Account (checking)', and every Green savings document title, point to 'Green Account (savings)'.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_002: \"account_class must use the full official name ending with 'Account', e.g., 'Silver Plus Account', 'Gold Account'\"",
+        "doc_bank_accounts_bank_accounts_(general)_001: \"Personal checking account_class options must use the full official name ending with 'Account' (e.g., 'Blue Account', 'Green Account (checking)')\"",
+        "Savings product docs are titled \"Green Account (savings) specifications and requirements\" (doc_savings_accounts_green_account_(savings)_001) and the FAQ asks \"What APY does the Green Account (savings) earn?\" (_005); evergreen_account_001: \"Link a Green Account (savings): +0.55% APY boost\"",
+        "tools.py open_bank_account_4821: account_id = _deterministic_id(f\"account:{user_id}:{account_type}:{account_class}\") and account_class is stored verbatim",
+        "gold[5].arguments: {\"account_type\": \"savings\", \"account_class\": \"Green Account\"}",
+        "Replay with account_class 'Green Account (savings)': _verified_db_match False, \"table 'accounts' differs\""
+      ],
+      "gold_action_refs": [
+        5
+      ],
+      "why_it_matters": "An agent that copies the product's full name as documented opens an account with a different class and ID. The accounts table then differs and the task fails, even though the product choice is right.",
+      "suggested_fix": "State the exact account_class string for the Green savings product in general_002 (e.g., \"Green Account\" for savings), or fix general_001's example so the parenthetical is clearly not part of the class name."
+    }
+  ],
+  "solution_check": "Computed interest minus card fee on $5,000 (apy.py). Results: Green savings (4.0%, $500 minimum) + Silver Rewards (+0.45%, $0 fee) = $222.50; Green + Bronze Rewards = $200; Silver (2.5% tier) + EcoCard (+2.2%, $50) = $185; Green + EcoCard (+0.5%, $50) = $175; Silver Plus + Bronze/Silver = $157.50. Gold needs $10,000, or $5,000 with a Gold Rewards Card, which itself needs Rho-Bank+ ($4.99/month) and a 720 score: 5.525% x $5,000 - $59.88 = $216.37, still lower. The gold card and product choice match. The only defect is the class-string ambiguity.",
+  "prior_status": "new",
+  "prior_note": "Prior rated this clean; the Green savings class-string ambiguity was not reported.",
+  "notes": "Grading-model facts re-checked against the v1.0.1 snapshot (evaluator_env.py, build.py _derive_read_log_allowlist, tools.py call_discoverable_agent_tool/call_discoverable_user_tool, tasks.py compare_with_tool_call) and the verified scorer (_verified_db_match in the working repo, commit 4cb3191): all hold as stated. reward_basis is ['DB'] only. Replays used PYTHONPATH=<snapshot>/src, retrieval_variant='grep_only' (tools identical to default 'alltools', which needs an OpenAI key to build), and the gold-derived read_log_allowlist; scratch scripts in scratchpad/vs2_review_054/ (harness.py, apy.py). Supporting the gold spelling: general_012 labels every product with a type suffix (\"Gold Account (savings)\", \"Silver Plus Account (savings)\"), and the seed DB and close_bank_account_7392's fee table use 'Green Account' for the checking twin. The same ambiguity affects task_065. If an agent used gold_account_013's arithmetic slip (\"Total APY with the bonus: 6.0%\" for 5.5% + 0.025%) and proposed a Rho-Bank+ subscription, Gold + Gold Rewards would compute as $240.12; the bonus is given as 0.025% in four places, so this is treated as cosmetic. The customer gives no credit score (Silver Rewards needs 680); the agent cannot verify scores and the customer applies, so this is a note only."
+}

@@ -1,0 +1,36 @@
+{
+  "task_id": "task_060",
+  "severity": "Major",
+  "headline": "The account choice and the required order (open savings before closing Green) are both derivable, but the closure tool saves a free-text reason the gold leaves at its default, so agents that give a reason fail.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "close_bank_account_7392 saves its optional free-text reason argument as closure_reason in the accounts table, and gold omits it (default 'Customer requested closure'). The KB gives no guidance on the reason, so any agent that passes one (for example the customer's stated motive) persists a different string.",
+      "evidence": [
+        "tools.py close_bank_account_7392 signature: reason: str = \"Customer requested closure\", waive_early_closure_fee: bool = False",
+        "tools.py close_bank_account_7392 docstring: \"reason (string, optional): The reason for closing the account\"",
+        "tools.py close_bank_account_7392 body: account[\"closure_reason\"] = reason; account[\"early_closure_fee_waived\"] = waive_early_closure_fee",
+        "doc_bank_accounts_bank_accounts_(general)_005: \"3. Use close_bank_account_7392 to close the account.\" (no guidance on the reason argument anywhere in the KB)",
+        "gold[6].arguments: \"{\\\"account_id\\\": \\\"58d57780cc15e32d\\\"}\" (no reason)",
+        "Snapshot probe: closing 58d57780cc15e32d with reason 'Customer wants to simplify accounts' stores closure_reason='Customer wants to simplify accounts' (differs from the gold-replay value 'Customer requested closure')"
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "Under v1.0.1 exact-hash grading, an otherwise perfect trajectory that supplies a reason string for the closure fails the DB match. Supplying a reason is a natural, policy-compliant choice when the unlocked tool lists it as a parameter.",
+      "suggested_fix": "Either stop persisting the free-text reason (or exclude closure_reason from the hash), or add KB text such as 'Call close_bank_account_7392 with account_id only; do not pass reason or waive_early_closure_fee.'"
+    }
+  ],
+  "solution_check": "Savings selection (12-15 withdrawals/month, relationship bonus, $2.5-4k balance, daily compounding, ATM rebates, built-in goals): Bronze (6 free withdrawals), Silver (10), and Green (8) fail on withdrawals; Gold/Gold Plus/Platinum/Platinum Plus/Diamond Elite minimums ($10k-$250k) fail. Silver Plus has 15 free withdrawals, a 0.025% relationship bonus, $2,500 minimum, daily compounding, $25 ATM rebates, and 'Built-in savings goals tracking | Yes' (silver_plus_account_004). Silver Plus is unique. Ordering: Blue checking 38a2c5f77504be6c was opened 11/04/2025 (10 days), so the 14-day tenure in doc (general)_002 is met only while Green (07/17/2025) is open; open savings first, then close. Green is mid tier, opened 120 days ago (> 60-day window), so no fee; balance 0.00 lets it close. Gold replay: Silver Plus 89fbc464fa6f2c5e opened, Green closed with default reason. Matches the reconstruction except for the unconstrained reason argument.",
+  "prior_status": "new",
+  "prior_note": "Prior v1.0.0 review rated this clean using a scorer that ignored closure_reason; under v1.0.1 exact-hash grading that free-text field counts.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: evaluator_env.py replays gold actions on a fresh env built with the same env_kwargs (including read_log_allowlist) and requires exact agent+user DB hash match (get_dict_hash, json.dumps sort_keys=True); call_discoverable_agent_tool logs reads only when the tool name is in _derive_read_log_allowlist; numbers in discoverable-tool JSON args are parsed with parse_int=float; get_now() is fixed at 2025-11-14 03:40:00. Refinement: the agent_discoverable_tools log row is keyed by tool name only (generate_agent_discoverable_tool_id(tool_name)), so a gold-required read is satisfied by any one call of that tool regardless of its arguments; unlock_discoverable_agent_tool writes nothing to the DB. doc (general)_005 lists 'Notice period: 3 days' for mid tier without defining it; its procedure still says to verify, determine fees/notice, then call close_bank_account_7392, so an immediate close is the documented path. doc (general)_005 changed in v1.0.1 only to remove '$' corruption and does not affect this task. The user opts out of the opening-deposit transfer, so no transfer is expected."
+}

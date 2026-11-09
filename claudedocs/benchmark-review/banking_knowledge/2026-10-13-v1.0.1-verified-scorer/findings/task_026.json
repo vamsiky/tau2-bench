@@ -1,0 +1,74 @@
+{
+  "task_id": "task_026",
+  "severity": "Blocker",
+  "headline": "The gold writes 1500 points for a transaction that the bank's own rounding policy says earns 1499, and it expects the agent to confirm the disputes are resolved when no agent tool can see dispute status.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "No",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Blocker",
+      "summary": "Gold action 10 sets txn_a8f1c2d3e411 (Zoom Video, $149.99, Business Silver 10% after the promo) to '1500 points'. 149.99 x 10 = 1499.9, which doc_007 floors to 1499. The gold value is rounded half-up, against the documented policy.",
+      "evidence": [
+        "gold[10].arguments.arguments = \"{\\\"transaction_id\\\": \\\"txn_a8f1c2d3e411\\\", \\\"new_rewards_earned\\\": \\\"1500 points\\\"}\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "doc_credit_cards_credit_cards_(general)_004: \"new_rewards_earned: a string formatted as 'X points' where X is the correct whole-number point value\"",
+        "db.json credit_card_transaction_history[txn_a8f1c2d3e411].transaction_amount = \"$149.99\", transaction_date \"09/15/2025\" (after the 08/13/2025 end of the 6-month double promo for an account opened 02/13/2025)"
+      ],
+      "gold_action_refs": [
+        10
+      ],
+      "why_it_matters": "An agent that follows the documented rounding policy writes '1499 points'. credit_card_transaction_history is compared exactly under the verified scorer (only closure_reason and the discoverable-tools log are relaxed), and replay shows that state fails. Policy-faithful work fails deterministically.",
+      "suggested_fix": "Change gold[10] to '1499 points' (and re-seed the half-up rows per task_020), or change doc_007 to round half-up across the benchmark."
+    },
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Phase 2 requires the agent to update rewards only after the disputes are resolved, and doc_004 says to confirm resolution in the cash_back_disputes table. The agent has no tool that reads that table and never sees the user's tool output, so its only evidence is the customer's word. task_027 has an identical customer message and expects the opposite action.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database to find the transaction_id values that need rewards adjustments.\"",
+        "src/tau2/domains/banking_knowledge/tools.py: the only reference to cash_back_disputes is the user-side submit_cash_back_dispute_0589 write (line ~4231); no agent tool or discoverable agent tool reads that table (get_user_dispute_history_7291 reads transaction_disputes only), and query_database exists only on KnowledgeUserTools",
+        "src/tau2/orchestrator/orchestrator.py: tool results for user tool calls are routed ENV -> USER only; the agent receives only the user's text messages, so it never sees the \"Status: RESOLVED\"/\"Status: SUBMITTED\" line the dispute tool returns",
+        "task_026 Phase 2 line: \"Great, I've submitted all the disputes. I just got a notification that they've all been approved and resolved!\" (task_027 Phase 2 uses the same sentence as a lie)",
+        "initial_state.initialization_data.agent_data.task_config.dispute_settings.auto_resolve_disputes = true (026) vs false (027): replay shows statuses RESOLVED (026) vs SUBMITTED (027), invisible to the agent"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "why_it_matters": "An agent that follows doc_004 and declines to update without confirming resolution misses update_transaction_rewards_3847 and the four transaction changes; replay confirms the verified comparison fails ('missing required discoverable calls' plus a credit_card_transaction_history diff). Any fixed policy passes at most one of task_026 and task_027, since the observable conversation is the same.",
+      "suggested_fix": "Give the agent a read tool for cash_back_disputes (and document it in doc_004), so 026 and 027 differ in observable state."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "This customer's seed rewards are rounded half-up, but doc_007 says rewards are always floored. Under the documented rule, nine non-gold transactions are over-credited by 1 point each, and the gold disputes none of them.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number. When calculating points earned on a purchase, the system always truncates (floors) fractional points rather than rounding to the nearest integer.\"",
+        "db.json credit_card_transaction_history (user 755bcb4d5d), floor value vs stored: txn_a8f1c2d3e402 (Adobe $54.99 x 20% = 1099.8, stored 1100); txn_a8f1c2d3e404 (Microsoft 365 $79.99 x 2% = 159.98, stored 160); txn_a8f1c2d3e406 (Whole Foods $127.43 x 2% = 254.86, stored 255); txn_a8f1c2d3e409 (Amazon $156.78 x 2% = 313.56, stored 314); txn_a8f1c2d3e414 (Coursera $49.99 x 1% = 49.99 pts, stored 50); txn_b7e2d4c5f503 (Slack $44.99 x 4% = 179.96, stored 180); txn_b7e2d4c5f507 (Netflix $22.99 x 1%, stored 23); txn_b7e2d4c5f509 (Costco $143.56 x 1%, stored 144); txn_b7e2d4c5f512 (Nordstrom $187.50 x 1%, stored 188)",
+        "gold disputes txn_b7e2d4c5f506 (GitHub, stored 2550 vs correct 1020), an over-credit, so in this task over-credits are dispute-worthy",
+        "doc_credit_cards_credit_cards_(general)_003: \"Use this process when a customer believes there is a discrepancy between the cash back they received for a particular transaction and the cash back they should have received.\""
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "why_it_matters": "An agent that applies the documented floor rule finds 13 discrepancies. If it disputes all of them, as it disputes the GitHub over-credit, cash_back_disputes and user_discoverable_tool_calls gain rows the gold lacks; replay shows the verified comparison fails (replay-tested on task_020, which has the same seed and Phase 1 gold). The gold is reachable only by ignoring doc_007 and rounding half-up, or by deciding without documentary support not to dispute 1-point over-credits. Other tasks in this family (018, 019, 021, 022) store floor values, so the seed is internally inconsistent.",
+      "suggested_fix": "Re-seed the nine rows with floor values (1099, 159, 254, 313, 49, 179, 22, 143, 187), or state a materiality threshold in the dispute doc."
+    }
+  ],
+  "solution_check": "Phase 1 matches task_020: the four gold disputes (JetBlue, GitHub, Southwest, Zoom) are reproduced, but only with half-up rounding; the documented floor rule adds nine 1-point over-credits. Phase 2 corrected values: JetBlue 315 x 20% = 6300, GitHub 255 x 4% = 1020, Southwest 380 x 10% = 3800 (all match the gold), and Zoom 149.99 x 10% = 1499.9, which floors to 1499 per doc_007, while the gold has 1500. Replays of the gold matched; the 1499 variant and the no-update variant both fail the verified comparison.",
+  "prior_status": "changed",
+  "prior_note": "The prior review rated this Minor ('normal rounding works'), missing doc_007, the half-up 1500 in the gold update, and the missing agent read path for cash_back_disputes.",
+  "notes": "Under the verified scorer, agent_discoverable_tools only needs to contain update_transaction_rewards_3847, so extra unlock or read calls are harmless; credit_card_transaction_history, cash_back_disputes, user_discoverable_tool_calls, and user_discoverable_tools are compared exactly. doc_007 is not in required_documents, so a golden_retrieval run would round half-up and match the gold. The Blocker applies in retrieval configs, where doc_007 can be found."
+}

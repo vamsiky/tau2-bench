@@ -1,0 +1,55 @@
+{
+  "task_id": "task_083",
+  "severity": "Blocker",
+  "headline": "No agent can earn credit: the task is graded by exact text match against official tool calls that are missing a required field and fail when run.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Blocker",
+      "summary": "reward_basis is ACTION. ActionEvaluator requires a predicted call whose 'arguments' value equals the gold's JSON string exactly. All four gold dispute strings omit the required customer_max_liability_amount, so the gold calls themselves error, and any correct call necessarily differs from them.",
+      "evidence": [
+        "task_083 evaluation_criteria.reward_basis = [\"ACTION\"]; all actions compare_args = null",
+        "tasks.py Action.compare_with_tool_call: compare_args = tool_call.arguments.keys(); return tool_args == action_args (the 'arguments' value is a raw string)",
+        "gold[6..9] arguments strings contain no \"customer_max_liability_amount\"",
+        "Replay of gold[6..9]: \"Error: Invalid arguments: KnowledgeTools.file_debit_card_transaction_dispute_6281() missing 1 required positional argument: 'customer_max_liability_amount'\"",
+        "gold[6] string contains \"disputed_amount\": 150.00 (non-canonical float spelling an agent would have to reproduce byte for byte)"
+      ],
+      "gold_action_refs": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "why_it_matters": "A correct agent must include customer_max_liability_amount, or its dispute is rejected, so its 'arguments' string can never equal gold's. Even matching the gold content would require identical key order, spacing and number formatting. The ACTION reward is 0 for every agent.",
+      "suggested_fix": "Switch reward_basis to DB (as in sibling tasks) and add customer_max_liability_amount to all four gold dispute arguments. If ACTION is kept, compare parsed JSON arguments rather than raw strings."
+    },
+    {
+      "class": "hidden_ordering",
+      "severity": "Major",
+      "summary": "Two identical same-date duplicates have no timestamps. Gold disputes the later-listed row, which is 'earliest' only if the agent infers that the stable most-recent-first sort reverses within-day order. The doc's wording 'earliest (first)' also invites picking the first-listed row, which is the opposite.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_031: \"Dispute the earliest (first) transaction when multiple duplicates exist.\"",
+        "doc_bank_accounts_bank_accounts_(general)_018: \"Transactions are returned in reverse chronological order (most recent first).\"",
+        "tools.py get_bank_account_transactions_9173 comment: \"same-date records keep their stored order, which under the most-recent-first contract identifies the later-listed record as the earlier one\"",
+        "get_bank_account_transactions_9173(chk_dk83f5c2a1_gff) output order (replayed): 2. btxn_ff7d3926dee0 (11/11/2025), 3. btxn_d937eaa1d21d (11/11/2025)",
+        "gold[8] disputes btxn_d937eaa1d21d"
+      ],
+      "why_it_matters": "The dispute_id is generate_dispute_id(user_id, transaction_id), so disputing the other twin changes the record key and the hash (or, under ACTION grading, the argument string). An agent that reads '(first)' as first-listed, or treats the twins as interchangeable, fails.",
+      "suggested_fix": "Give the duplicates distinct timestamps (e.g. 'MM/DD/YYYY HH:MM:SS', which the sort already parses), or reword the rule as 'dispute the later-listed (older) of identical same-day charges'.",
+      "gold_action_refs": [
+        8
+      ]
+    }
+  ],
+  "solution_check": "Independently: third-party ATM $250 requested, $100 dispensed → atm_cash_discrepancy $150, provisional true (doc 033: still required for third-party ATMs). Goods not received → provisional false (NOT REQUIRED category). Duplicate → keep_active, provisional true. Nephew with a shared PIN → unauthorized_transaction, yes_shared, provisional false, freeze_pending_investigation. A real agent must also supply customer_max_liability_amount. The dispute content broadly matches gold, but under ACTION grading nothing can match the malformed gold strings.",
+  "prior_status": "persists",
+  "prior_note": "The task file is unchanged in v1.0.1, and the ACTION-grading and missing-argument Blocker persists. The duplicate tie-break is now resolvable by inference after #403 (newest-first sort) and is downgraded to Major.",
+  "notes": "Grading-model facts confirmed against the v1.0.1 snapshot: EnvironmentEvaluator replays gold on a fresh env and compares get_db_hash/get_user_db_hash (both hash the same TransactionalDB here because KnowledgeUserTools shares the agent db); _derive_read_log_allowlist logs discoverable reads only when the gold calls that tool name; the agent_discoverable_tools record id is derived from the tool name only, so the log is a set (call count and arguments do not matter), and write-tool calls are logged even when the tool returns an 'Error:' string; call_discoverable_agent_tool parses arguments with json.loads(parse_int=float); get_now() is fixed at 2025-11-14 03:40. Doc 032 also contradicts itself for the duplicate (REQUIRED category, yet 'NOT REQUIRED ... Customer has not contacted merchant first (for non-fraud disputes)'); gold sets true. Gold's card actions record only metadata, and gold performs no freeze of the GFF card despite 'freeze_pending_investigation' being the most severe action on it (doc 031 says to perform it), which would matter if this task were DB-graded."
+}

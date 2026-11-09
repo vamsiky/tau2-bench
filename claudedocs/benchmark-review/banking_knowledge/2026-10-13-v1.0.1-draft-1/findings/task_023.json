@@ -1,0 +1,35 @@
+{
+  "task_id": "task_023",
+  "severity": "Minor",
+  "headline": "Using the account's database open date, the customer met the $7,500 monthly threshold in all 12 anniversary windows and should apply for Diamond; the customer's wrong open date could flip that through the first-year fee-waiver rule.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "instruction_gold_mismatch",
+      "severity": "Minor",
+      "summary": "The persona says the card was opened in November 2024 and the customer has banked with Rho-Bank 'about a year', but the DB says the Platinum account opened 11/10/2022. If the agent believes the customer, the doc_009 first-year waiver (promo window 2024-06-01 to 2024-12-31) plus doc_010's waived-year rule would make 11/2024-11/2025 a non-rebate year, so 'not qualified' leads to a Silver Rewards application.",
+      "evidence": [
+        "Instructions: \"you opened it in November 2024\"; \"been a Rho-Bank customer for about a year\"",
+        "db.json credit_card_accounts[cc_224959b99e_plat].date_of_account_open = \"11/10/2022\"; accounts[05].date_opened = \"11/10/2022\"",
+        "doc_credit_cards_platinum_rewards_card_010: \"If your first cardmember year's annual fee is waived under a promotional offer, the rebate does not apply to that year.\"",
+        "doc_credit_cards_platinum_rewards_card_009: \"Start date: 2024-06-01 / End date: 2024-12-31\" (not in required_documents)",
+        "First Platinum transaction is 11/10/2024, which is consistent with the persona's date"
+      ],
+      "gold_action_refs": [
+        1
+      ],
+      "why_it_matters": "An agent that takes the customer's date over the system of record tells her she does not qualify, and she applies for the Silver Rewards Card instead of the Diamond Elite Card, so the application row differs. A careful agent prefers the DB date, so the gold is reachable.",
+      "suggested_fix": "Make the persona consistent with the DB (opened November 2022), or set date_of_account_open to 11/10/2024 outside a waiver window."
+    }
+  ],
+  "solution_check": "Verified the user, then read the 60 Platinum transactions (all 11/10/2024-10/26/2025). Per doc_010, windows start on the anniversary day (10th). For the completed cardmember year 11/10/2024-11/09/2025, the 12 window totals are 7594.18, 7635.92, 7721.49, 7763.29, 7845.26, 7873.15, 7713.77, 7598.04, 7601.91, 7617.16, 7917.61, 7672.23, all >= $7,500 (doc_credit_cards_platinum_rewards_card_007 \"monthly spend threshold of $7500.00\"). The account opened in 2022, outside the 2024 waiver window, so the rebate applies and she qualifies; the user applies for Diamond Elite (gold[1]). Calendar-month windows would fail (e.g. Feb 2025 = 4589.27), which is the intended trap and is documented.",
+  "prior_status": "persists",
+  "prior_note": "Prior Minor (\"customer mis-states card-open date; doesn't change answer\") persists. Note that it can change the answer via doc_009/doc_010 if the agent trusts the customer; it stays Minor because the DB date is available.",
+  "notes": "v1.0.1 changes to required docs are fixes: platinum_002 title \"Earning 4% Cash Back\" -> \"Earning 10% Cash Back\" (removes the rate contradiction), and platinum_003/007 \"$135 days\" -> \"135 days\". platinum_001 still reads \"Minimum credit score required: $750\" (cosmetic). apply_for_credit_card casts annual_income to float before hashing, so 95000 vs 95000.0 is safe. reward_points \"0 points\" on the Platinum account despite ~$95k of spend is inconsistent, but no task step reads it."
+}

@@ -1,0 +1,29 @@
+{
+  "task_id": "task_044",
+  "severity": "Minor",
+  "headline": "Closure retention where the agent must recommend the Platinum Rewards Card, the only Rho-Bank card that beats the competitor; only a cosmetic credit-score typo remains.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "A required card document states a minimum credit score as a dollar amount. The value is cosmetic here: no gold argument depends on it and apply_for_credit_card takes no credit score.",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_001: \"Minimum credit score required: $750.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "No change to the correct final state. It is a corrupted value of the kind v1.0.1 cleaned elsewhere (e.g. \"$120 days\" in logistics_005) but left here.",
+      "suggested_fix": "Change \"$750\" to \"750\"."
+    }
+  ],
+  "solution_check": "Eligibility: no disputes, no pending replacement, $0 balance, opened 03/20/2023. No prior closure reasons. The reason is found_better_card. Searching the KB for a card with more than 8% cash back and 0% foreign fees finds only the Platinum Rewards Card (platinum_002: 10.0% on all purchases; platinum_001: FTF 0%, annual fee $200). Diamond Elite earns 5% and Business Silver earns 10% only on travel/software with a 1.5% foreign fee. The customer applies with income 145000 and no subscription. This matches the gold and the replay is clean.",
+  "prior_status": "new",
+  "prior_note": "Prior clean. The v1.0.1 retitle of platinum_002 (4% to 10%) removes the contradiction the prior change log flagged; the Minor credit-score typo is newly reported.",
+  "notes": "The author's notes say the Platinum's \"first year annual fee [is] waived for new applicants\", but platinum_rewards_card_009's promo window ended 2024-12-31, so the correct fee to quote is $200. That is still \"comparable\" to the competitor's $195 under the customer's instructions, and it does not affect the DB. found_better_card vs unhappy_with_rewards: the customer explicitly found a card at another bank, so found_better_card is the natural pick. apply_for_credit_card casts annual_income to float, so 145000 vs 145000.0 does not matter."
+}

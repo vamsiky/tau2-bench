@@ -1,0 +1,46 @@
+{
+  "task_id": "task_035",
+  "severity": "Minor",
+  "reason": "Doc _012 requires the emergency call, then transfer, with no verification; grading ignores order, so transferring first (or verifying first) still passes.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Minor",
+      "title": "Immediate escalation order is not graded",
+      "kind": "other",
+      "step": 2,
+      "gold": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: other). A human agent will assist you shortly."
+      },
+      "doc_faithful": {
+        "call": "transfer_to_human_agents",
+        "args": {
+          "summary": ""
+        },
+        "output": "Transfer successful (reason: other). A human agent will assist you shortly.",
+        "note": "Plausible misreading: the agent transfers before calling emergency_credit_bureau_incident_transfer_1114 (transfer inserted before step 0, step 2 dropped). Gold itself follows doc _012."
+      },
+      "refs": [
+        {
+          "source": "doc_credit_cards_credit_cards_(general)_012",
+          "quote": "Identity verification is NOT required for this incident protocol. IMMEDIATELY use emergency_credit_bureau_incident_transfer_1114() then transfer_to_human_agents."
+        },
+        {
+          "source": "task:evaluation_criteria",
+          "quote": "reward_basis [\"ACTION\"]; gold[0..1] compare_args ['agent_tool_name']; gold[2] transfer_to_human_agents compare_args []"
+        }
+      ],
+      "conflict": "Doc _012: emergency call, then transfer, no verification. ACTION grading ignores order and extra calls, so a reordered run still matches.",
+      "scorer": {
+        "field": "no unmatched gold action (all 3 matched; order ignored); no DB field differs",
+        "upstream": "PASS",
+        "verified": "PASS",
+        "action": "PASS"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "task_id": "task_102",
+  "severity": "Major",
+  "headline": "With only one referral slot, the customer asks to \"maximize the bonus\" without saying whose bonus; the official TechFlow-to-Sky Blue pick wins on combined bonus but loses to Ember-to-Lime Green on her own bonus.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "Unlike task_101, the customer never says \"combined\". The gold maximizes combined bonus (Sky Blue $150+$250=$400). If \"the bonus\" means her own referrer bonus, Ember to Lime Green ($200) beats Sky Blue ($150), and Hunter Green ($175) beats it too.",
+      "evidence": [
+        "user instruction 12: \"Okay, so if I can only do one right now, which one should I prioritize? I want to maximize the bonus.\"",
+        "task_101 instruction 1 (same persona): \"I want to make sure I'm getting the best possible combined bonus\" (absent from task_102)",
+        "doc_business_checking_accounts_sky_blue_001: \"Your bonus: $150 ... Their bonus: $250\"; lime_green_003: \"Your bonus: $200 ... Their bonus: $150\"; hunter_green_001: \"Referrer reward: $175\"",
+        "author notes: \"Must choose highest value: TechFlow -> Sky Blue ($400)\"",
+        "gold[2] submit_referral account_type \"Sky Blue Account\"",
+        "replay: submit_referral \"Lime Green Account\" -> verified match False (referrals differs)"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "A competent agent that reads \"maximize the bonus\" from the referrer's side recommends Lime Green for Ember. The customer submits it and the referrals table diverges. The NL assertion requiring TechFlow/Sky Blue fails as well.",
+      "suggested_fix": "Have the customer say \"the best combined bonus\" (as in task_101), or accept Lime Green when the referrer-bonus reading is used."
+    }
+  ],
+  "solution_check": "Rolling window: ref_recent_purple_001 COMPLETE on 11/10 (4 days ago), so one slot. Gold Years 6/6 full; Sky Blue 7/8 (one slot); Ember 5 years old, so no Sky Blue. Highest combined: TechFlow to Sky Blue $400, then Ember to Lime Green $350. Highest referrer-only: Ember to Lime Green $200. Gold matches only the combined reading.",
+  "prior_status": "persists",
+  "prior_note": "The prior Major (a higher-paying referral exists than the gold pick) persists; I frame it as the unstated \"whose bonus\" target rather than a pure gold error.",
+  "notes": "reward_basis is DB + NL_ASSERTION. The NL assertion (\"recommend TechFlow Labs (not Ember Analytics) for the Sky Blue Account referral\") follows the same combined-bonus reading."
+}

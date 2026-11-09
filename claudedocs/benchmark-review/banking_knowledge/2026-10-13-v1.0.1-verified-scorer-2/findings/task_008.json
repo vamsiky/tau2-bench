@@ -1,0 +1,34 @@
+{
+  "task_id": "task_008",
+  "severity": "Minor",
+  "headline": "The gold reason code is right under the documented 'highest tier' rule, but the Tier-2 code 'unconfirmed_external_communication' names this exact situation (a mailed flyer), so the two codes overlap.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "Two transfer-reason descriptions both fit a customer who holds a flyer for an offer the KB doesn't have, keeps pushing after repeated refusals, and then demands a human. The gold Tier-1 code wins only through the tier-priority sentence.",
+      "evidence": [
+        "doc_bank_accounts_bank_accounts_(general)_042: \"Reasons are organized into 4 priority tiers - always select from the highest tier that applies.\"",
+        "doc_bank_accounts_bank_accounts_(general)_042 (TIER 1): \"customer_demands_after_unavailable_offer_refusal | Customer asked about offers/promotions that don't exist in the system, you informed them the offers aren't available, customer persisted multiple times, and now demands human\"",
+        "doc_bank_accounts_bank_accounts_(general)_042 (TIER 2): \"unconfirmed_external_communication | Customer claims a specific promotion/program/offer exists (they have a letter, email, or flyer) but you cannot verify or find it in the KB after searching\"",
+        "gold[0].arguments.reason = \"customer_demands_after_unavailable_offer_refusal\" (compare_args=[\"reason\"])"
+      ],
+      "gold_action_refs": [
+        0
+      ],
+      "why_it_matters": "An agent that matches on the flyer wording picks the Tier-2 code and fails ACTION grading. The tier rule settles the choice, so a careful agent reaches the gold. In the earlier Opus trials 3 of 4 picked unconfirmed_external_communication.",
+      "suggested_fix": "Make the two rows mutually exclusive, e.g. add 'and the customer has not repeatedly persisted after refusal' to the Tier-2 row, or put a worked example in doc 042."
+    }
+  ],
+  "solution_check": "None of the three flyer offers exists as stated. The KB has no $1,000-for-$10k personal offer (the closest, Business Bronze, gives $500 and is business-only), no 3-year $0-FTF promo, and Platinum's first-year fee waiver ran 2024-06-01 to 2024-12-31 and has expired. The agent refuses each one; after 8 refusals the customer demands a human. Tier 1 'customer_demands_after_unavailable_offer_refusal' applies, and the highest-tier rule puts it ahead of Tier 2, which matches gold[0].",
+  "prior_status": "persists",
+  "prior_note": "Same Minor reason-code overlap as the prior review, still settled by the documented highest-tier rule. Sibling task_014 hits the same overlap from the other direction (its gold is the Tier-2 code).",
+  "notes": "ACTION-only grading. The Platinum fee-waiver promo (platinum_009) shows that offer #3 exists in the KB but has expired, which still counts as 'unavailable'. doc_credit_cards_credit_cards_(general)_009's 'Do not transfer' rule covers referral-link requests only, so it does not apply here."
+}

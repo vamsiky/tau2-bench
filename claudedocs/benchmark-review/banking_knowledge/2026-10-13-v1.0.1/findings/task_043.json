@@ -1,0 +1,29 @@
+{
+  "task_id": "task_043",
+  "severity": "Minor",
+  "headline": "Card-closure retention with a balance payoff and an annual-fee waiver; the only defect is a cosmetic credit-score typo in the card doc.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "A required card document states a minimum credit score as a dollar amount. The value is cosmetic here: no gold argument depends on it and apply_for_credit_card takes no credit score.",
+      "evidence": [
+        "doc_credit_cards_platinum_rewards_card_001: \"Minimum credit score required: $750.\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "No change to the correct final state. It is a corrupted value of the kind v1.0.1 cleaned elsewhere (e.g. \"$120 days\" in logistics_005) but left here.",
+      "suggested_fix": "Change \"$750\" to \"750\"."
+    }
+  ],
+  "solution_check": "Followed doc_logistics_003 Step 1. The dispute history (none) and pending replacements (none) both pass, but the balance is $75.00 (cc_224959b99e_plat.current_balance). The customer pays it from checking account 05 ($2850), found via get_all_user_accounts_by_user_id_3847 (doc bank_accounts_009). Step 2: no closure-reason history. Step 3: the customer says \"It's really just the annual fee\", so annual_fee. Step 4: the card was opened 11/10/2022 (3+ years), so the waiver flag annual_fee_waived/loyalty_benefit expires one year from today, 11/14/2026. This matches gold[0..14] and the replay is clean.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. Its substance is still clean; the Minor typo existed before but was not reported.",
+  "notes": "Under v1.0.1 the closure_reason enum is graded; the customer also mentions \"simplifying my finances\" but explicitly says \"It's really just the annual fee\", so annual_fee is the natural reading. log_credit_card_closure_reason_4521 records are keyed by (account, user), so a wrong first reason cannot be overwritten. The read log records only the tool name, so any call to the four allowlisted reads satisfies the gold, whatever the arguments."
+}

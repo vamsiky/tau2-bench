@@ -1,0 +1,37 @@
+{
+  "task_id": "task_015",
+  "severity": "Major",
+  "headline": "The gold expects the agent to give the referral-link tool to a customer it cannot verify (she knows only her phone number), but no document says verification is unnecessary, so cautious agents refuse and fail.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_gap",
+      "severity": "Major",
+      "summary": "The KB never says whether identity verification is required before handing over get_referral_link. Doc 009's pre-check ('reason to believe the referral will be automatically rejected' plus the weekly cap) can only be evaluated by reading the customer's referral history, which the policy says requires verification. This customer can match only 1 of 4 identity fields, so the gold silently assumes no verification and no history check.",
+      "evidence": [
+        "task_015 user_scenario: \"Your user ID is 890389b165 and your phone number is 313-555-0246.\" (no email, DOB or address given; db.json users[890389b165] email='coffeelover_fati@protonmail.com', date_of_birth='12/05/1993')",
+        "policy (additional_instructions.md): \"verify their identify ... ensure that they are able to give correctly any 2 out of the following values\" and the example \"Looking up account balances, transaction history, referral history...\"",
+        "policy (additional_instructions.md): \"You should ONLY verify a user's identity if you need to access or modify their customer information in internal databases on their behalf.\"",
+        "doc_credit_cards_credit_cards_(general)_009: \"if there is reason to believe the referral will be automatically rejected, explain why and do not provide a referral link tool\" / \"Weekly limit: Customers can receive at most 2 referral bonuses in any rolling 7-day window\"",
+        "doc_credit_cards_credit_cards_(general)_020: \"generate a unique referral link that's tied to your account\"",
+        "gold = [give_discoverable_user_tool(get_referral_link), user call_discoverable_user_tool(get_referral_link, {\"user_id\": \"890389b165\", \"card_name\": \"Platinum Rewards Card\"})], with no log_verification"
+      ],
+      "gold_action_refs": [
+        0,
+        1
+      ],
+      "why_it_matters": "A tool that creates a referral record tied to the customer's account, together with a pre-check that needs her referral history, leads reasonable agents to verify first. They cannot verify, so they never give the tool, and the referrals and user_discoverable_* tables then differ from the gold (I confirmed that giving the tool without the customer calling it also fails). In all four earlier Opus 4.7 trials the agent identified Platinum as the valid program and then withheld the tool for lack of verification.",
+      "suggested_fix": "Add a line to doc 009 such as 'No identity verification is required to provide this tool; the customer supplies their own user_id', or give the customer a second verification field so verifying (and logging) is possible and include log_verification in the gold."
+    }
+  ],
+  "solution_check": "Walking the script: Crypto-Cash Back has no documented program (decline, no transfer per doc 009). Business Gold stopped accepting referrals 'until 2025-09-15', before the 2025-11-14 clock. The EcoCard terms are wrong (doc: 'Receive 50', $500 in 60 days; claimed $200). Silver Zoom's terms are wrong ($150, $7,500) and it is closed ('No new referrals are accepted after 2025-10-01'). Platinum matches exactly ('$100', '$1,500 within 90 days', platinum_008), so the agent gives get_referral_link and the customer calls it with her user_id and 'Platinum Rewards Card'. This matches the gold, and db.json has no existing referrals for 890389b165, so nothing suggests auto-rejection. Replays confirm that passing arguments to give_discoverable_user_tool, giving or calling twice, or swapping JSON key order all leave the graded DB unchanged.",
+  "prior_status": "new",
+  "prior_note": "Prior review called this clean. The verification gap is not a v1.0.1 change; the prior's relaxed scorer did not change this outcome either, since the failure is a missing tool hand-off, not an extra read.",
+  "notes": "The gold's reading (no verification, because the customer runs the tool herself, as in doc 009's 'Tell the customer to pass their own user_id') is the more literal one, which is why I rate this Major and not Blocker. The EcoCard referral amount 'Receive 50' has lost its '$'; that is cosmetic, since the claimed $200 is wrong either way. Under the verified scorer, user_discoverable_tools, user_discoverable_tool_calls and referrals are all compared exactly. The agent must not give the tool at any earlier stage of the script: the customer would call it with that card name, and the extra rows would fail. That part is correct grading."
+}

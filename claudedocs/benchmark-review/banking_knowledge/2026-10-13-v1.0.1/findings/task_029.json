@@ -1,0 +1,68 @@
+{
+  "task_id": "task_029",
+  "severity": "Major",
+  "headline": "To pass, the agent must refuse to update rewards because the disputes are still pending, but it has no tool to see dispute status and hears the same 'they were approved' claim that task_028 expects it to act on.",
+  "ratings": {
+    "instructions_sufficient": "Partial",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Major",
+      "summary": "The gold (no reward updates) depends on cash_back_disputes rows having status SUBMITTED (auto_resolve_disputes=false). No agent tool exposes that status, and the user's tool output is invisible to the agent. The only distinguishing fact is unobservable, and the agent-visible conversation matches task_028, where updating is gold.",
+      "evidence": [
+        "initial_state.initialization_data.agent_data.task_config.data.dispute_settings.auto_resolve_disputes = false",
+        "tools.py KnowledgeUserTools.submit_cash_back_dispute_0589 writes status 'SUBMITTED' and returns 'Status: SUBMITTED - Your dispute has been queued for review.' to the user only",
+        "doc_credit_cards_credit_cards_(general)_004: \"Look up the user’s resolved disputes in the cash_back_disputes database\" (no tool named; none exists)",
+        "description.notes: \"Agent must verify dispute status and refuse to update transactions when disputes are still SUBMITTED\"",
+        "task_028 gold[9..14]: the same Phase 2 claim leads to six update_transaction_rewards_3847 calls"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "An agent that trusts the customer calls update_transaction_rewards_3847 and fails the DB hash. Only an agent that refuses on principle passes, and that agent fails task_028. The intended skill, verifying status, cannot be exercised.",
+      "suggested_fix": "Expose a discoverable read of cash_back_disputes (documented in doc_004) so the agent can see SUBMITTED; add it to both the 028 and 029 golds."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "required_documents leaves out doc_credit_cards_credit_cards_(general)_007, the floor-rounding policy that separates the 6 real errors from 22 off-by-one rows. The doc is in the KB and searchable, so only the golden_retrieval config, which inlines required docs and has no search tool, lacks it.",
+      "evidence": [
+        "task_029.required_documents lacks doc_credit_cards_credit_cards_(general)_007; task_028.required_documents includes it",
+        "doc_credit_cards_credit_cards_(general)_007: \"All credit card rewards points are rounded down to the nearest whole number.\"",
+        "Computed over user 890389b165's 47 transactions: floor gives 6 mismatches (= gold[2..7]); round-half-up gives 28",
+        "retrieval.py: golden_retrieval builds the prompt from task.required_documents and provides no retrieval tools"
+      ],
+      "gold_action_refs": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "why_it_matters": "Under golden_retrieval, an agent that rounds half-up would give 22 extra disputes to the user and fail. The seed data, where every stored value equals the floor, lets a careful agent infer truncation, so the risk is small.",
+      "suggested_fix": "Add doc_credit_cards_credit_cards_(general)_007 to task_029.required_documents."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The EcoCard earn-rate doc writes points as dollar amounts, and the rounding doc's worked example has broken intermediate arithmetic. The intended values (5 or 1 points per dollar, floor) can still be recovered, and the seed rewards_earned values agree with that reading.",
+      "evidence": [
+        "doc_credit_cards_ecocard_002: \"Green purchases: Earn $5.00 sustainability points per dollar spent\"",
+        "doc_credit_cards_ecocard_002: \"A $100 purchase at a qualifying green merchant earns 100 × $5.00 points.\"",
+        "doc_credit_cards_credit_cards_(general)_007: \"126.77 × 0.01 = 1.2677 points, which rounds down to 1 point per dollar, giving 126 points\"",
+        "db.json credit_card_transaction_history[txn_e83813b6528a] EcoCard Green $147.63 -> rewards_earned '738 points' (= floor(147.63*5))"
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "These are cosmetic corruptions. A careful agent gets 642 points for txn_896ac64b98d7 ($128.47 x 5) either way, but the dollar sign invites a misreading.",
+      "suggested_fix": "Write 'Earn 5 sustainability points per dollar' and fix the example to '$126.77 x 1 point per dollar = 126.77, floored to 126 points'."
+    }
+  ],
+  "solution_check": "Phase 1 is the same as task_028: the floor computation gives exactly the six gold dispute transactions. Phase 2 gold has no update calls. The DB records the disputes as SUBMITTED, but the agent cannot read that; it sees only the customer's false 'approved and resolved' claim. Replaying the gold in the snapshot succeeds.",
+  "prior_status": "changed",
+  "prior_note": "The prior Major rested on an 'unwritten' floor rule, but doc_007 states it and is retrievable (only missing from required_documents, now Minor). The task is still Major, now because the dispute status the gold depends on is unobservable.",
+  "notes": "Unlike task_028, this user script lacks the 'insist on disputing the overpaid transaction' step. If the agent advises against disputing txn_e647e242ce96 (1875 vs 750, in the customer's favour), the user may just go along, and gold[7] would be missing. The customer asked to fix 'any errors', so including it is the natural reading. Extra cautious reads by the agent are harmless here: the gold has no discoverable reads, so nothing is allowlisted."
+}

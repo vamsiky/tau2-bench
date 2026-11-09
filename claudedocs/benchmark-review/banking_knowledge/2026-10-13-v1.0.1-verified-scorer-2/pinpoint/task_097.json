@@ -1,0 +1,32 @@
+{
+  "task_id": "task_097",
+  "severity": "Major",
+  "reason": "Gold Silver credit $220.84 omits the 0.025% multi-product relationship bonus that task_093's gold applies; with it the credit is $222.92.",
+  "points": [
+    {
+      "issue": 1,
+      "severity": "Major",
+      "title": "Silver expected APY omits 0.025% relationship bonus",
+      "kind": "ambiguous_choice",
+      "step": 9,
+      "gold": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {"account_id": "sav_mc80w7k3x9_silver", "amount": 220.84, "credit_type": "interest_correction"},
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_aa55b31a00bcb52b\n...\n  - Amount: $220.84\n  - Previous Balance: $100000.00\n  - New Balance: $100220.84"
+      },
+      "doc_faithful": {
+        "call": "apply_savings_account_credit_6831",
+        "args": {"account_id": "sav_mc80w7k3x9_silver", "amount": 222.92, "credit_type": "interest_correction"},
+        "output": "Credit applied successfully!\n  - Transaction ID: txn_e011944692118207\n...\n  - Amount: $222.92\n  - Previous Balance: $100000.00\n  - New Balance: $100222.92",
+        "note": "Expected APY 6.675% (gold 6.65 + 0.025). Step 14 report changed to expected_apy 6.675, amount_difference 222.92."
+      },
+      "refs": [
+        {"source": "doc_savings_accounts_silver_account_002", "quote": "If you maintain multiple Rho-Bank products, you may also qualify for a relationship bonus of 0.025% that stacks on top of your base Silver APY."},
+        {"source": "doc_savings_accounts_silver_account_005", "quote": "Eligible customers receive a relationship APY bonus of 0.025% added to the base Silver APY."},
+        {"source": "doc_bank_accounts_bank_accounts_(general)_044", "quote": "Missing Relationship Bonus: Customer maintains multiple Rho-Bank products but the relationship bonus was not applied."}
+      ],
+      "conflict": "Customer holds 13 products, no Platinum Rewards Card. Gold: 4.0+0.45+2.2 = 6.65% → 220.84. With bonus: 6.675% → 556.25−333.33 = 222.92. task_093 gold adds the bonus.",
+      "scorer": {"field": "accounts[sav_mc80w7k3x9_silver].current_holdings: gold=\"100220.84\" agent=\"100222.92\"; bank_account_transaction_history[txn_aa55b31a00bcb52b]: MISSING row (gold has)", "upstream": "FAIL", "verified": "FAIL"}
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "task_id": "task_048",
+  "severity": "Major",
+  "headline": "Four-card closure where the gold requires the customer to apply for the Silver Rewards Card, though the knowledge base offers other cards that beat the competitor, including one with higher rewards.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "The retention rule says to offer \"a card with similar or better benefits\" and gives no tie-breaker. For travel and software spend against a competitor paying 3.25%, the KB has several qualifying cards: Silver Rewards (4%, $0 fee), Platinum Rewards (10% on everything, 0% foreign fee, $200 fee), and the business cards. The gold accepts only an application for the Silver Rewards Card, and the scripted customer applies for whichever card is presented as competitive.",
+      "evidence": [
+        "doc_credit_cards_credit_card_account_logistics_003: \"Found a better card: Ask what features attracted them. If Rho-Bank offers a card with similar or better benefits, offer to help them apply instead of closing the current account.\"",
+        "doc_credit_cards_silver_rewards_card_002: \"Pay with your card for eligible travel and software transactions to earn 4.0% back\"",
+        "doc_credit_cards_platinum_rewards_card_002: \"You earn 10.0% cash back on all eligible purchases.\"",
+        "doc_business_credit_cards_business_silver_rewards_card_002: \"Earn 10.0% cash back on eligible travel and software purchases\"",
+        "user_scenario.instructions step 8: \"If the agent explains the card details and they're competitive or better than the competitor: Apply enthusiastically with the apply_for_credit_card tool.\"",
+        "gold[18].arguments.card_type = \"Silver Rewards Card\""
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "Replay check: the same trajectory with the application for \"Platinum Rewards Card\" instead of \"Silver Rewards Card\" changes the hash. An agent that recommends the strictly higher-earning Platinum Rewards Card follows policy, and the customer then applies for it and the task fails.",
+      "suggested_fix": "Add a tie-break to the retention protocol, e.g. \"recommend the lowest-annual-fee card that matches or beats the competitor on the customer's stated categories\", or have the customer state a no-annual-fee requirement that rules out Platinum."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Silver Rewards eligibility doc states the minimum credit score as a dollar amount. Cosmetic here.",
+      "evidence": [
+        "doc_credit_cards_silver_rewards_card_001: \"Minimum credit score: $680\""
+      ],
+      "gold_action_refs": [],
+      "why_it_matters": "No change to the correct final state.",
+      "suggested_fix": "Change \"$680\" to \"680\"."
+    }
+  ],
+  "solution_check": "Green (cc_e3f4a5b6c7_green): eligible, and the closure-reason history has a 09/15/2025 record within the past year, so per Step 2 the agent skips retention and closes. EcoCard: credit_card_orders ccord_e3f4a5b6c7_eco_001 is SHIPPED, so it cannot be closed. Gold Rewards: $175 balance, paid from checking 07 ($3650); reason found_better_card; a card is recommended and the customer applies. Crypto-Cash Back (entry tier per doc_015): reason unhappy_with_rewards, Step 5 $5 credit with reason retention_offer. Everything matches the gold except that the choice of recommended card is not unique.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean. The card-choice ambiguity does not depend on the prior scorer's relaxations, so it was simply not reported.",
+  "notes": "Crypto closure reason: the customer says \"The crypto rewards program isn't really worth it for me anymore. I don't use cryptocurrency much.\" and gold logs unhappy_with_rewards, but the author notes and customer step 10 expect the agent to remind the customer about subscriptions and credit score, which is doc_003's remedy for \"Not using the card\". A careful agent would still most likely log unhappy_with_rewards, so I recorded this as risk (replay confirms not_using_card changes the hash). Logging a closure reason for the Green card even though Step 2 says to skip to closure also changes the hash (new record id). Instructions say the competitor pays 3.25%; the notes say 3.5%. Either way Silver's 4% beats it."
+}

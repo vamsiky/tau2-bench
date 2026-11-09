@@ -1,0 +1,32 @@
+{
+  "task_id": "task_093",
+  "severity": "Minor",
+  "headline": "The Silver savings interest correction ($33.00) is derivable from the documents; one required document contains an unfilled template placeholder.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "The Silver linking document, a required doc, shows an unfilled template variable where the checking boost should be. The value (+0.25% for Green) is stated in the Green checking document.",
+      "evidence": [
+        "doc_savings_accounts_silver_account_002: \"your Silver APY receives an additional [[linked_checking_apy_bonus]]\"",
+        "doc_checking_accounts_green_account_(checking)_001: \"Boost a linked savings account's APY: Gold +0.75% or Silver +0.25%\""
+      ],
+      "gold_action_refs": [
+        6
+      ],
+      "why_it_matters": "Cosmetic: a careful agent gets 0.25% from the checking document, so the final state is unchanged.",
+      "suggested_fix": "Render the placeholder (or remove the sentence) in doc_savings_accounts_silver_account_002."
+    }
+  ],
+  "solution_check": "Silver $144,000 is at or above $10,000, so the tier is 4.0%. The Green+Silver pairing (doc_012 #11) adds +0.25%, and the relationship bonus for multiple products (silver_002/005) adds +0.025%. No credit cards are on file (credit_card_accounts empty for sp93k4m7n2). Expected 4.275%. Actual = 480 x 12 / 144000 = 4.0%. Credit = 144000 x 0.275% / 12 = $33.00, matching gold[6]/[8].",
+  "prior_status": "new",
+  "prior_note": "Prior review rated this clean. The placeholder is a newly noted cosmetic Minor that does not change the answer.",
+  "notes": "submit_interest_discrepancy_report_7294 calls add_to_db(\"interest_discrepancy_reports\", ...), but TransactionalDB has no such table, so add_to_db returns False and the tool still prints success. The report persists nothing; only its tool name in agent_discoverable_tools (a write, always logged) is graded. Its expected_apy, actual_apy, and amount_difference arguments therefore never affect the DB result; only the apply_savings_account_credit_6831 amount does (it changes accounts.current_holdings and a transaction_id hashed from the amount). The savings docs say interest is \"compounded daily\" from a daily periodic rate, but every posted credit equals balance x APY / 12 exactly. Gold uses that monthly convention, and an agent that back-solves actual_apy from the posted credit adopts it naturally. A literal daily-compounding computation would give a slightly different credit. The relationship bonus is applied here with two products. task_097 omits it for a customer with 13 products, so the two golds are inconsistent; the defect is attributed to task_097, where it contradicts that task's own required doc. Replay: amount 33 (int) vs 33.0 gives an identical DB."
+}

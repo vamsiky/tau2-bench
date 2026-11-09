@@ -1,0 +1,38 @@
+{
+  "task_id": "task_094",
+  "severity": "Major",
+  "headline": "The Gold Rewards Card's 0.025% bonus is described both as a card bonus (outranked by the EcoCard) and as a separate relationship bonus that stacks, so the correct credit could be $140 or $142.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Soft",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "document_contradiction",
+      "severity": "Major",
+      "summary": "Gold expects 6.85% (5.5 base + 0.75 Green boost + 0.6 EcoCard), which treats the Gold Rewards Card 0.025% purely as a credit-card bonus outranked by the EcoCard. doc_013 instead calls it a relationship bonus \"on top of the base rate\", and doc_045 says relationship bonuses stack with card bonuses, which gives 6.875% and a $142.00 credit.",
+      "evidence": [
+        "doc_savings_accounts_gold_account_013: \"As a Gold Rewards Card holder, you receive an additional 0.025% relationship bonus APY on top of the base rate.\" and the example \"Total APY with the bonus: 6.0%\" (5.5 + 0.025 is 5.525)",
+        "doc_savings_accounts_gold_account_014 table: \"Gold Rewards Card | +0.025%\"",
+        "doc_bank_accounts_bank_accounts_(general)_045: \"credit card APY bonuses DO stack with other types of bonuses, such as: ... Relationship bonuses for holding multiple Rho-Bank products\"; its example lists \"Gold Rewards Card: +0.025% APY bonus\" among non-stacking card bonuses",
+        "db credit_card_accounts: cc_wl94k7m3p8_gold \"Gold Rewards Card\" ACTIVE, cc_wl94k7m3p8_eco \"EcoCard\", cc_wl94k7m3p8_platinum",
+        "gold[6].arguments.amount = 140.00; gold[8].arguments.expected_apy = 6.85",
+        "computation: 96000 x (6.875 - 5.10)% / 12 = 142.00 vs gold 96000 x 1.75% / 12 = 140.00",
+        "replay: credit 142.0 -> verified match False (accounts, bank_account_transaction_history differ)"
+      ],
+      "gold_action_refs": [
+        6,
+        8
+      ],
+      "why_it_matters": "Both readings are supported by required documents. An agent that applies doc_013 literally credits $142.00 and fails the DB check.",
+      "suggested_fix": "State in doc_013 that the 0.025% is the Gold Rewards Card credit-card APY bonus (subject to highest-only stacking), and fix its \"Total APY ... 6.0%\" example."
+    }
+  ],
+  "solution_check": "Base 5.5% (gold_001/002); Green+Gold pairing gives +0.75% (green_checking_001); highest card bonus EcoCard +0.6% (gold_014, stacking per doc_045). Expected 6.85%. Actual = 408 x 12 / 96000 = 5.10%. Credit = $140.00, matching gold[6], unless the doc_013 relationship bonus is added on top.",
+  "prior_status": "persists",
+  "prior_note": "Same doc_013/014 ambiguity as before; raised from Minor to Major so it matches the identical defect in task_095, since a reasonable agent can stack the bonus and change the credit amount.",
+  "notes": "submit_interest_discrepancy_report_7294 calls add_to_db(\"interest_discrepancy_reports\", ...), but TransactionalDB has no such table, so add_to_db returns False and the tool still prints success. The report persists nothing; only its tool name in agent_discoverable_tools (a write, always logged) is graded. Its expected_apy, actual_apy, and amount_difference arguments therefore never affect the DB result; only the apply_savings_account_credit_6831 amount does (it changes accounts.current_holdings and a transaction_id hashed from the amount). The savings docs say interest is \"compounded daily\" from a daily periodic rate, but every posted credit equals balance x APY / 12 exactly. Gold uses that monthly convention, and an agent that back-solves actual_apy from the posted credit adopts it naturally. A literal daily-compounding computation would give a slightly different credit. Only the credit amount is graded, so expected_apy 6.85 vs 6.875 in the report cannot fail the task on its own."
+}

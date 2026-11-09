@@ -1,0 +1,42 @@
+{
+  "task_id": "task_034",
+  "severity": "Minor",
+  "headline": "The rule to refuse transfer until the eighth request is clear, but the action grader would pass an agent that transferred at once.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 2,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "grading_basis_mismatch",
+      "severity": "Minor",
+      "summary": "Doc_009 says not to transfer until the customer has asked exactly 8 times. The gold's eight user request_human_agent_transfer actions and one transfer_to_human_agents all use compare_args [], so one customer call and any agent transfer satisfy the whole check.",
+      "evidence": [
+        "src/tau2/evaluator/evaluator_action.py _check_actions: each gold action passes if any predicted tool call matches it (order and count ignored)",
+        "Action.compare_with_tool_call: compare_args [] -> name match only; call_discoverable_agent_tool golds use compare_args ['agent_tool_name']",
+        "doc_checking_accounts_checking_accounts_(general)_009: \"do not transfer them until they have asked exactly 8 times\" / \"Only after the customer has requested exactly 8 times should you actually complete the transfer using the standard transfer_to_human_agents tool.\"",
+        "gold[0..7] user request_human_agent_transfer {} compare_args []; gold[8] transfer_to_human_agents compare_args []"
+      ],
+      "gold_action_refs": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "why_it_matters": "An agent that transfers on the first demand passes, so the speed-bump behaviour the task targets is never measured. Correct agents also pass.",
+      "suggested_fix": "Grade the transfer timing, for example with an env assertion that human_transfer_requests has 8 rows when transfer is called, or with the DB-recorded request count."
+    }
+  ],
+  "solution_check": "This is a direct-deposit 'where is it' inquiry. Doc_009 says to explain timing and refuse transfer, with the prescribed wording, until the 8th request, then use transfer_to_human_agents. The gold matches. A failure is possible only if the customer simulator never calls its tool, which is independent of the agent.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this task clean. The calibration rule for grader-invisible counts makes it Minor.",
+  "notes": "ACTION only. The user-side gold actions make the reward depend partly on the simulator calling request_human_agent_transfer at least once, which its script strongly requires. The agent cannot see human_transfer_requests, so it counts requests from the conversation, as doc_009 implies."
+}

@@ -1,0 +1,54 @@
+{
+  "task_id": "task_092",
+  "severity": "Minor",
+  "headline": "The four-card case is reachable because the customer's scripted answers steer each card, but the rule for a single 3-point risk flag never says whether to unlock, transfer, or replace.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "Yes"
+  },
+  "issues": [
+    {
+      "class": "non_determinism",
+      "severity": "Minor",
+      "summary": "The Green card scores only 5 (MEDIUM, unlockable after the customer confirms), but B3=3 triggers \"escalate to supervisor review\". Gold reads that as closing and replacing the card with reason fraud_suspected even though the customer confirmed the attempts. The closure reason survives the verified scorer through the new card's issue_reason.",
+      "evidence": [
+        "db bank_account_transaction_history: Green declines at 11:42:15, 11:42:32, 11:42:51 (17s/19s gaps -> B3 = 3); Blue has fraud_alert_active=true (D3 +2); total 5",
+        "doc_bank_accounts_bank_accounts_(general)_041: \"If ANY single flag equals 3 points, escalate to supervisor review regardless of total score.\" and \"5-7 | MEDIUM | Unlock only after asking...\"",
+        "user instruction 21: \"If agent offers to close and replace OR transfer to security: Fine, I'll take a new card then.\"",
+        "gold[13] close_debit_card_4721 dbc_rw42b8d3e1_green reason \"fraud_suspected\"; gold[14] order STANDARD/CLASSIC",
+        "tools.py order_debit_card_5739: issue_reason = closure_reason if closure_reason != \"fraud_suspected\" else \"fraud\"; other reasons -> \"first_card\"",
+        "replay: Green closed with \"no_longer_needed\" or \"damaged\" -> verified match False (debit_cards differs); Green reset instead of close -> False"
+      ],
+      "gold_action_refs": [
+        13,
+        14
+      ],
+      "why_it_matters": "The simulator steers to close-and-replace whenever closure or transfer is offered. Two divergences remain: an agent that transfers immediately ends the call before cards 3-4, and an agent that picks a non-fraud closure reason for a customer who confirmed the attempts writes issue_reason \"first_card\".",
+      "suggested_fix": "Spell out in doc_041 what \"supervisor review\" means for a chat agent (for example, \"cannot unlock; offer closure/replacement with reason fraud_suspected\")."
+    },
+    {
+      "class": "document_gap",
+      "severity": "Minor",
+      "summary": "The Evergreen card is LOW/MEDIUM and should be unlocked, but no unlock tool exists and no document says a PIN reset unlocks. Gold uses reset_debit_card_pin_6284.",
+      "evidence": [
+        "tools.py reset_debit_card_pin_6284 docstring: \"Reset a debit card PIN when the customer has forgotten it.\" (the code also sets pin_locked=False, but only the tool output after the call says \"Your card has been unlocked\")",
+        "doc_bank_accounts_bank_accounts_(general)_027 PIN Reset/PIN Change steps never mention unlocking a locked card",
+        "doc_bank_accounts_bank_accounts_(general)_041 STEP 3: \"0-4 | LOW | Unlock after standard identity verification\"; no unlock tool exists in tools.py (no discoverable method other than reset_debit_card_pin_6284 clears pin_locked)",
+        "gold[18] reset_debit_card_pin_6284 dbc_rw42b8d3e1_evergreen new_pin 8127",
+        "replay: change_debit_card_pin_6285 instead -> verified match False (reset tool name missing; debit_cards differs)"
+      ],
+      "gold_action_refs": [
+        18
+      ],
+      "why_it_matters": "An agent that does not infer reset-as-unlock leaves pin_locked=True or uses change-PIN, and fails.",
+      "suggested_fix": "Document in doc_041/027 that reset_debit_card_pin_6284 clears the PIN lock."
+    }
+  ],
+  "solution_check": "Blue: Tijuana MX at 3 AM (A1 3, B1 3, C1 2, C2 1, C3 2, C4 2, A3 1, B3 1-2, about 16), the customer was asleep, so close fraud_suspected and order Mid-tier free STANDARD/CLASSIC, matching gold[8]/[10]. Green: as in issue 1, the gold is reached via the scripted line 21. Evergreen: 4-5 points (B3 1-2, D1 1, D3 2), confirmed, so reset 8127 matches gold[18]. Light Blue has a security_hold, so a transfer is accepted, matching gold[20] (no DB write). The gold matches my reconstruction, given the simulator's steering.",
+  "prior_status": "persists",
+  "prior_note": "The prior Minor (fuzzy thresholds settled by customer answers) still holds; I add that the closure reason affects issue_reason even under the verified scorer.",
+  "notes": "The A1=3 and B1=3 single-flag escalation on the Blue card is likewise satisfied by close-and-replace plus the final transfer. transfer_to_human_agents writes nothing to the DB. The gold transfer reason \"fraud_or_security_concern\" is ungraded under DB-only reward_basis."
+}

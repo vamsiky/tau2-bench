@@ -1,0 +1,17 @@
+{
+  "task_id": "task_007",
+  "severity": "None",
+  "headline": "Clean: among personal cards, only the EcoCard has an active sign-up bonus on 2025-11-14 (Silver's expired in June; Diamond Elite is invitation-only), so it is the correct pick.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Yes",
+    "reasoning_complexity": 3,
+    "ordering_dependency": "None",
+    "gold_consistent": "Yes"
+  },
+  "issues": [],
+  "solution_check": "Sign-up bonuses in the KB: EcoCard '$2,000 sustainability points' for $5,000 spend, window '2025-08-01 through 2025-12-15' (active). Silver $500 credit, window '2025-01-01 to 2025-06-30' (expired). Diamond Elite $5,000 credit (invitation-only). Business Bronze $500 credit, window 2025-10-01 to 2026-03-31, $0 fee (active, but a business card the customer rejects). Excluding business cards leaves EcoCard as the only option, which matches gold[0] apply_for_credit_card(EcoCard, Jordan Mitchell, 62000, false).",
+  "prior_status": "not_applicable",
+  "prior_note": "Prior verdict was clean, and no relevant data changed.",
+  "notes": "Grading model checked against the v1.0.1 snapshot: gold replay + exact agent/user DB-hash match (evaluator_env.py EnvironmentEvaluator.calculate_reward), gold-derived read-log allowlist (build.py _derive_read_log_allowlist; tools.py call_discoverable_agent_tool logs writes always, reads only if allowlisted), fixed clock (utils.get_now() = 2025-11-14 03:40, get_current_time returns '2025-11-14 03:40:00 EST') all confirmed. Numeric normalization is not global: it happens in call_discoverable_agent_tool / call_discoverable_user_tool (json parse_int=float) and inside individual tools such as apply_for_credit_card (float(annual_income)). The Business Bronze card ($0 fee, active $500 promo) is a deliberate trap: the customer reveals she does not want business cards only after the agent reports options. If an agent recommends only Business Bronze, the simulator might end the call ('no credit cards ... that fit your needs') instead of asking for alternatives; that is simulator fragility, not a data defect. A user named Jordan Mitchell exists in db.json (jm60a8b9c2), but no DB access is needed. An agent that unnecessarily verifies and calls log_verification would add a write and fail the hash, which is consistent with the policy ('ONLY verify ... if you need to access or modify their customer information')."
+}

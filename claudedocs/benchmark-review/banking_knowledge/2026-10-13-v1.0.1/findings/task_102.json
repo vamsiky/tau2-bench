@@ -1,0 +1,51 @@
+{
+  "task_id": "task_102",
+  "severity": "Blocker",
+  "headline": "The grading requires the agent to 'recognize' that Ember is over Sky Blue's 4-year limit, but nothing the agent can see says so. 'Maximize the bonus' also points to Lime Green ($200 to the customer) rather than the gold's Sky Blue ($150).",
+  "ratings": {
+    "instructions_sufficient": "Insufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 5,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "underspecified_instructions",
+      "severity": "Blocker",
+      "summary": "The NL assertion requires the agent to recognize that Ember Analytics is over Sky Blue's 4-year formation limit. The only age information the agent can get is the customer's statement that Ember incorporated in late 2022, about 3 years ago, which is within the limit. Ember's real 5-year age appears only in the author notes and in a different task (task_101).",
+      "evidence": [
+        "evaluation_criteria.nl_assertions[0]: \"The agent should recommend TechFlow Labs (not Ember Analytics) for the Sky Blue Account referral, recognizing that Ember Analytics exceeds the 4-year company age limit for Sky Blue eligibility.\"",
+        "evaluation_criteria.reward_basis = [\"DB\", \"NL_ASSERTION\"]",
+        "user instructions item 7: \"They incorporated in late 2022, so that's about 3 years now.\"",
+        "doc_business_checking_accounts_sky_blue_001: \"Confirm your company is within 4 years of formation.\"",
+        "db.json and documents: no record mentions 'Ember' or 'TechFlow' (grep count 0)"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "Under default EvaluationType.ALL, the NL reward is multiplied into the task reward (evaluator.py). A faithful agent cannot honestly state that Ember exceeds the limit, so the NL check fails, or passes only if the judge is lenient, regardless of the DB result. The user script's item 11 (agent 'corrects' Ember's age) can only trigger if the agent hallucinates.",
+      "suggested_fix": "Give the agent a verifiable source for Ember's formation date (a DB record or the customer's correct answer when asked), or drop the 'recognizing...' clause from the NL assertion."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "With one slot left in the window, the customer asks which referral to prioritize 'to maximize the bonus' without saying whether she means her own bonus or the combined total. Ember to Lime Green pays the referrer $200, more than Sky Blue's $150. Sky Blue only wins on the combined total ($400 vs $350).",
+      "evidence": [
+        "user instructions item 12: \"which one should I prioritize? I want to maximize the bonus.\"",
+        "doc_business_checking_accounts_lime_green_003: \"Your bonus: $200 ... Their bonus: $150 ... Referred business must deposit $15,000 within 90 days\" (Ember deposits $18,000; Lime Green 2/12 used)",
+        "doc_business_checking_accounts_sky_blue_001: \"Your bonus: $150 ... Their bonus: $250\"",
+        "gold[2]: submit_referral 'Sky Blue Account'"
+      ],
+      "gold_action_refs": [
+        2
+      ],
+      "why_it_matters": "An agent that reads 'the bonus' as the customer's own bonus recommends Lime Green, and the referral record's account_type differs from the gold's (replayed: hash differs).",
+      "suggested_fix": "Have the customer say 'the biggest combined bonus' (as in task_101), or accept Lime Green as gold."
+    }
+  ],
+  "solution_check": "get_referrals_by_user shows the 11/10 Purple bonus (COMPLETE) inside the 9-day window, which leaves one slot. Gold Years is at 6/6, so Vikram's best option is Purple ($80). Sky Blue has one slot left (7/8). On the agent-visible facts, both startups qualify for Sky Blue ($400 combined), Ember also qualifies for Lime Green ($350 combined, $200 to the referrer), and TechFlow qualifies for Hunter Green ($300 combined). The gold's single Sky Blue referral is right only under the combined-bonus reading. The DB record does not depend on which startup is referred, but the NL assertion requires a reason the agent cannot know.",
+  "prior_status": "changed",
+  "prior_note": "The prior review flagged the 'maximize the bonus' ambiguity as Major, and that persists. New in this review: the NL_ASSERTION part of the grade requires knowledge of Ember's age that the agent cannot obtain, which makes the task a Blocker.",
+  "notes": "Grading-model bullets confirmed against the v1.0.1 snapshot. submit_referral (user tool, no tool-gating) writes {referral_id=hash(user_id, account_type), referred_account_type, NO_PROGRESS, date=11/14/2025}, so the DB records only the account_type string and whether the referral was submitted, not who was referred. get_referrals_by_user is an always-available read (not logged). get_all_user_accounts_by_user_id_3847 is discoverable and is logged only when the gold calls it. Business referral terms (referrer+referred; deposit; tenure; cap/yr): Navy Blue 100+75 $5k 60d 10; Cobalt Blue 150+100 $7.5k 60d 10; Hunter Green 175+125 $10k 60d 10; Lime Green 200+150 $15k 90d 12; Sky Blue 150+250 $10k 45d 8 (company <= 4 years old); World Blue 300+200 $25k 90d 12; True Blue 350+250 $50k 90d 15; Beige 500+350 $100k 120d 15. This is the only task in my batch with an NL_ASSERTION reward basis, which the run's grading-model bullets do not mention. In evaluate_simulation the NL reward is multiplied in whenever the task's reward_basis contains NL_ASSERTION. The rolling window binds here under both readings, because the 11/10 bonus is COMPLETE and only one more bonus fits in the window."
+}

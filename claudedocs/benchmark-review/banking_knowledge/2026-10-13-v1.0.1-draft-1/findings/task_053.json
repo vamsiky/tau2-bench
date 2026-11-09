@@ -1,0 +1,68 @@
+{
+  "task_id": "task_053",
+  "severity": "Blocker",
+  "headline": "The official answer files the dispute with the card's last four digits but leaves out the customer's own lookup call that produces them, so no conversation can match it.",
+  "ratings": {
+    "instructions_sufficient": "Sufficient",
+    "docs_deterministic": "Partial",
+    "reasoning_complexity": 4,
+    "ordering_dependency": "Strict",
+    "gold_consistent": "No"
+  },
+  "issues": [
+    {
+      "class": "argument_error",
+      "severity": "Blocker",
+      "summary": "Gold gives get_card_last_4_digits to the user (gold[13]) and uses last-4 '2791' in the dispute (gold[15]), but has no user call_discoverable_user_tool action. The only way to obtain '2791' is that user call, and it writes a user_discoverable_tool_calls row that gold lacks.",
+      "evidence": [
+        "gold[13] give_discoverable_user_tool get_card_last_4_digits; no call_discoverable_user_tool in gold",
+        "gold[15] \"card_last_4_digits\": \"2791\" = sha256('card_last4:cc_e9d195fe8e_silver') digits",
+        "instructions: \"If the agent provides you with the get_card_last_4_digits tool, use it to retrieve the number.\"",
+        "tools.py KnowledgeUserTools.get_card_last_4_digits -> self._log_user_tool_call(...) -> add_to_db(\"user_discoverable_tool_calls\", ...)",
+        "replay: gold + user call get_card_last_4_digits(cc_e9d195fe8e_silver) gives hash 39e43b124f62 vs gold e15eaf3b6909"
+      ],
+      "gold_action_refs": [
+        13,
+        15
+      ],
+      "why_it_matters": "If the user calls the tool as instructed, the DB has an extra row. If the user does not, the agent cannot learn '2791', since no agent tool exposes the last 4. Either way the hash fails, so the task is unpassable.",
+      "suggested_fix": "Insert a user call_discoverable_user_tool(get_card_last_4_digits, {\"credit_card_account_id\": \"cc_e9d195fe8e_silver\"}) after gold[13], as task_041 does."
+    },
+    {
+      "class": "non_determinism",
+      "severity": "Major",
+      "summary": "Gold requires the CLI to be processed before the dispute is filed, although the customer asks for the dispute first. Processing in the customer's order is also policy-faithful: the dispute then counts as pending, and logistics_007 says to deny for pending_disputes.",
+      "evidence": [
+        "instructions: \"State BOTH requests upfront, but the dispute first\"",
+        "doc_credit_cards_credit_card_account_logistics_007: \"3. No Pending Disputes: Verify the account has no active disputes.\"",
+        "tools.py approve_credit_limit_increase_5847 rejects when a user dispute has status SUBMITTED/UNDER_REVIEW/PENDING",
+        "replay with dispute filed before CLI: approve returns \"Error: Credit limit increase request cannot be approved at this time.\" and the hash differs from gold"
+      ],
+      "gold_action_refs": [
+        10,
+        12,
+        15
+      ],
+      "why_it_matters": "No document says to reorder the customer's requests to avoid the pending-dispute rule. An agent that files the dispute first and then correctly denies the CLI for pending_disputes fails.",
+      "suggested_fix": "State the intended sequencing in a KB doc (e.g. 'process open CLI requests before filing new disputes in the same interaction'), or accept either outcome."
+    },
+    {
+      "class": "document_contradiction",
+      "severity": "Minor",
+      "summary": "doc_014 lists 'reversal_of_charge' as a valid resolution, but the tool rejects it.",
+      "evidence": [
+        "doc_credit_cards_credit_cards_(general)_014: \"- 'reversal_of_charge': Charge reversal/chargeback\"",
+        "tools.py valid_resolutions = [\"full_refund\", \"partial_refund\"]"
+      ],
+      "gold_action_refs": [
+        15
+      ],
+      "why_it_matters": "The customer asks for a 'full refund', so this case is unaffected. The doc and the tool still disagree.",
+      "suggested_fix": "Remove 'reversal_of_charge' from doc_014 or accept it in the tool."
+    }
+  ],
+  "solution_check": "Silver Rewards is Mid-tier: 50% of $15,000 = $7,500 is within the maximum, utilization is 30%, the account opened 11/15/2024, and 3 on-time months qualify, so submit 7500 and approve 22500. Dispute: goods_services_not_received, purchased 10/10/2025 (35 days ago, over 30), $1,247.99 under the $5,000 mid-tier cap, 0 prior disputes, merchant contacted, so provisional credit is true. Noticed 10/31/2025, keep_active, full_refund. The arguments match gold, but obtaining last-4 '2791' requires a user tool call that gold omits.",
+  "prior_status": "new",
+  "prior_note": "The prior review rated this clean (its scorer was relaxed). The task is unchanged; under exact-hash grading the missing user call makes it unpassable.",
+  "notes": "Grading-model facts confirmed against snapshot: EnvironmentEvaluator replays gold on a fresh env and requires equal agent+user DB hashes (in this domain both toolkits share one TransactionalDB, so the two hashes are identical); _derive_read_log_allowlist logs discoverable READ calls only when gold calls them, but discoverable WRITE calls are logged by tool name even when the tool returns an error string; numbers in call_discoverable_agent_tool/call_discoverable_user_tool are parsed with parse_int=float; get_now() = 2025-11-14 03:40:00. unlock_discoverable_agent_tool is in-memory only and never hashed. This is the same class of omission that v1.0.1 fixed for tasks 077-086 ('gold trajectories omitted reads any real agent must perform'), but it was not fixed here. The seed payment_history includes a row dated 2025-11-15, after the fixed clock date; it does not affect the outcome."
+}
